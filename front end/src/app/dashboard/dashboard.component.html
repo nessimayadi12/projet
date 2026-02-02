@@ -1,0 +1,202 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row" *ngIf="loading">
+      <div class="col-md-12 text-center">
+        <p>Chargement des statistiques...</p>
+      </div>
+    </div>
+
+    <div class="row" *ngIf="error">
+      <div class="col-md-12">
+        <div class="alert alert-danger">{{ error }}</div>
+      </div>
+    </div>
+
+    <div *ngIf="stats && !loading">
+      <!-- Première ligne: Stats TPE -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">devices</i>
+              </div>
+              <p class="card-category">Total TPE</p>
+              <h3 class="card-title">{{ stats.totalTPE }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">update</i> Mis à jour
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">check_circle</i>
+              </div>
+              <p class="card-category">TPE Disponibles</p>
+              <h3 class="card-title">{{ stats.tpeDisponibles }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">trending_up</i> Prêts à l'emploi
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-primary card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">business</i>
+              </div>
+              <p class="card-category">TPE Affectés</p>
+              <h3 class="card-title">{{ stats.tpeAffectes }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">local_offer</i> En service
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-danger card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">warning</i>
+              </div>
+              <p class="card-category">TPE En Panne</p>
+              <h3 class="card-title">{{ stats.tpeEnPanne }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">build</i> À réparer
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deuxième ligne: Stats Commerçants et KPIs -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-warning card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">store</i>
+              </div>
+              <p class="card-category">Commerçants</p>
+              <h3 class="card-title">{{ stats.totalCommercants }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">people</i> Clients actifs
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">done_all</i>
+              </div>
+              <p class="card-category">Taux Disponibilité</p>
+              <h3 class="card-title">{{ tauxDisponibiliteFormatted }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">assessment</i> Performance
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">schedule</i>
+              </div>
+              <p class="card-category">MTTR (heures)</p>
+              <h3 class="card-title">{{ mttrFormatted }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">timer</i> Temps moyen réparation
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-primary card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">assignment</i>
+              </div>
+              <p class="card-category">Demandes en Attente</p>
+              <h3 class="card-title">{{ stats.demandesEnAttente }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">access_time</i> À traiter
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques -->
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card card-chart">
+            <div class="card-header card-header-success">
+              <div id="tpeStatutChart" class="ct-chart"></div>
+            </div>
+            <div class="card-body">
+              <h4 class="card-title">Répartition des TPE par Statut</h4>
+              <p class="card-category">Vue d'ensemble de l'état du parc</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card card-chart">
+            <div class="card-header card-header-warning">
+              <div id="marqueChart" class="ct-chart"></div>
+            </div>
+            <div class="card-body">
+              <h4 class="card-title">Répartition par Marque</h4>
+              <p class="card-category">Distribution des marques dans le parc</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card card-chart">
+            <div class="card-header card-header-danger">
+              <div id="pannesChart" class="ct-chart"></div>
+            </div>
+            <div class="card-body">
+              <h4 class="card-title">Pannes: En cours vs Résolues</h4>
+              <p class="card-category">
+                <span class="text-success"><i class="fa fa-long-arrow-up"></i> {{ stats.pannesResoluesCeMois }}</span> résolues ce mois
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

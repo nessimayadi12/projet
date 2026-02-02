@@ -1,0 +1,122 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-success">
+            <h4 class="card-title">Gestion des Commerçants</h4>
+            <p class="card-category">Liste de tous les clients commerçants</p>
+          </div>
+          <div class="card-body">
+            <!-- Filtres et recherche -->
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="search">Rechercher</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="search"
+                    [(ngModel)]="searchTerm" 
+                    (ngModelChange)="filterCommercants()"
+                    placeholder="Raison sociale, adresse...">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="statut">Filtrer par statut</label>
+                  <select 
+                    class="form-control" 
+                    id="statut"
+                    [(ngModel)]="selectedStatut" 
+                    (ngModelChange)="filterCommercants()">
+                    <option value="">Tous les statuts</option>
+                    <option *ngFor="let statut of statuts" [value]="statut">{{ statut }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-5 text-right">
+                <button 
+                  class="btn btn-success mt-4" 
+                  (click)="addNewCommercant()">
+                  <i class="material-icons">add</i> Nouveau Commerçant
+                </button>
+              </div>
+            </div>
+
+            <!-- Loading state -->
+            <div *ngIf="loading" class="text-center">
+              <p>Chargement des commerçants...</p>
+            </div>
+
+            <!-- Error state -->
+            <div *ngIf="error" class="alert alert-danger">
+              {{ error }}
+            </div>
+
+            <!-- Table -->
+            <div *ngIf="!loading && !error" class="table-responsive">
+              <table class="table table-hover">
+                <thead class="text-success">
+                  <tr>
+                    <th>Raison Sociale</th>
+                    <th>N° Compte / RIB</th>
+                    <th>Adresse</th>
+                    <th>Nom Contact</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>Nb TPE</th>
+                    <th>Statut</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let commercant of filteredCommercants">
+                    <td>{{ commercant.raisonSociale }}</td>
+                    <td>{{ commercant.numeroCompte || commercant.rib || '-' }}</td>
+                    <td>{{ commercant.adresse }}</td>
+                    <td>{{ commercant.nomContact }} {{ commercant.prenomContact }}</td>
+                    <td>{{ commercant.email }}</td>
+                    <td>{{ commercant.telephone }}</td>
+                    <td>{{ commercant.nombreTpes || 0 }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatutClass(commercant.statut)">
+                        {{ commercant.statut }}
+                      </span>
+                    </td>
+                    <td class="td-actions text-right">
+                      <button 
+                        type="button" 
+                        class="btn btn-info btn-sm"
+                        (click)="viewDetails(commercant.id!)"
+                        title="Voir détails">
+                        <i class="material-icons">visibility</i>
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-success btn-sm"
+                        (click)="editCommercant(commercant.id!)"
+                        title="Modifier">
+                        <i class="material-icons">edit</i>
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-danger btn-sm"
+                        (click)="deleteCommercant(commercant.id!, commercant.raisonSociale)"
+                        title="Supprimer">
+                        <i class="material-icons">delete</i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="filteredCommercants.length === 0">
+                    <td colspan="9" class="text-center">Aucun commerçant trouvé</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,100 @@
+package com.banque.abc.tpe.controller;
+
+import com.banque.abc.tpe.dto.tpe.TPERequest;
+import com.banque.abc.tpe.dto.tpe.TPEResponse;
+import com.banque.abc.tpe.entity.enums.StatutTPE;
+import com.banque.abc.tpe.service.TPEService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping({"/api/tpes", "/api/tpe"})
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*", maxAge = 3600)
+public class TPEController {
+
+    private final TPEService tpeService;
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<TPEResponse> createTPE(@Valid @RequestBody TPERequest request) {
+        TPEResponse response = tpeService.createTPE(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
+    public ResponseEntity<TPEResponse> getTPEById(@PathVariable Long id) {
+        TPEResponse response = tpeService.getTPEById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
+    public ResponseEntity<Page<TPEResponse>> getAllTPEs(Pageable pageable) {
+        Page<TPEResponse> tpes = tpeService.getAllTPEs(pageable);
+        return ResponseEntity.ok(tpes);
+    }
+
+    @GetMapping("/statut/{statut}")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
+    public ResponseEntity<List<TPEResponse>> getTPEsByStatut(@PathVariable StatutTPE statut) {
+        List<TPEResponse> tpes = tpeService.getTPEsByStatut(statut);
+        return ResponseEntity.ok(tpes);
+    }
+
+    @GetMapping("/disponibles")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<List<TPEResponse>> getTPEsDisponibles() {
+        List<TPEResponse> tpes = tpeService.getTPEsDisponibles();
+        return ResponseEntity.ok(tpes);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<TPEResponse> updateTPE(@PathVariable Long id, 
+                                                  @Valid @RequestBody TPERequest request) {
+        TPEResponse response = tpeService.updateTPE(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/statut")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<String> updateStatut(@PathVariable Long id,
+                                                @RequestParam StatutTPE statut,
+                                                @RequestParam(required = false) String commentaire) {
+        tpeService.updateStatut(id, statut, commentaire);
+        return ResponseEntity.ok("Statut mis à jour avec succès");
+    }
+
+    @PostMapping("/{id}/generate-tid")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<String> generateTID(@PathVariable Long id,
+                                               @RequestParam String rib,
+                                               @RequestParam String codeAgence) {
+        String tid = tpeService.generateTIDForTPE(id, rib, codeAgence);
+        return ResponseEntity.ok(tid);
+    }
+
+    @PostMapping("/generer-tid")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<String> genererTID(@RequestBody TPERequest request) {
+        String tid = tpeService.generateTID(request.getRib(), request.getCodeAgence());
+        return ResponseEntity.ok(tid);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> deleteTPE(@PathVariable Long id) {
+        tpeService.deleteTPE(id);
+        return ResponseEntity.ok("TPE supprimé avec succès");
+    }
+}

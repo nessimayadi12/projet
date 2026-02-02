@@ -1,0 +1,62 @@
+package com.banque.abc.tpe.dto.demande;
+
+import com.banque.abc.tpe.entity.enums.StatutDemande;
+import com.banque.abc.tpe.entity.enums.TypeTPE;
+import com.banque.abc.tpe.entity.enums.Urgence;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class DemandeResponse {
+    
+    private Long id;
+    private String reference;
+    private TypeTPE typeDemande;
+    private StatutDemande statut;
+    private Long commercantId;
+    private String commercantNom;
+    private Long demandeurId;
+    private String demandeurNom;
+    private Long valideurId;
+    private String valideurNom;
+    private LocalDateTime dateValidation;
+    private LocalDateTime dateCloture;
+    private String description;
+    private String commentaireValidation;
+    private Urgence urgence;
+    
+    // Champs de demande agence (TPE Physique)
+    private String raisonSociale;
+    private String activite;
+    private String numeroCompte;
+    private String adresse;
+    private String codePostal;
+    private String codeAgence;
+    private String telephone;
+    private String rneFilePath;
+    private String emailNotification;
+    
+    // Champs de validation Monétique (TPE Physique)
+    private String mcc;
+    private Double tauxCommission;
+    private Double tauxCommissionInter;
+    private Double loyer;
+    private String serieTpe;
+    private String numeroTerminal;
+    private LocalDateTime valueDate;
+    
+    // Champs spécifiques E-commerce
+    private String localite;
+    private String rib;
+    private String webmaster;
+    private String contactTechnique;
+    private String urlSiteMarchand;
+    
+    private LocalDateTime createdDate;
+    private LocalDateTime lastModifiedDate;
+}

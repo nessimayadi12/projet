@@ -1,0 +1,33 @@
+﻿  genererTID(): void {
+    if (!this.isMonetique) {
+      this.showNotification('Seul le service Monetique peut generer un TID', 'warning');
+      return;
+    }
+
+    const numeroCompte = this.tpeForm.get('numeroCompte')?.value;
+    const codeAgence = this.tpeForm.get('codeAgence')?.value;
+    
+    if (!numeroCompte || !codeAgence) {
+      this.showNotification('Veuillez renseigner le numero de compte et le code agence', 'warning');
+      return;
+    }
+
+    const requestData = {
+      rib: numeroCompte,
+      codeAgence: codeAgence,
+      typeTPE: this.tpeForm.get('typeTpe')?.value || 'PHYSIQUE',
+      numeroSerie: this.tpeForm.get('numeroSerie')?.value || 'TEMP-' + Date.now()
+    };
+
+    this.tpeService.genererNumeroTerminal(requestData).subscribe({
+      next: (tid) => {
+        this.tpeForm.patchValue({ numeroTerminal: tid });
+        this.showNotification('TID genere avec succes : ' + tid, 'success');
+      },
+      error: (err) => {
+        console.error('Erreur generation TID:', err);
+        const message = err.error?.message || 'Erreur lors de la generation du TID';
+        this.showNotification(message, 'danger');
+      }
+    });
+  }

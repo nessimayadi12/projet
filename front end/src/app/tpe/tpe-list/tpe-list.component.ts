@@ -1,0 +1,108 @@
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { TpeService } from '../../services/tpe.service';
+import { TPE, StatutTPE } from '../../models/tpe.model';
+import { AuthService } from '../../services/auth.service';
+import { Role } from '../../models/utilisateur.model';
+
+@Component({
+  selector: 'app-tpe-list',
+  templateUrl: './tpe-list.component.html',
+  styleUrls: ['./tpe-list.component.css']
+})
+export class TpeListComponent implements OnInit {
+  tpes: TPE[] = [];
+  filteredTpes: TPE[] = [];
+  loading = true;
+  error: string | null = null;
+  searchTerm = '';
+  selectedStatut: StatutTPE | '' = '';
+  statuts = Object.values(StatutTPE);
+
+  constructor(
+    private tpeService: TpeService,
+    private router: Router,
+    private authService: AuthService
+  ) { }
+
+  canCreateTPE(): boolean {
+    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
+  }
+
+  ngOnInit(): void {
+    this.loadTPEs();
+  }
+
+  loadTPEs(): void {
+    this.loading = true;
+    this.tpeService.getAllTPE().subscribe({
+      next: (data) => {
+        this.tpes = data;
+        this.filteredTpes = data;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors du chargement des TPE:', err);
+        this.error = 'Impossible de charger la liste des TPE';
+        this.loading = false;
+      }
+    });
+  }
+
+  filterTPEs(): void {
+    this.filteredTpes = this.tpes.filter(tpe => {
+      const matchesSearch = !this.searchTerm || 
+        tpe.numeroSerie.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        tpe.marque.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        tpe.modele.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (tpe.commercantActuelNom && tpe.commercantActuelNom.toLowerCase().includes(this.searchTerm.toLowerCase()));
+      
+      const matchesStatut = !this.selectedStatut || tpe.statut === this.selectedStatut;
+      
+      return matchesSearch && matchesStatut;
+    });
+  }
+
+  viewDetails(id: number): void {
+    this.router.navigate(['/tpe', id]);
+  }
+
+  addNewTPE(): void {
+    this.router.navigate(['/tpe/new']);
+  }
+
+  editTPE(id: number): void {
+    this.router.navigate(['/tpe', id, 'edit']);
+  }
+
+  deleteTPE(id: number, numeroSerie: string): void {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le TPE ${numeroSerie} ?`)) {
+      this.tpeService.deleteTPE(id).subscribe({
+        next: () => {
+          this.loadTPEs();
+          alert('TPE supprimé avec succès');
+        },
+        error: (err) => {
+          console.error('Erreur lors de la suppression:', err);
+          alert('Impossible de supprimer le TPE');
+        }
+      });
+    }
+  }
+
+  getStatutClass(statut: StatutTPE): string {
+    switch(statut) {
+      case StatutTPE.DISPONIBLE: return 'badge-success';
+      case StatutTPE.AFFECTE: return 'badge-primary';
+      case StatutTPE.EN_PANNE: return 'badge-danger';
+      case StatutTPE.EN_MAINTENANCE: return 'badge-warning';
+      case StatutTPE.HORS_SERVICE: return 'badge-dark';
+      case StatutTPE.RESERVE: return 'badge-info';
+      default: return 'badge-secondary';
+    }
+  }
+
+  getStatutLabel(statut: StatutTPE): string {
+    return statut.replace(/_/g, ' ');
+  }
+}

@@ -1,0 +1,144 @@
+<div class="register-container">
+  <div class="register-card">
+    <div class="card">
+      <div class="card-header card-header-success text-center">
+        <h3 class="card-title">Créer un compte</h3>
+        <p class="card-category">ABC Bank - Gestion TPE</p>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+          
+          <div *ngIf="error" class="alert alert-danger">
+            <i class="material-icons">error</i>
+            {{ error }}
+          </div>
+
+          <div *ngIf="success" class="alert alert-success">
+            <i class="material-icons">check_circle</i>
+            Inscription réussie ! Redirection vers la page de connexion...
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="nom">Nom *</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="nom"
+                  formControlName="nom"
+                  [class.is-invalid]="registerForm.get('nom')?.invalid && registerForm.get('nom')?.touched"
+                  placeholder="Votre nom">
+                <div class="invalid-feedback" *ngIf="registerForm.get('nom')?.invalid && registerForm.get('nom')?.touched">
+                  Le nom est requis
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="prenom">Prénom *</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="prenom"
+                  formControlName="prenom"
+                  [class.is-invalid]="registerForm.get('prenom')?.invalid && registerForm.get('prenom')?.touched"
+                  placeholder="Votre prénom">
+                <div class="invalid-feedback" *ngIf="registerForm.get('prenom')?.invalid && registerForm.get('prenom')?.touched">
+                  Le prénom est requis
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="username">Nom d'utilisateur *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="username"
+              formControlName="username"
+              [class.is-invalid]="registerForm.get('username')?.invalid && registerForm.get('username')?.touched"
+              placeholder="Choisissez un nom d'utilisateur">
+            <div class="invalid-feedback" *ngIf="registerForm.get('username')?.invalid && registerForm.get('username')?.touched">
+              <span *ngIf="registerForm.get('username')?.errors?.['required']">Le nom d'utilisateur est requis</span>
+              <span *ngIf="registerForm.get('username')?.errors?.['minlength']">Minimum 3 caractères requis</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email *</label>
+            <input 
+              type="email" 
+              class="form-control" 
+              id="email"
+              formControlName="email"
+              [class.is-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
+              placeholder="votre.email@example.com">
+            <div class="invalid-feedback" *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+              <span *ngIf="registerForm.get('email')?.errors?.['required']">L'email est requis</span>
+              <span *ngIf="registerForm.get('email')?.errors?.['email']">Format d'email invalide</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="password">Mot de passe *</label>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="password"
+                  formControlName="password"
+                  [class.is-invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
+                  placeholder="Minimum 6 caractères">
+                <div class="invalid-feedback" *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+                  <span *ngIf="registerForm.get('password')?.errors?.['required']">Le mot de passe est requis</span>
+                  <span *ngIf="registerForm.get('password')?.errors?.['minlength']">Minimum 6 caractères requis</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="confirmPassword">Confirmer le mot de passe *</label>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="confirmPassword"
+                  formControlName="confirmPassword"
+                  [class.is-invalid]="(registerForm.get('confirmPassword')?.invalid && registerForm.get('confirmPassword')?.touched) || registerForm.errors?.['passwordMismatch']"
+                  placeholder="Confirmez votre mot de passe">
+                <div class="invalid-feedback" *ngIf="registerForm.get('confirmPassword')?.touched">
+                  <span *ngIf="registerForm.get('confirmPassword')?.errors?.['required']">La confirmation est requise</span>
+                  <span *ngIf="registerForm.errors?.['passwordMismatch']">Les mots de passe ne correspondent pas</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center mt-4">
+            <button 
+              type="submit" 
+              class="btn btn-success btn-block"
+              [disabled]="loading || success">
+              <i class="material-icons" *ngIf="!loading">person_add</i>
+              <i class="material-icons rotating" *ngIf="loading">autorenew</i>
+              {{ loading ? 'Inscription en cours...' : 'Créer mon compte' }}
+            </button>
+          </div>
+
+          <div class="text-center mt-3">
+            <p class="text-muted">
+              Vous avez déjà un compte ? 
+              <a (click)="goToLogin()" class="text-primary font-weight-bold" style="cursor: pointer;">
+                Connectez-vous !
+              </a>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,279 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">{{ isEditMode ? 'Modifier un TPE' : 'Nouveau TPE' }}</h4>
+            <p class="card-category">
+              {{ isEditMode ? 'Mettre à jour les informations' : 'Enregistrer un nouveau terminal' }}
+            </p>
+          </div>
+          <div class="card-body">
+            <form [formGroup]="tpeForm" (ngSubmit)="onSubmit()">
+              
+              <!-- Section: Type de TPE -->
+              <h5 class="card-title">Type de Terminal</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Type de TPE *</label>
+                    <select class="form-control" formControlName="typeTpe">
+                      <option *ngFor="let type of typesTPE" [value]="type">
+                        {{ type === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Statut *</label>
+                    <select class="form-control" formControlName="statut">
+                      <option *ngFor="let statut of statuts" [value]="statut">
+                        {{ getStatutLabel(statut) }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Informations Générales -->
+              <h5 class="card-title mt-4">Informations Générales</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Numéro de série *</label>
+                    <input type="text" class="form-control" formControlName="numeroSerie">
+                  </div>
+                </div>
+                <div class="col-md-4" *ngIf="selectedType === 'PHYSIQUE'">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Marque</label>
+                    <input type="text" class="form-control" formControlName="marque">
+                  </div>
+                </div>
+                <div class="col-md-4" *ngIf="selectedType === 'PHYSIQUE'">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Modèle</label>
+                    <input type="text" class="form-control" formControlName="modele">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Date d'acquisition *</label>
+                    <input type="date" class="form-control" formControlName="dateAcquisition">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Date de mise en service</label>
+                    <input type="date" class="form-control" formControlName="dateMiseEnService">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Commerçant</label>
+                    <select class="form-control" formControlName="commercantActuelId">
+                      <option [value]="null">-- Aucun --</option>
+                      <option *ngFor="let c of commercants" [value]="c.id">
+                        {{ c.raisonSociale }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Données Monétiques -->
+              <h5 class="card-title mt-4">Données Monétiques</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Raison Sociale</label>
+                    <input type="text" class="form-control" formControlName="raisonSociale">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Activité</label>
+                    <input type="text" class="form-control" formControlName="activite">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">MCC (Merchant Category Code)</label>
+                    <input type="text" class="form-control" formControlName="mcc">
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Taux Commission (%)</label>
+                    <input type="number" step="0.01" class="form-control" formControlName="tauxCommission">
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Taux Commission Inter (%)</label>
+                    <input type="number" step="0.01" class="form-control" formControlName="tauxCommissionInter">
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Loyer mensuel</label>
+                    <input type="number" step="0.01" class="form-control" formControlName="loyer">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Numéro de compte (RIB)</label>
+                    <input type="text" class="form-control" formControlName="numeroCompte">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Code Agence</label>
+                    <input type="text" class="form-control" formControlName="codeAgence">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Série TPE</label>
+                    <input type="text" class="form-control" formControlName="serieTpe">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Value Date</label>
+                    <input type="date" class="form-control" formControlName="valueDate">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Numéro Terminal (TID)</label>
+                    <input type="text" class="form-control" formControlName="numeroTerminal" readonly>
+                    <small class="form-text text-muted">
+                      Généré automatiquement selon la règle: RIB(2) + CodeAgence(3) + Compteur(3) + Clé Luhn(1)
+                    </small>
+                  </div>
+                </div>
+                <div class="col-md-2" *ngIf="isMonetique">
+                  <button type="button" class="btn btn-info btn-sm mt-3" (click)="genererTID()">
+                    <i class="material-icons">autorenew</i> Générer TID
+                  </button>
+                </div>
+              </div>
+
+              <!-- Section: Données E-commerce (si applicable) -->
+              <div *ngIf="selectedType === 'ECOMMERCE'">
+                <h5 class="card-title mt-4">Données E-Commerce</h5>
+                <hr>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">URL du Site Marchand *</label>
+                      <input type="url" class="form-control" formControlName="urlSiteMarchand">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Webhook / URL de Callback</label>
+                      <input type="url" class="form-control" formControlName="webhookUrl">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Clé d'API</label>
+                      <input type="text" class="form-control" formControlName="cleApi">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Numéro d'Affiliation</label>
+                      <input type="text" class="form-control" formControlName="numeroAffiliation">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Type de Commerce</label>
+                      <select class="form-control" formControlName="typeCommerce">
+                        <option value="">-- Sélectionner --</option>
+                        <option value="MARKETPLACE">Marketplace</option>
+                        <option value="RETAIL">Retail</option>
+                        <option value="SERVICES">Services</option>
+                        <option value="DIGITAL">Produits Digitaux</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Cartes Acceptées</label>
+                      <input type="text" class="form-control" formControlName="cartesAcceptees" 
+                        placeholder="Visa, Mastercard, DCI...">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check mt-3">
+                      <label class="form-check-label">
+                        <input class="form-check-input" type="checkbox" formControlName="modeTest">
+                        <span class="form-check-sign">
+                          <span class="check"></span>
+                        </span>
+                        Mode Test / Sandbox
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Commentaires -->
+              <h5 class="card-title mt-4">Notes et Commentaires</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Commentaire</label>
+                    <textarea class="form-control" formControlName="commentaire" rows="4"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Boutons d'action -->
+              <div class="row mt-4">
+                <div class="col-md-12">
+                  <button type="submit" class="btn btn-primary" [disabled]="loading">
+                    <i class="material-icons">save</i>
+                    {{ loading ? 'Enregistrement...' : (isEditMode ? 'Mettre à jour' : 'Créer') }}
+                  </button>
+                  <button type="button" class="btn btn-default" (click)="cancel()" [disabled]="loading">
+                    <i class="material-icons">cancel</i>
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

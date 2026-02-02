@@ -1,0 +1,38 @@
+export enum StatutCommercant {
+  ACTIF = 'ACTIF',
+  INACTIF = 'INACTIF',
+  SUSPENDU = 'SUSPENDU'
+}
+
+export enum TypeTPE {
+  PHYSIQUE = 'PHYSIQUE',
+  ECOMMERCE = 'ECOMMERCE'
+}
+
+export interface Commercant {
+  id?: number;
+  raisonSociale: string;
+  siret?: string;
+  identifiantUniqueRNE?: string;
+  email: string;
+  telephone: string;
+  adresse: string;
+  codePostal: string;
+  ville: string;
+  localite?: string;
+  activite?: string;
+  numeroCompte?: string;
+  codeAgence?: string;
+  loyer?: number;
+  mcc?: string;
+  webmaster?: string;
+  emailNotification?: string;
+  typeCommerce?: TypeTPE;
+  statut: StatutCommercant;
+  nomContact?: string;
+  prenomContact?: string;
+  cheminFichierRNE?: string;
+  nombreTpes?: number;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}

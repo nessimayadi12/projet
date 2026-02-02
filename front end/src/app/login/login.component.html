@@ -1,0 +1,62 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="card">
+      <div class="card-header card-header-primary text-center">
+        <h3 class="card-title">ABC Bank - Gestion TPE</h3>
+        <p class="card-category">Connectez-vous à votre compte</p>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+          <div *ngIf="error" class="alert alert-danger">
+            {{ error }}
+          </div>
+
+          <div class="form-group">
+            <label for="username">Nom d'utilisateur</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="username"
+              formControlName="username"
+              [class.is-invalid]="loginForm.get('username')?.invalid && loginForm.get('username')?.touched"
+              placeholder="Entrez votre nom d'utilisateur">
+            <div class="invalid-feedback" *ngIf="loginForm.get('username')?.invalid && loginForm.get('username')?.touched">
+              Le nom d'utilisateur est requis
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input 
+              type="password" 
+              class="form-control" 
+              id="password"
+              formControlName="password"
+              [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+              placeholder="Entrez votre mot de passe">
+            <div class="invalid-feedback" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+              Le mot de passe est requis
+            </div>
+          </div>
+
+          <div class="text-center">
+            <button 
+              type="submit" 
+              class="btn btn-primary btn-block"
+              [disabled]="loading">
+              <i class="material-icons" *ngIf="!loading">login</i>
+              {{ loading ? 'Connexion en cours...' : 'Se connecter' }}
+            </button>
+          </div>
+
+          <div class="text-center mt-3">
+            <p class="text-muted">
+              Vous n'avez pas de compte ? 
+              <a routerLink="/register" class="text-primary font-weight-bold">Créez-en un !</a>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

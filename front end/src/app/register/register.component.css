@@ -1,0 +1,179 @@
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(60deg, #26c6da, #00acc1);
+  padding: 20px;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.card {
+  margin-bottom: 0;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.42), 
+              0 4px 25px 0px rgba(0, 0, 0, 0.12), 
+              0 8px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+  margin: -20px 15px 0;
+  border-radius: 3px;
+  padding: 15px 0;
+  box-shadow: 0 4px 20px 0px rgba(0, 0, 0, 0.14), 
+              0 7px 10px -5px rgba(76, 175, 80, 0.4);
+}
+
+.card-header-success {
+  background: linear-gradient(60deg, #66bb6a, #43a047);
+}
+
+.card-title {
+  color: #FFFFFF;
+  margin-bottom: 3px;
+  font-size: 24px;
+  font-weight: 300;
+}
+
+.card-category {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+.card-body {
+  padding: 30px 40px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #AAAAAA;
+  margin-bottom: 5px;
+}
+
+.form-control {
+  border: none;
+  border-bottom: 1px solid #D2D2D2;
+  border-radius: 0;
+  padding: 8px 0;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.form-control:focus {
+  border-color: #66bb6a;
+  box-shadow: none;
+  outline: none;
+}
+
+.form-control.is-invalid {
+  border-bottom-color: #f44336;
+}
+
+.invalid-feedback {
+  display: block;
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.alert {
+  border-radius: 3px;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+}
+
+.alert .material-icons {
+  margin-right: 10px;
+  font-size: 20px;
+}
+
+.btn {
+  border-radius: 3px;
+  padding: 12px 30px;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  transition: all 0.3s;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-success {
+  background: linear-gradient(60deg, #66bb6a, #43a047);
+  color: #FFFFFF;
+  box-shadow: 0 2px 2px 0 rgba(76, 175, 80, 0.14), 
+              0 3px 1px -2px rgba(76, 175, 80, 0.2), 
+              0 1px 5px 0 rgba(76, 175, 80, 0.12);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: linear-gradient(60deg, #43a047, #2e7d32);
+  box-shadow: 0 14px 26px -12px rgba(76, 175, 80, 0.42), 
+              0 4px 23px 0px rgba(0, 0, 0, 0.12), 
+              0 8px 10px -5px rgba(76, 175, 80, 0.2);
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn .material-icons {
+  font-size: 18px;
+}
+
+.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.text-primary {
+  color: #9c27b0 !important;
+  text-decoration: none;
+}
+
+.text-primary:hover {
+  text-decoration: underline;
+}
+
+.font-weight-bold {
+  font-weight: 600 !important;
+}
+
+.text-muted {
+  color: #999999;
+  font-size: 14px;
+}
+
+@media (max-width: 576px) {
+  .card-body {
+    padding: 20px 15px;
+  }
+  
+  .register-card {
+    max-width: 100%;
+  }
+}

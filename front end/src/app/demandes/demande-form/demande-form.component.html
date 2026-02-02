@@ -1,0 +1,380 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-10 offset-md-1">
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">{{ isEditMode ? 'Modifier la demande' : 'Nouvelle demande d\'affectation TPE' }}</h4>
+            <p class="card-category">
+              {{ isEditMode ? 'Mettre à jour la demande' : 'Créer une nouvelle demande d\'affectation TPE' }}
+            </p>
+          </div>
+          <div class="card-body">
+            <form [formGroup]="demandeForm" (ngSubmit)="onSubmit()">
+              
+              <!-- Section: Type de demande -->
+              <h5 class="card-title">Type de demande</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Type de demande *</label>
+                    <select class="form-control" formControlName="typeDemande">
+                      <option *ngFor="let type of typesDemande" [value]="type">
+                        {{ type === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Urgence *</label>
+                    <select class="form-control" formControlName="urgence">
+                      <option *ngFor="let urg of urgences" [value]="urg">
+                        {{ getUrgenceLabel(urg) }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TPE Physique uniquement -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.PHYSIQUE">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Type de TPE *</label>
+                      <input type="text" class="form-control" formControlName="typeTpeRequis" 
+                        placeholder="Ex: TPE mobile, TPE fixe">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('typeTpeRequis')?.invalid && demandeForm.get('typeTpeRequis')?.touched">
+                        Le type de TPE est obligatoire
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Informations du commerçant -->
+              <h5 class="card-title mt-4">
+                Informations du commerçant
+                <button type="button" class="btn btn-sm btn-info ml-3" (click)="toggleCommercantSearch()">
+                  <i class="material-icons">{{ showCommercantSearch ? 'person_add' : 'search' }}</i>
+                  {{ showCommercantSearch ? 'Nouveau commerçant' : 'Rechercher un commerçant existant' }}
+                </button>
+              </h5>
+              <hr>
+
+              <!-- Recherche de commerçant -->
+              <div *ngIf="showCommercantSearch" class="row mb-3">
+                <div class="col-md-12">
+                  <div class="card card-stats">
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col-md-8">
+                          <div class="form-group">
+                            <label>Rechercher par raison sociale</label>
+                            <input type="text" class="form-control" [(ngModel)]="searchCommercant" 
+                              [ngModelOptions]="{standalone: true}"
+                              (input)="onSearchCommercant()"
+                              placeholder="Saisir au moins 2 caractères...">
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Résultats de recherche -->
+                      <div *ngIf="commercantsFound.length > 0" class="table-responsive">
+                        <table class="table table-hover">
+                          <thead>
+                            <tr>
+                              <th>Raison Sociale</th>
+                              <th>Activité</th>
+                              <th>Téléphone</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let commercant of commercantsFound">
+                              <td>{{ commercant.raisonSociale }}</td>
+                              <td>{{ commercant.activite }}</td>
+                              <td>{{ commercant.telephone }}</td>
+                              <td>
+                                <button type="button" class="btn btn-success btn-sm" 
+                                  (click)="selectCommercant(commercant)">
+                                  <i class="material-icons">check</i> Sélectionner
+                                </button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <!-- Message si aucun résultat -->
+                      <div *ngIf="searchCommercant.length >= 2 && commercantsFound.length === 0" 
+                        class="alert alert-info">
+                        <i class="material-icons">info</i>
+                        Aucun commerçant trouvé. Un nouveau commerçant sera créé avec les informations saisies.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Affichage du commerçant sélectionné -->
+              <div *ngIf="selectedCommercant" class="alert alert-success">
+                <i class="material-icons">check_circle</i>
+                <strong>Commerçant sélectionné:</strong> {{ selectedCommercant.raisonSociale }}
+                <button type="button" class="btn btn-sm btn-warning ml-2" (click)="clearCommercantSelection()">
+                  <i class="material-icons">clear</i> Changer
+                </button>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Raison Sociale *</label>
+                    <input type="text" class="form-control" formControlName="raisonSociale">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('raisonSociale')?.invalid && demandeForm.get('raisonSociale')?.touched">
+                      La raison sociale est obligatoire
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Activité *</label>
+                    <input type="text" class="form-control" formControlName="activite">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('activite')?.invalid && demandeForm.get('activite')?.touched">
+                      L'activité est obligatoire
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TPE Physique: Numero compte -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.PHYSIQUE">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Numéro de Compte *</label>
+                      <input type="text" class="form-control" formControlName="numeroCompte">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('numeroCompte')?.invalid && demandeForm.get('numeroCompte')?.touched">
+                        Le numéro de compte est obligatoire
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- E-commerce: RIB et Localité -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.ECOMMERCE">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">RIB *</label>
+                      <input type="text" class="form-control" formControlName="rib">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('rib')?.invalid && demandeForm.get('rib')?.touched">
+                        Le RIB est obligatoire
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Localité *</label>
+                      <input type="text" class="form-control" formControlName="localite">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('localite')?.invalid && demandeForm.get('localite')?.touched">
+                        La localité est obligatoire
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Adresse *</label>
+                    <input type="text" class="form-control" formControlName="adresse">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('adresse')?.invalid && demandeForm.get('adresse')?.touched">
+                      L'adresse est obligatoire
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Code Postal *</label>
+                    <input type="text" class="form-control" formControlName="codePostal">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('codePostal')?.invalid && demandeForm.get('codePostal')?.touched">
+                      Le code postal est obligatoire
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Code Agence *</label>
+                    <input type="text" class="form-control" formControlName="codeAgence">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('codeAgence')?.invalid && demandeForm.get('codeAgence')?.touched">
+                      Le code agence est obligatoire
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Téléphone *</label>
+                    <input type="tel" class="form-control" formControlName="telephone">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('telephone')?.invalid && demandeForm.get('telephone')?.touched">
+                      Le téléphone est obligatoire
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Email Notification *</label>
+                    <input type="email" class="form-control" formControlName="emailNotification">
+                    <div class="text-danger small mt-1" 
+                      *ngIf="demandeForm.get('emailNotification')?.invalid && demandeForm.get('emailNotification')?.touched">
+                      L'email est obligatoire et doit être valide
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- E-commerce: Champs supplémentaires -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.ECOMMERCE">
+                <h5 class="card-title mt-4">Informations E-commerce</h5>
+                <hr>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Webmaster / Contact Technique *</label>
+                      <input type="text" class="form-control" formControlName="webmaster">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('webmaster')?.invalid && demandeForm.get('webmaster')?.touched">
+                        Le webmaster est obligatoire
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Contact Technique *</label>
+                      <input type="text" class="form-control" formControlName="contactTechnique">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('contactTechnique')?.invalid && demandeForm.get('contactTechnique')?.touched">
+                        Le contact technique est obligatoire
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">URL du site Marchand *</label>
+                      <input type="url" class="form-control" formControlName="urlSiteMarchand" 
+                        placeholder="https://exemple.com">
+                      <div class="text-danger small mt-1" 
+                        *ngIf="demandeForm.get('urlSiteMarchand')?.invalid && demandeForm.get('urlSiteMarchand')?.touched">
+                        L'URL du site est obligatoire et doit être valide
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Description -->
+              <h5 class="card-title mt-4">Description de la demande</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Description détaillée</label>
+                    <textarea class="form-control" formControlName="description" rows="4" 
+                      placeholder="Décrivez les besoins spécifiques..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Pièces jointes (RNE) -->
+              <h5 class="card-title mt-4">Pièces jointes</h5>
+              <hr>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label>Identifiant Unique RNE (Registre National des Entreprises) *</label>
+                    <input type="file" class="form-control-file" (change)="onFileSelected($event)" 
+                      accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <small class="form-text text-muted">
+                      Formats acceptés: PDF, JPG, PNG. Taille max: 5 Mo par fichier.
+                    </small>
+                    <div *ngIf="selectedFiles.length > 0" class="mt-2">
+                      <strong>Fichiers sélectionnés:</strong>
+                      <ul>
+                        <li *ngFor="let file of selectedFiles">{{ file.name }} ({{ (file.size / 1024).toFixed(2) }} KB)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Boutons d'action -->
+              <div class="row mt-4">
+                <div class="col-md-12">
+                  <button type="submit" class="btn btn-primary" [disabled]="loading">
+                    <i class="material-icons">send</i>
+                    {{ loading ? 'Envoi en cours...' : (isEditMode ? 'Mettre à jour' : 'Soumettre la demande') }}
+                  </button>
+                  <button type="button" class="btn btn-default ml-2" (click)="cancel()" [disabled]="loading">
+                    <i class="material-icons">cancel</i>
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Aide contextuelle -->
+        <div class="card mt-3">
+          <div class="card-body">
+            <h6 class="card-title">
+              <i class="material-icons">info</i> Information
+            </h6>
+            <p class="card-text">
+              <strong>Workflow de la demande :</strong><br>
+              1. <span class="badge badge-info">Nouvelle</span> - Demande créée par l'agence<br>
+              2. <span class="badge badge-warning">En cours</span> - En cours de traitement<br>
+              3. <span class="badge badge-primary">Validée Monétique</span> - Validée par la Monétique<br>
+              4. <span class="badge badge-success">Affectée</span> - TPE affecté au commerçant<br>
+              5. <span class="badge badge-dark">Clôturée</span> - Demande finalisée
+            </p>
+            <p class="card-text mt-2">
+              <strong>Validation Monétique :</strong><br>
+              • Pour TPE Physique: MCC, Taux de commission, Taux inter, Loyer, Série TPE, N° Terminal (auto), Value Date<br>
+              • Pour E-commerce: MCC, N° Terminal (auto)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

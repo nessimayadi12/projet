@@ -1,0 +1,355 @@
+{
+  "info": {
+    "name": "TPE Management API",
+    "description": "Collection Postman pour tester l'API de gestion TPE",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login - Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"jwt_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"Admin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login - Monetique",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"monetique\",\n    \"password\": \"Monetique@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login - Agence",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"agence\",\n    \"password\": \"Agence@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "TPE",
+      "item": [
+        {
+          "name": "Créer TPE",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"typeTPE\": \"PHYSIQUE\",\n    \"numeroSerie\": \"TPE-2026-001\",\n    \"marque\": \"Ingenico\",\n    \"modele\": \"Move 5000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tpes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tpes"]
+            }
+          }
+        },
+        {
+          "name": "Lister tous les TPE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tpes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tpes"]
+            }
+          }
+        },
+        {
+          "name": "Obtenir TPE par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tpes/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tpes", "1"]
+            }
+          }
+        },
+        {
+          "name": "TPE disponibles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tpes/disponibles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tpes", "disponibles"]
+            }
+          }
+        },
+        {
+          "name": "Générer TID",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tpes/1/generate-tid?rib=2304512345&codeAgence=041",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tpes", "1", "generate-tid"],
+              "query": [
+                {
+                  "key": "rib",
+                  "value": "2304512345"
+                },
+                {
+                  "key": "codeAgence",
+                  "value": "041"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Commerçants",
+      "item": [
+        {
+          "name": "Créer Commerçant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"raisonSociale\": \"Café Central\",\n    \"activite\": \"Restauration\",\n    \"numeroCompte\": \"12345678901234567890\",\n    \"codeAgence\": \"041\",\n    \"adresse\": \"123 Rue Principale\",\n    \"codePostal\": \"1000\",\n    \"telephone\": \"0600000000\",\n    \"email\": \"cafe.central@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/commercants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "commercants"]
+            }
+          }
+        },
+        {
+          "name": "Lister tous les Commerçants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/commercants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "commercants"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Demandes",
+      "item": [
+        {
+          "name": "Créer Demande",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"typeDemande\": \"PHYSIQUE\",\n    \"commercantId\": 1,\n    \"description\": \"Demande TPE pour nouveau commerçant\",\n    \"urgence\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/demandes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "demandes"]
+            }
+          }
+        },
+        {
+          "name": "Valider Demande",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"approuver\": true,\n    \"commentaire\": \"Demande validée\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/demandes/1/valider",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "demandes", "1", "valider"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Taux",
+      "item": [
+        {
+          "name": "Créer Taux (Inputer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"commercantId\": 1,\n    \"nouveauTauxCommission\": 1.5,\n    \"nouveauTauxCommissionInter\": 0.8,\n    \"commentaire\": \"Nouveau taux commercial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/taux",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "taux"]
+            }
+          }
+        },
+        {
+          "name": "Soumettre à validation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/taux/1/soumettre",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "taux", "1", "soumettre"]
+            }
+          }
+        },
+        {
+          "name": "Valider Taux (Authorizer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"approuver\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/taux/1/valider",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "taux", "1", "valider"]
+            }
+          }
+        },
+        {
+          "name": "Taux en attente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/taux/en-attente",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "taux", "en-attente"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

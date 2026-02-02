@@ -1,0 +1,15 @@
+/* Form styles */
+.invalid-feedback {
+  display: block;
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.is-invalid {
+  border-color: #f44336 !important;
+}
+
+.btn {
+  margin-right: 10px;
+}

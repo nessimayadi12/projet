@@ -1,0 +1,15 @@
+/* Styles spécifiques pour le formulaire de demande */
+.badge {
+  font-size: 0.85em;
+  padding: 0.3em 0.6em;
+}
+
+.form-control-file {
+  border: 1px dashed #ddd;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.text-danger.small {
+  font-size: 0.875rem;
+}

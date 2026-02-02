@@ -1,0 +1,166 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">Gestion des Demandes TPE</h4>
+            <p class="card-category">Suivi et validation des demandes</p>
+          </div>
+          <div class="card-body">
+            
+            <!-- Filtres -->
+            <div class="row filters-row">
+              <div class="col-md-3">
+                <mat-form-field class="full-width">
+                  <mat-label>Recherche</mat-label>
+                  <input matInput [(ngModel)]="rechercheText" (ngModelChange)="onFiltreChange()" 
+                         placeholder="Référence ou commerçant">
+                  <mat-icon matSuffix>search</mat-icon>
+                </mat-form-field>
+              </div>
+              <div class="col-md-2">
+                <mat-form-field class="full-width">
+                  <mat-label>Statut</mat-label>
+                  <mat-select [(ngModel)]="filtreStatut" (selectionChange)="onFiltreChange()">
+                    <mat-option value="TOUS">Tous</mat-option>
+                    <mat-option value="NOUVELLE">Nouvelle</mat-option>
+                    <mat-option value="EN_COURS">En Cours</mat-option>
+                    <mat-option value="VALIDEE_MONETIQUE">Validée Monétique</mat-option>
+                    <mat-option value="VALIDEE_AGENCE">Validée Agence</mat-option>
+                    <mat-option value="AFFECTEE">Affectée</mat-option>
+                    <mat-option value="CLOTUREE">Clôturée</mat-option>
+                    <mat-option value="REJETEE">Rejetée</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="col-md-2">
+                <mat-form-field class="full-width">
+                  <mat-label>Type</mat-label>
+                  <mat-select [(ngModel)]="filtreType" (selectionChange)="onFiltreChange()">
+                    <mat-option *ngFor="let type of types" [value]="type">
+                      {{ type === 'PHYSIQUE' ? 'TPE Physique' : type === 'ECOMMERCE' ? 'E-Commerce' : type }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="col-md-2">
+                <mat-form-field class="full-width">
+                  <mat-label>Urgence</mat-label>
+                  <mat-select [(ngModel)]="filtreUrgence" (selectionChange)="onFiltreChange()">
+                    <mat-option *ngFor="let urgence of urgences" [value]="urgence">
+                      {{ urgence }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="col-md-3 text-right">
+                <button mat-raised-button color="primary" (click)="navigateToNew()">
+                  <mat-icon>add</mat-icon>
+                  Nouvelle Demande
+                </button>
+              </div>
+            </div>
+
+            <!-- Loading -->
+            <div *ngIf="loading" class="text-center">
+              <mat-spinner></mat-spinner>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive" *ngIf="!loading">
+              <table class="table table-hover">
+                <thead class="text-primary">
+                  <tr>
+                    <th>Référence</th>
+                    <th>Commerçant</th>
+                    <th>Type</th>
+                    <th>Statut</th>
+                    <th>Urgence</th>
+                    <th>Date Création</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let demande of demandesFiltrees">
+                    <td><strong>{{ demande.reference }}</strong></td>
+                    <td>{{ demande.commercantNom }}</td>
+                    <td>
+                      <span class="badge badge-info">{{ demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}</span>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatutClass(demande.statut)">
+                        {{ getStatutLabel(demande.statut) }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getUrgenceClass(demande.urgence)">
+                        {{ demande.urgence }}
+                      </span>
+                    </td>
+                    <td>{{ (demande.createdDate || demande.createdAt) | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td class="td-actions text-right">
+                      <!-- Bouton Voir -->
+                      <button type="button" mat-icon-button matTooltip="Voir détails" color="primary">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+
+                      <!-- Bouton Imprimer -->
+                      <button type="button" mat-icon-button matTooltip="Imprimer" 
+                              (click)="imprimerDemande(demande)">
+                        <mat-icon>print</mat-icon>
+                      </button>
+
+                      <!-- Bouton Valider (Monétique) -->
+                      <button *ngIf="canValider() && demande.statut === 'NOUVELLE'" 
+                              type="button" mat-icon-button matTooltip="Valider" 
+                              color="accent" (click)="validerDemande(demande)">
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
+
+                      <!-- Bouton Rejeter (Monétique) -->
+                      <button *ngIf="canValider() && (demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS')" 
+                              type="button" mat-icon-button matTooltip="Rejeter" 
+                              color="warn" (click)="rejeterDemande(demande)">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+
+                      <!-- Bouton Affecter (Monétique) -->
+                      <button *ngIf="canAffecter() && demande.statut === 'VALIDEE'" 
+                              type="button" mat-raised-button color="primary" 
+                              class="btn-sm" (click)="affecterTPE(demande)">
+                        <mat-icon>assignment</mat-icon>
+                        Affecter TPE
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="demandesFiltrees.length === 0">
+                    <td colspan="7" class="text-center">
+                      <em>Aucune demande trouvée</em>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Statistiques -->
+            <div class="row mt-4">
+              <div class="col-md-12">
+                <div class="stats-container">
+                  <div class="stat-item">
+                    <span class="stat-label">Total:</span>
+                    <span class="stat-value">{{ demandes.length }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Affichées:</span>
+                    <span class="stat-value">{{ demandesFiltrees.length }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

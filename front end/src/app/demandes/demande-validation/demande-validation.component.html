@@ -1,0 +1,177 @@
+<div class="dialog-container">
+  <h2 mat-dialog-title>Validation de Demande - {{ demande.reference }}</h2>
+
+  <mat-dialog-content>
+    <form [formGroup]="validationForm">
+      <!-- Informations de la demande -->
+      <div class="demande-info card mb-3">
+        <div class="card-header">
+          <h4>Informations de la demande</h4>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Type:</strong> {{ demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-commerce' }}</p>
+              <p><strong>Raison Sociale:</strong> {{ demande.raisonSociale }}</p>
+              <p><strong>Activité:</strong> {{ demande.activite }}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Code Agence:</strong> {{ demande.codeAgence }}</p>
+              <p><strong>Téléphone:</strong> {{ demande.telephone }}</p>
+              <p><strong>Email:</strong> {{ demande.emailNotification }}</p>
+            </div>
+          </div>
+
+          <!-- Champs spécifiques TPE Physique -->
+          <div *ngIf="isTPEPhysique()" class="row mt-3">
+            <div class="col-md-6">
+              <p><strong>N° Compte:</strong> {{ demande.numeroCompte }}</p>
+              <p><strong>Adresse:</strong> {{ demande.adresse }}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Code Postal:</strong> {{ demande.codePostal }}</p>
+            </div>
+          </div>
+
+          <!-- Champs spécifiques E-commerce -->
+          <div *ngIf="isECommerce()" class="row mt-3">
+            <div class="col-md-6">
+              <p><strong>URL Site:</strong> {{ demande.urlSiteMarchand }}</p>
+              <p><strong>Webmaster:</strong> {{ demande.webmaster }}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Contact Technique:</strong> {{ demande.contactTechnique }}</p>
+              <p><strong>Localité:</strong> {{ demande.localite }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulaire de validation Monétique -->
+      <div class="validation-form card">
+        <div class="card-header bg-primary text-white">
+          <h4>Validation Monétique</h4>
+        </div>
+        <div class="card-body">
+          <!-- MCC (obligatoire pour tous) -->
+          <div class="row">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>MCC (Code Activité Marchand)</mat-label>
+                <input matInput formControlName="mcc" placeholder="Ex: 5411" maxlength="4">
+                <mat-error *ngIf="validationForm.get('mcc')?.hasError('required')">
+                  Le MCC est obligatoire
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <!-- N° Terminal (auto-généré) -->
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>N° Terminal (TID)</mat-label>
+                <input matInput formControlName="numeroTerminal" readonly>
+                <button mat-icon-button matSuffix (click)="genererNumeroTerminal()" 
+                        type="button" color="primary" [disabled]="loading">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+                <mat-hint>Cliquer sur l'icône pour générer</mat-hint>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Champs spécifiques TPE Physique -->
+          <div *ngIf="isTPEPhysique()">
+            <div class="row">
+              <div class="col-md-6">
+                <mat-form-field appearance="outline" class="w-100">
+                  <mat-label>Taux Commission (%)</mat-label>
+                  <input matInput type="number" formControlName="tauxCommission" 
+                         min="0" max="100" step="0.01">
+                  <mat-error *ngIf="validationForm.get('tauxCommission')?.hasError('required')">
+                    Le taux de commission est obligatoire
+                  </mat-error>
+                  <mat-error *ngIf="validationForm.get('tauxCommission')?.hasError('min') || 
+                                     validationForm.get('tauxCommission')?.hasError('max')">
+                    Le taux doit être entre 0 et 100%
+                  </mat-error>
+                </mat-form-field>
+              </div>
+
+              <div class="col-md-6">
+                <mat-form-field appearance="outline" class="w-100">
+                  <mat-label>Taux Commission Inter (%)</mat-label>
+                  <input matInput type="number" formControlName="tauxCommissionInter" 
+                         min="0" max="100" step="0.01">
+                  <mat-error *ngIf="validationForm.get('tauxCommissionInter')?.hasError('min') || 
+                                     validationForm.get('tauxCommissionInter')?.hasError('max')">
+                    Le taux doit être entre 0 et 100%
+                  </mat-error>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4">
+                <mat-form-field appearance="outline" class="w-100">
+                  <mat-label>Loyer (MAD)</mat-label>
+                  <input matInput type="number" formControlName="loyer" 
+                         min="0" step="0.01">
+                  <mat-error *ngIf="validationForm.get('loyer')?.hasError('min')">
+                    Le loyer doit être positif
+                  </mat-error>
+                </mat-form-field>
+              </div>
+
+              <div class="col-md-4">
+                <mat-form-field appearance="outline" class="w-100">
+                  <mat-label>Série TPE</mat-label>
+                  <input matInput formControlName="serieTpe" placeholder="Ex: SN123456">
+                </mat-form-field>
+              </div>
+
+              <div class="col-md-4">
+                <mat-form-field appearance="outline" class="w-100">
+                  <mat-label>Value Date</mat-label>
+                  <input matInput type="date" formControlName="valueDate">
+                  <mat-error *ngIf="validationForm.get('valueDate')?.hasError('required')">
+                    La value date est obligatoire
+                  </mat-error>
+                </mat-form-field>
+              </div>
+            </div>
+          </div>
+
+          <!-- Commentaire -->
+          <div class="row">
+            <div class="col-md-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Commentaire</mat-label>
+                <textarea matInput formControlName="commentaire" rows="3" 
+                          placeholder="Commentaire de validation (optionnel)"></textarea>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Approuver / Rejeter -->
+          <div class="row">
+            <div class="col-md-12">
+              <mat-radio-group formControlName="approuver">
+                <mat-radio-button [value]="true" color="primary">Approuver</mat-radio-button>
+                <mat-radio-button [value]="false" color="warn" class="ml-3">Rejeter</mat-radio-button>
+              </mat-radio-group>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()" [disabled]="loading">Annuler</button>
+    <button mat-raised-button color="primary" (click)="onSubmit()" 
+            [disabled]="loading || validationForm.invalid || !numeroTerminalGenere">
+      <mat-spinner *ngIf="loading" diameter="20" class="mr-2"></mat-spinner>
+      Valider
+    </button>
+  </mat-dialog-actions>
+</div>

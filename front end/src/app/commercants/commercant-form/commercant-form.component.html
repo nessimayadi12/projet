@@ -1,0 +1,293 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-success">
+            <h4 class="card-title">
+              {{ isEditMode ? 'Modifier un Commerçant' : 'Nouveau Commerçant' }}
+            </h4>
+            <p class="card-category">
+              {{ isEditMode ? 'Mettre à jour les informations' : 'Enregistrer un nouveau client' }}
+            </p>
+          </div>
+          
+          <div class="card-body">
+            <form [formGroup]="commercantForm" (ngSubmit)="onSubmit()">
+              
+              <!-- Type de TPE -->
+              <div class="row">
+                <div class="col-md-12">
+                  <h5 class="text-primary">Type de Terminal</h5>
+                  <div class="form-group">
+                    <label>Type TPE *</label>
+                    <select class="form-control" formControlName="typeCommerce">
+                      <option *ngFor="let type of typesTPE" [value]="type">{{ type }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- SECTION 1: Données Administratives (AGENCE) -->
+              <h5 class="text-primary mt-4">Données Administratives</h5>
+              <p class="text-muted">Saisies par l'Agence</p>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Raison Sociale *</label>
+                    <input type="text" class="form-control" formControlName="raisonSociale"
+                           [class.is-invalid]="commercantForm.get('raisonSociale')?.invalid && commercantForm.get('raisonSociale')?.touched">
+                    <div class="invalid-feedback">Raison sociale obligatoire</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Activité *</label>
+                    <input type="text" class="form-control" formControlName="activite"
+                           [class.is-invalid]="commercantForm.get('activite')?.invalid && commercantForm.get('activite')?.touched">
+                    <div class="invalid-feedback">Activité obligatoire</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Numéro de Compte (RIB) *</label>
+                    <input type="text" class="form-control" formControlName="numeroCompte"
+                           [class.is-invalid]="commercantForm.get('numeroCompte')?.invalid && commercantForm.get('numeroCompte')?.touched">
+                    <div class="invalid-feedback">Numéro de compte obligatoire</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Code Agence *</label>
+                    <input type="text" class="form-control" formControlName="codeAgence" maxlength="3"
+                           [class.is-invalid]="commercantForm.get('codeAgence')?.invalid && commercantForm.get('codeAgence')?.touched">
+                    <div class="invalid-feedback">Code agence obligatoire (3 chiffres)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label>Adresse *</label>
+                    <input type="text" class="form-control" formControlName="adresse"
+                           [class.is-invalid]="commercantForm.get('adresse')?.invalid && commercantForm.get('adresse')?.touched">
+                    <div class="invalid-feedback">Adresse obligatoire</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Localité</label>
+                    <input type="text" class="form-control" formControlName="localite">
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Code Postal *</label>
+                    <input type="text" class="form-control" formControlName="codePostal"
+                           [class.is-invalid]="commercantForm.get('codePostal')?.invalid && commercantForm.get('codePostal')?.touched">
+                    <div class="invalid-feedback">Code postal obligatoire</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Téléphone *</label>
+                    <input type="tel" class="form-control" formControlName="telephone"
+                           [class.is-invalid]="commercantForm.get('telephone')?.invalid && commercantForm.get('telephone')?.touched">
+                    <div class="invalid-feedback">Téléphone obligatoire</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" class="form-control" formControlName="email"
+                           [class.is-invalid]="commercantForm.get('email')?.invalid && commercantForm.get('email')?.touched">
+                    <div class="invalid-feedback">Email valide requis</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Email de Notification</label>
+                    <input type="email" class="form-control" formControlName="emailNotification"
+                           placeholder="Pour les notifications automatiques">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Champs spécifiques TPE PHYSIQUE -->
+              <div *ngIf="isTypePhysique">
+                <hr>
+                <h6 class="text-info">Spécifique TPE Physique</h6>
+                
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Loyer Mensuel (Dhs)</label>
+                      <input type="number" class="form-control" formControlName="loyer" step="0.01" min="0">
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Identifiant Unique RNE (fichier)</label>
+                      <input type="text" class="form-control" formControlName="rneFilePath" 
+                             placeholder="Chemin du fichier RNE">
+                      <small class="form-text text-muted">Document d'identification unique</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Champs spécifiques E-COMMERCE -->
+              <div *ngIf="isTypeEcommerce">
+                <hr>
+                <h6 class="text-info">Spécifique E-commerce</h6>
+                
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>URL du Site Marchand *</label>
+                      <input type="url" class="form-control" formControlName="urlSiteMarchand"
+                             placeholder="https://exemple.com"
+                             [class.is-invalid]="commercantForm.get('urlSiteMarchand')?.invalid && commercantForm.get('urlSiteMarchand')?.touched">
+                      <div class="invalid-feedback">URL du site obligatoire pour E-commerce</div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Webhook / URL de Callback</label>
+                      <input type="url" class="form-control" formControlName="webhookUrl"
+                             placeholder="https://exemple.com/webhook">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Webmaster / Contact Technique *</label>
+                      <input type="text" class="form-control" formControlName="webmaster"
+                             [class.is-invalid]="commercantForm.get('webmaster')?.invalid && commercantForm.get('webmaster')?.touched">
+                      <div class="invalid-feedback">Contact technique obligatoire</div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Contact Technique (supplémentaire)</label>
+                      <input type="text" class="form-control" formControlName="contactTechnique">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Type de Cartes Acceptées</label>
+                      <input type="text" class="form-control" formControlName="typeCartesAcceptees"
+                             placeholder="Visa, Mastercard, DCI...">
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="d-block">Mode</label>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" formControlName="modeTest" id="modeTest">
+                        <label class="form-check-label" for="modeTest">
+                          Mode Test
+                        </label>
+                      </div>
+                      <small class="form-text text-muted">Cochez pour activer en mode test</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- SECTION 2: Données Monétiques (visible seulement pour MONETIQUE) -->
+              <div *ngIf="isMonetique" class="bg-light p-3 rounded">
+                <h5 class="text-danger">Données Monétiques</h5>
+                <p class="text-muted">Gérées exclusivement par la Monétique</p>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>MCC (Merchant Category Code)</label>
+                      <input type="text" class="form-control" formControlName="mcc" maxlength="4"
+                             placeholder="Code à 4 chiffres">
+                      <small class="form-text text-muted">Classification de l'activité du marchand</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- SECTION 3: Gestion -->
+              <h5 class="text-primary mt-4">Gestion</h5>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Statut *</label>
+                    <select class="form-control" formControlName="statut">
+                      <option *ngFor="let statut of statuts" [value]="statut">{{ statut }}</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Nom Contact</label>
+                    <input type="text" class="form-control" formControlName="nomContact">
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Prénom Contact</label>
+                    <input type="text" class="form-control" formControlName="prenomContact">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Boutons d'action -->
+              <div class="row mt-4">
+                <div class="col-md-12 text-right">
+                  <button type="button" class="btn btn-secondary mr-2" (click)="cancel()" [disabled]="loading">
+                    <i class="material-icons">cancel</i> Annuler
+                  </button>
+                  <button type="submit" class="btn btn-success" [disabled]="loading || commercantForm.invalid">
+                    <i class="material-icons">save</i> 
+                    {{ loading ? 'Enregistrement...' : (isEditMode ? 'Mettre à jour' : 'Créer') }}
+                  </button>
+                </div>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

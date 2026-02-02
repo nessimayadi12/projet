@@ -1,0 +1,144 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-danger">
+            <h4 class="card-title">Gestion des Pannes TPE</h4>
+            <p class="card-category">Déclaration et suivi des pannes</p>
+          </div>
+          <div class="card-body">
+            
+            <!-- Bouton Déclarer Panne -->
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <button mat-raised-button color="accent" (click)="toggleDeclarationForm()">
+                  <mat-icon>report_problem</mat-icon>
+                  {{ showDeclarationForm ? 'Annuler' : 'Déclarer une Panne' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Formulaire Déclaration -->
+            <div *ngIf="showDeclarationForm" class="declaration-form">
+              <h4>Nouvelle Déclaration de Panne</h4>
+              <form [formGroup]="declarationForm">
+                <div class="row">
+                  <div class="col-md-12">
+                    <mat-form-field class="full-width" *ngIf="tpes.length > 0">
+                      <mat-label>Sélectionner le TPE</mat-label>
+                      <mat-select formControlName="tpeId">
+                        <mat-option *ngFor="let tpe of tpes" [value]="tpe.id">
+                          {{ tpe.numeroSerie }} - {{ tpe.marque }} {{ tpe.modele }} ({{ tpe.statut }})
+                        </mat-option>
+                      </mat-select>
+                      <mat-error *ngIf="declarationForm.get('tpeId')?.hasError('required')">
+                        TPE obligatoire
+                      </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="full-width" *ngIf="tpes.length === 0">
+                      <mat-label>ID du TPE</mat-label>
+                      <input matInput type="number" formControlName="tpeId" placeholder="Entrez l'ID du TPE">
+                      <mat-hint>Aucun TPE affecté. Créez d'abord une demande et faites-la accepter par le monétique.</mat-hint>
+                      <mat-error *ngIf="declarationForm.get('tpeId')?.hasError('required')">
+                        TPE obligatoire
+                      </mat-error>
+                    </mat-form-field>
+                    <button mat-button type="button" color="accent" (click)="afficherAideTPE()" *ngIf="tpes.length > 0">
+                      <mat-icon>help</mat-icon>
+                      Voir les 10 premiers TPE
+                    </button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-12">
+                    <mat-form-field class="full-width">
+                      <mat-label>Description</mat-label>
+                      <textarea matInput formControlName="description" rows="4" 
+                                placeholder="Décrivez la panne en détail"></textarea>
+                      <mat-error *ngIf="declarationForm.get('description')?.hasError('required')">
+                        Description obligatoire
+                      </mat-error>
+                      <mat-error *ngIf="declarationForm.get('description')?.hasError('minlength')">
+                        Minimum 10 caractères
+                      </mat-error>
+                    </mat-form-field>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-12 text-right">
+                    <button mat-raised-button color="primary" (click)="declarerPanne()"
+                            [disabled]="declarationForm.invalid">
+                      <mat-icon>send</mat-icon>
+                      Déclarer
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Filtres -->
+            <div class="row filters-row">
+              <div class="col-md-6">
+                <mat-form-field class="full-width">
+                  <mat-label>Filtrer par Statut</mat-label>
+                  <mat-select [(ngModel)]="filtreStatut" (selectionChange)="onFiltreChange()">
+                    <mat-option *ngFor="let statut of statuts" [value]="statut">
+                      {{ statut }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="text-danger">
+                  <tr>
+                    <th>TPE</th>
+                    <th>Description</th>
+                    <th>Statut</th>
+                    <th>Date Déclaration</th>
+                    <th>Technicien</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let panne of pannesFiltrees">
+                    <td>{{ panne.tpeNumeroSerie }}</td>
+                    <td>{{ panne.description }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatutClass(panne.statut)">
+                        {{ panne.statut }}
+                      </span>
+                    </td>
+                    <td>{{ panne.dateDeclaration | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ panne.technicienNom || 'Non assigné' }}</td>
+                    <td class="td-actions text-right">
+                      <button *ngIf="canAssigner() && panne.statut === 'DECLAREE'" 
+                              type="button" mat-icon-button matTooltip="Assigner Technicien" 
+                              color="primary" (click)="assignerTechnicien(panne)">
+                        <mat-icon>person_add</mat-icon>
+                      </button>
+                      <button *ngIf="canResoudre() && panne.statut === 'EN_COURS'" 
+                              type="button" mat-icon-button matTooltip="Résoudre" 
+                              color="accent" (click)="resoudrePanne(panne)">
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="pannesFiltrees.length === 0">
+                    <td colspan="6" class="text-center">
+                      <em>Aucune panne trouvée</em>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

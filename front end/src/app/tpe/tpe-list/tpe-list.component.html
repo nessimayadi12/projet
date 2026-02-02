@@ -1,0 +1,121 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">Gestion des TPE</h4>
+            <p class="card-category">Liste de tous les terminaux de paiement</p>
+          </div>
+          <div class="card-body">
+            <!-- Filtres et recherche -->
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="search">Rechercher</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="search"
+                    [(ngModel)]="searchTerm" 
+                    (ngModelChange)="filterTPEs()"
+                    placeholder="N° série, marque, modèle, commerçant...">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="statut">Filtrer par statut</label>
+                  <select 
+                    class="form-control" 
+                    id="statut"
+                    [(ngModel)]="selectedStatut" 
+                    (ngModelChange)="filterTPEs()">
+                    <option value="">Tous les statuts</option>
+                    <option *ngFor="let statut of statuts" [value]="statut">
+                      {{ getStatutLabel(statut) }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-5 text-right">
+                <button 
+                  *ngIf="canCreateTPE()"
+                  class="btn btn-primary mt-4" 
+                  (click)="addNewTPE()">
+                  <i class="material-icons">add</i> Nouveau TPE
+                </button>
+              </div>
+            </div>
+
+            <!-- Loading state -->
+            <div *ngIf="loading" class="text-center">
+              <p>Chargement des TPE...</p>
+            </div>
+
+            <!-- Error state -->
+            <div *ngIf="error" class="alert alert-danger">
+              {{ error }}
+            </div>
+
+            <!-- Table -->
+            <div *ngIf="!loading && !error" class="table-responsive">
+              <table class="table table-hover">
+                <thead class="text-primary">
+                  <tr>
+                    <th>N° Série</th>
+                    <th>Marque</th>
+                    <th>Modèle</th>
+                    <th>Statut</th>
+                    <th>Commerçant</th>
+                    <th>Date Acquisition</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let tpe of filteredTpes">
+                    <td>{{ tpe.numeroSerie }}</td>
+                    <td>{{ tpe.marque }}</td>
+                    <td>{{ tpe.modele }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatutClass(tpe.statut)">
+                        {{ getStatutLabel(tpe.statut) }}
+                      </span>
+                    </td>
+                    <td>{{ tpe.commercantActuelNom || '-' }}</td>
+                    <td>{{ tpe.dateAcquisition | date:'dd/MM/yyyy' }}</td>
+                    <td class="td-actions text-right">
+                      <button 
+                        type="button" 
+                        class="btn btn-info btn-sm"
+                        (click)="viewDetails(tpe.id!)"
+                        title="Voir détails">
+                        <i class="material-icons">visibility</i>
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-success btn-sm"
+                        (click)="editTPE(tpe.id!)"
+                        title="Modifier">
+                        <i class="material-icons">edit</i>
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-danger btn-sm"
+                        (click)="deleteTPE(tpe.id!, tpe.numeroSerie)"
+                        title="Supprimer">
+                        <i class="material-icons">delete</i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="filteredTpes.length === 0">
+                    <td colspan="7" class="text-center">Aucun TPE trouvé</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

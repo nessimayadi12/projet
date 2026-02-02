@@ -1,0 +1,135 @@
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { TPE, StatutTPE, TypeTPE, TPEHistorique } from '../models/tpe.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TpeService {
+  private apiUrl = `${environment.apiUrl}/tpe`;
+
+  constructor(private http: HttpClient) { }
+
+  // Récupérer tous les TPE
+  getAllTPE(): Observable<TPE[]> {
+    return this.http.get<any>(this.apiUrl).pipe(
+      map(response => response.content || response)
+    );
+  }
+
+  // Récupérer un TPE par ID
+  getTPEById(id: number): Observable<TPE> {
+    return this.http.get<TPE>(`${this.apiUrl}/${id}`);
+  }
+
+  // Récupérer un TPE par numéro de série
+  getTPEByNumeroSerie(numeroSerie: string): Observable<TPE> {
+    return this.http.get<TPE>(`${this.apiUrl}/numero-serie/${numeroSerie}`);
+  }
+
+  // Récupérer TPE par statut
+  getTPEByStatut(statut: StatutTPE): Observable<TPE[]> {
+    return this.http.get<TPE[]>(`${this.apiUrl}/statut/${statut}`);
+  }
+
+  // Récupérer TPE par type
+  getTPEByType(type: TypeTPE): Observable<TPE[]> {
+    return this.http.get<TPE[]>(`${this.apiUrl}/type/${type}`);
+  }
+
+  // Récupérer TPE disponibles
+  getTPEDisponibles(): Observable<TPE[]> {
+    return this.http.get<TPE[]>(`${this.apiUrl}/disponibles`);
+  }
+
+  // Récupérer TPE par commerçant
+  getTPEByCommercant(commercantId: number): Observable<TPE[]> {
+    return this.http.get<TPE[]>(`${this.apiUrl}/commercant/${commercantId}`);
+  }
+
+  // Recherche multicritère
+  searchTPE(criteria: any): Observable<TPE[]> {
+    let params = new HttpParams();
+    Object.keys(criteria).forEach(key => {
+      if (criteria[key]) {
+        params = params.append(key, criteria[key]);
+      }
+    });
+    return this.http.get<TPE[]>(`${this.apiUrl}/search`, { params });
+  }
+
+  // Créer TPE (Physique ou E-commerce)
+  createTPE(tpe: TPE): Observable<TPE> {
+    return this.http.post<TPE>(`${this.apiUrl}`, tpe);
+  }
+
+  // Créer TPE Physique (alias pour compatibilité)
+  createTPEPhysique(tpe: TPE): Observable<TPE> {
+    return this.createTPE(tpe);
+  }
+
+  // Créer TPE E-commerce (alias pour compatibilité)
+  createTPEEcommerce(tpe: TPE): Observable<TPE> {
+    return this.createTPE(tpe);
+  }
+
+  // Mettre à jour un TPE
+  updateTPE(id: number, tpe: TPE): Observable<TPE> {
+    return this.http.put<TPE>(`${this.apiUrl}/${id}`, tpe);
+  }
+
+  // Changer le statut d'un TPE
+  changeStatut(id: number, statut: StatutTPE): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/${id}/statut/${statut}`, {});
+  }
+
+  // Affecter un TPE à un commerçant
+  affecterTPE(tpeId: number, commercantId: number): Observable<TPE> {
+    return this.http.post<TPE>(`${this.apiUrl}/${tpeId}/affecter/${commercantId}`, {});
+  }
+
+  // Libérer un TPE
+  libererTPE(tpeId: number): Observable<TPE> {
+    return this.http.post<TPE>(`${this.apiUrl}/${tpeId}/liberer`, {});
+  }
+
+  // Générer le numéro de terminal (TID)
+  genererNumeroTerminal(data: any): Observable<string> {
+    return this.http.post<string>(`${this.apiUrl}/generer-tid`, data);
+  }
+
+  // Récupérer l'historique d'un TPE
+  getHistorique(tpeId: number): Observable<TPEHistorique[]> {
+    return this.http.get<TPEHistorique[]>(`${this.apiUrl}/${tpeId}/historique`);
+  }
+
+  // Import massif
+  importTPE(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post(`${this.apiUrl}/import`, formData);
+  }
+
+  // Export Excel
+  exportTPE(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/export`, { responseType: 'blob' });
+  }
+
+  // Supprimer un TPE
+  deleteTPE(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  // Statistiques
+  getStatistiques(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/statistiques`);
+  }
+
+  // Alertes stock bas
+  getAlertesStockBas(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/alertes/stock-bas`);
+  }
+}

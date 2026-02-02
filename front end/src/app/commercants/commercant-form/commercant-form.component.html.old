@@ -1,0 +1,180 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-10 offset-md-1">
+        <div class="card">
+          <div class="card-header card-header-success">
+            <h4 class="card-title">{{ isEditMode ? 'Modifier un Commerçant' : 'Nouveau Commerçant' }}</h4>
+            <p class="card-category">{{ isEditMode ? 'Mettre à jour les informations' : 'Enregistrer un nouveau client' }}</p>
+          </div>
+          <div class="card-body">
+            <form [formGroup]="commercantForm" (ngSubmit)="onSubmit()">
+              <h5 class="mt-3">Informations Entreprise</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Raison Sociale *</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="raisonSociale"
+                      [class.is-invalid]="commercantForm.get('raisonSociale')?.invalid && commercantForm.get('raisonSociale')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('raisonSociale')?.invalid && commercantForm.get('raisonSociale')?.touched">
+                      La raison sociale est obligatoire
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">SIRET * (14 chiffres)</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="siret"
+                      maxlength="14"
+                      [class.is-invalid]="commercantForm.get('siret')?.invalid && commercantForm.get('siret')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('siret')?.invalid && commercantForm.get('siret')?.touched">
+                      Le SIRET doit contenir exactement 14 chiffres
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Type de Commerce</label>
+                    <input type="text" class="form-control" formControlName="typeCommerce">
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Statut *</label>
+                    <select class="form-control" formControlName="statut">
+                      <option *ngFor="let statut of statuts" [value]="statut">{{ statut }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="mt-4">Adresse</h5>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Adresse *</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="adresse"
+                      [class.is-invalid]="commercantForm.get('adresse')?.invalid && commercantForm.get('adresse')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('adresse')?.invalid && commercantForm.get('adresse')?.touched">
+                      L'adresse est obligatoire
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Code Postal *</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="codePostal"
+                      [class.is-invalid]="commercantForm.get('codePostal')?.invalid && commercantForm.get('codePostal')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('codePostal')?.invalid && commercantForm.get('codePostal')?.touched">
+                      Le code postal est obligatoire
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-8">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Ville *</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="ville"
+                      [class.is-invalid]="commercantForm.get('ville')?.invalid && commercantForm.get('ville')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('ville')?.invalid && commercantForm.get('ville')?.touched">
+                      La ville est obligatoire
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="mt-4">Contact</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Nom Contact</label>
+                    <input type="text" class="form-control" formControlName="nomContact">
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Prénom Contact</label>
+                    <input type="text" class="form-control" formControlName="prenomContact">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Email *</label>
+                    <input 
+                      type="email" 
+                      class="form-control" 
+                      formControlName="email"
+                      [class.is-invalid]="commercantForm.get('email')?.invalid && commercantForm.get('email')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('email')?.invalid && commercantForm.get('email')?.touched">
+                      Email valide requis
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="bmd-label-floating">Téléphone *</label>
+                    <input 
+                      type="tel" 
+                      class="form-control" 
+                      formControlName="telephone"
+                      [class.is-invalid]="commercantForm.get('telephone')?.invalid && commercantForm.get('telephone')?.touched">
+                    <div class="invalid-feedback" *ngIf="commercantForm.get('telephone')?.invalid && commercantForm.get('telephone')?.touched">
+                      Le téléphone est obligatoire
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <button 
+                    type="submit" 
+                    class="btn btn-success"
+                    [disabled]="loading">
+                    <i class="material-icons">save</i>
+                    {{ loading ? 'Enregistrement...' : (isEditMode ? 'Mettre à jour' : 'Créer') }}
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-default"
+                    (click)="cancel()"
+                    [disabled]="loading">
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
