@@ -7,6 +7,7 @@ import com.banque.abc.tpe.dto.demande.ValiderDemandeRequest;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
 import com.banque.abc.tpe.entity.User;
+import com.banque.abc.tpe.entity.PieceJointe;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
 import com.banque.abc.tpe.exception.BusinessException;
 import com.banque.abc.tpe.exception.ResourceNotFoundException;
@@ -23,7 +24,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -231,6 +238,15 @@ public class DemandeService {
             response.setValideurNom(demande.getValideur().getNom() + " " + demande.getValideur().getPrenom());
         }
         
+        // Mapper les pièces jointes
+        if (demande.getPiecesJointes() != null && !demande.getPiecesJointes().isEmpty()) {
+            response.setPiecesJointes(
+                demande.getPiecesJointes().stream()
+                    .map(pj -> pj.getCheminFichier())
+                    .toList()
+            );
+        }
+        
         return response;
     }
 
@@ -280,5 +296,81 @@ public class DemandeService {
                 "SUCCESS");
         
         return savedCommercant;
+    }
+
+    @Transactional
+    public void uploadPieceJointe(Long demandeId, MultipartFile file) {
+        Demande demande = demandeRepository.findById(demandeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + demandeId));
+
+        if (file.isEmpty()) {
+            throw new BusinessException("Le fichier est vide");
+        }
+
+        // Créer le répertoire si nécessaire
+        String uploadDir = "uploads/demandes/" + demandeId;
+        Path uploadPath = Paths.get(uploadDir);
+        
+        try {
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            // Générer un nom de fichier unique
+            String originalFilename = file.getOriginalFilename();
+            String filename = System.currentTimeMillis() + "_" + originalFilename;
+            Path filePath = uploadPath.resolve(filename);
+
+            // Copier le fichier
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Créer l'entité PieceJointe
+            PieceJointe pieceJointe = PieceJointe.builder()
+                    .demande(demande)
+                    .nomFichier(originalFilename)
+                    .cheminFichier(filePath.toString())
+                    .typeMime(file.getContentType())
+                    .tailleFichier(file.getSize())
+                    .description("Document RNE")
+                    .build();
+
+            // Ajouter à la liste des pièces jointes de la demande
+            demande.getPiecesJointes().add(pieceJointe);
+            demandeRepository.save(demande);
+
+            auditService.logAction("UPLOAD", "Demande", demande.getId().toString(),
+                    "Pièce jointe uploadée: " + filename, "SUCCESS");
+
+            log.info("Fichier uploadé avec succès: {} pour la demande {}", filename, demandeId);
+        } catch (IOException e) {
+            log.error("Erreur lors de l'upload du fichier pour la demande {}", demandeId, e);
+            throw new BusinessException("Erreur lors de l'upload du fichier: " + e.getMessage());
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] downloadPieceJointe(Long demandeId, String fileName) {
+        Demande demande = demandeRepository.findById(demandeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + demandeId));
+
+        String uploadDir = "uploads/demandes/" + demandeId;
+        Path filePath = Paths.get(uploadDir, fileName);
+
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Fichier non trouvé: " + fileName);
+        }
+
+        try {
+            byte[] fileContent = Files.readAllBytes(filePath);
+            
+            auditService.logAction("DOWNLOAD", "Demande", demande.getId().toString(),
+                    "Pièce jointe téléchargée: " + fileName, "SUCCESS");
+            
+            log.info("Fichier téléchargé: {} pour la demande {}", fileName, demandeId);
+            return fileContent;
+        } catch (IOException e) {
+            log.error("Erreur lors de la lecture du fichier {} pour la demande {}", fileName, demandeId, e);
+            throw new BusinessException("Erreur lors du téléchargement du fichier: " + e.getMessage());
+        }
     }
 }

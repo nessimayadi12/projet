@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -56,6 +57,9 @@ public class DemandeResponse {
     private String webmaster;
     private String contactTechnique;
     private String urlSiteMarchand;
+    
+    // Pièces jointes
+    private List<String> piecesJointes;
     
     private LocalDateTime createdDate;
     private LocalDateTime lastModifiedDate;

@@ -9,12 +9,24 @@
           </div>
           <div class="card-body">
             
-            <!-- Bouton Déclarer Panne -->
+            <!-- Boutons d'action -->
             <div class="row mb-3">
-              <div class="col-md-12">
+              <div class="col-md-6">
                 <button mat-raised-button color="accent" (click)="toggleDeclarationForm()">
                   <mat-icon>report_problem</mat-icon>
                   {{ showDeclarationForm ? 'Annuler' : 'Déclarer une Panne' }}
+                </button>
+              </div>
+              <div class="col-md-6 text-right">
+                <button mat-raised-button color="primary" (click)="exportToExcel()" 
+                        class="mr-2" [disabled]="pannesFiltrees.length === 0">
+                  <mat-icon>get_app</mat-icon>
+                  Exporter Excel
+                </button>
+                <button mat-raised-button (click)="exportToPDF()" 
+                        [disabled]="pannesFiltrees.length === 0">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                  Exporter PDF
                 </button>
               </div>
             </div>

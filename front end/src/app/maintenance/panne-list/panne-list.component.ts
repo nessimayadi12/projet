@@ -7,6 +7,7 @@ import { StatutTPE } from '../../models/tpe.model';
 import { PanneService } from '../../services/panne.service';
 import { AuthService } from '../../services/auth.service';
 import { TpeService } from '../../services/tpe.service';
+import { ExcelExportService } from '../../services/excel-export.service';
 
 @Component({
   selector: 'app-panne-list',
@@ -42,7 +43,8 @@ export class PanneListComponent implements OnInit {
     private tpeService: TpeService,
     private authService: AuthService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private excelExportService: ExcelExportService
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
@@ -103,12 +105,40 @@ export class PanneListComponent implements OnInit {
     this.panneService.getAllPannes().subscribe({
       next: (data) => {
         this.pannes = data;
-        this.appliquerFiltres();
-        this.loading = false;
+        // Enrichir les données avec les informations complètes des TPE
+        this.enrichirPannesAvecTPE();
       },
       error: (error) => {
         console.error('Erreur chargement pannes', error);
         this.showNotification('Erreur lors du chargement des pannes', 'error');
+        this.loading = false;
+      }
+    });
+  }
+
+  private enrichirPannesAvecTPE(): void {
+    if (this.pannes.length === 0) {
+      this.appliquerFiltres();
+      this.loading = false;
+      return;
+    }
+
+    this.tpeService.getAllTPE().subscribe({
+      next: (tpes) => {
+        // Enrichir chaque panne avec les infos du TPE
+        this.pannes.forEach(panne => {
+          const tpe = tpes.find(t => t.id === panne.tpeId);
+          if (tpe) {
+            panne.tpeNumeroSerie = tpe.numeroSerie;
+            panne.commercantNom = tpe.commercantActuelNom || 'Non affecté';
+          }
+        });
+        this.appliquerFiltres();
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Erreur enrichissement pannes', error);
+        this.appliquerFiltres();
         this.loading = false;
       }
     });
@@ -205,6 +235,178 @@ export class PanneListComponent implements OnInit {
 
   canResoudre(): boolean {
     return this.currentUserRole === 'TECHNICIEN' || this.currentUserRole === 'ADMIN';
+  }
+
+  exportToExcel(): void {
+    if (this.pannesFiltrees.length === 0) {
+      this.showNotification('Aucune donnée à exporter', 'info');
+      return;
+    }
+
+    const dataToExport = this.pannesFiltrees.map(panne => ({
+      'TPE': panne.tpeNumeroSerie || '-',
+      'Commerçant': panne.commercantNom || 'Non affecté',
+      'Type Panne': panne.typePanne,
+      'Description': panne.description,
+      'Urgence': panne.urgence,
+      'Statut': panne.statut,
+      'Déclarant': panne.declarantNom || '-',
+      'Technicien': panne.technicienNom || '-',
+      'Date Déclaration': panne.dateDeclaration ? new Date(panne.dateDeclaration).toLocaleDateString('fr-FR') : '-',
+      'Date Résolution': panne.dateResolution ? new Date(panne.dateResolution).toLocaleDateString('fr-FR') : '-',
+      'Temps Résolution (h)': panne.tempsResolutionHeures || '-',
+      'Diagnostic': panne.diagnostic || '-',
+      'Solution': panne.solution || '-'
+    }));
+
+    this.excelExportService.exportToExcel(dataToExport, 'pannes_tpe', 'Pannes');
+    this.showNotification('Export Excel effectué avec succès', 'success');
+  }
+
+  exportToPDF(): void {
+    if (this.pannesFiltrees.length === 0) {
+      this.showNotification('Aucune donnée à exporter', 'info');
+      return;
+    }
+
+    const printContent = this.generatePrintContent();
+    const printWindow = window.open('', '_blank');
+    
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+      
+      this.showNotification('Génération du PDF en cours...', 'success');
+    }
+  }
+
+  private generatePrintContent(): string {
+    const today = new Date().toLocaleDateString('fr-FR');
+    const pannesHTML = this.pannesFiltrees.map(panne => `
+      <tr>
+        <td>${panne.tpeNumeroSerie || '-'}</td>
+        <td>${panne.commercantNom || 'Non affecté'}</td>
+        <td>${panne.typePanne}</td>
+        <td>${panne.description}</td>
+        <td><span class="badge badge-${this.getStatutBadgeClass(panne.statut)}">${panne.statut}</span></td>
+        <td>${panne.urgence}</td>
+        <td>${panne.technicienNom || 'Non assigné'}</td>
+        <td>${panne.dateDeclaration ? new Date(panne.dateDeclaration).toLocaleDateString('fr-FR') : '-'}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Liste des Pannes TPE</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #2196F3;
+            padding-bottom: 10px;
+          }
+          .header h1 {
+            color: #2196F3;
+            margin: 0;
+          }
+          .header p {
+            color: #666;
+            margin: 5px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 12px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+          }
+          th {
+            background-color: #2196F3;
+            color: white;
+            font-weight: bold;
+          }
+          tr:nth-child(even) {
+            background-color: #f9f9f9;
+          }
+          .badge {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+          }
+          .badge-warning { background-color: #ff9800; }
+          .badge-primary { background-color: #2196F3; }
+          .badge-success { background-color: #4CAF50; }
+          .badge-secondary { background-color: #9e9e9e; }
+          .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+          }
+          @media print {
+            body { margin: 10px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🛠️ Liste des Pannes TPE</h1>
+          <p>Généré le ${today}</p>
+          <p>Nombre total de pannes: ${this.pannesFiltrees.length}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>TPE</th>
+              <th>Commerçant</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Statut</th>
+              <th>Urgence</th>
+              <th>Technicien</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pannesHTML}
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Système de Gestion du Parc TPE Bancaire - Document confidentiel</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private getStatutBadgeClass(statut: string): string {
+    const classes: { [key: string]: string } = {
+      'DECLAREE': 'warning',
+      'DIAGNOSTIQUEE': 'primary',
+      'EN_REPARATION': 'primary',
+      'REPAREE': 'success',
+      'TESTEE': 'success',
+      'CLOTUREE': 'secondary'
+    };
+    return classes[statut] || 'secondary';
   }
 
   getStatutClass(statut: string): string {

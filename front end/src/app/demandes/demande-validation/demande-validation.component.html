@@ -47,6 +47,29 @@
         </div>
       </div>
 
+      <!-- Pièces jointes -->
+      <div *ngIf="hasPiecesJointes()" class="pieces-jointes card mb-3">
+        <div class="card-header bg-info text-white">
+          <h4><mat-icon class="align-middle">attach_file</mat-icon> Pièces jointes ({{ demande.piecesJointes?.length }})</h4>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <div *ngFor="let piece of demande.piecesJointes" 
+                 class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center">
+                <mat-icon [color]="'primary'" class="mr-2">{{ getFileIcon(getFileName(piece)) }}</mat-icon>
+                <span>{{ getFileName(piece) }}</span>
+              </div>
+              <button mat-icon-button color="primary" 
+                      (click)="downloadPieceJointe(getFileName(piece))"
+                      title="Télécharger">
+                <mat-icon>download</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Formulaire de validation Monétique -->
       <div class="validation-form card">
         <div class="card-header bg-primary text-white">

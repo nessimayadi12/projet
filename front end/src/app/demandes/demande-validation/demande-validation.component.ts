@@ -4,6 +4,8 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { DemandeTPE, TypeDemande, StatutDemande } from '../../models/demande-tpe.model';
 import { DemandeService } from '../../services/demande.service';
 import { TpeService } from '../../services/tpe.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-demande-validation',
@@ -20,6 +22,7 @@ export class DemandeValidationComponent implements OnInit {
     private fb: FormBuilder,
     private demandeService: DemandeService,
     private tpeService: TpeService,
+    private http: HttpClient,
     public dialogRef: MatDialogRef<DemandeValidationComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { demande: DemandeTPE }
   ) {
@@ -159,6 +162,50 @@ export class DemandeValidationComponent implements OnInit {
 
   isECommerce(): boolean {
     return this.demande.typeDemande === TypeDemande.ECOMMERCE;
+  }
+
+  hasPiecesJointes(): boolean {
+    return this.demande.piecesJointes && this.demande.piecesJointes.length > 0;
+  }
+
+  downloadPieceJointe(fileName: string): void {
+    const url = `${environment.apiUrl}/demandes/${this.demande.id}/piece-jointe/${fileName}`;
+    
+    this.http.get(url, { 
+      responseType: 'blob',
+      observe: 'response'
+    }).subscribe({
+      next: (response) => {
+        // Créer un blob et le télécharger
+        const blob = response.body;
+        if (blob) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.click();
+          window.URL.revokeObjectURL(downloadUrl);
+        }
+      },
+      error: (err) => {
+        console.error('Erreur téléchargement:', err);
+        this.showNotification('Erreur lors du téléchargement du fichier', 'danger');
+      }
+    });
+  }
+
+  getFileName(path: string): string {
+    if (!path) return '';
+    // Extraire le nom du fichier du chemin complet
+    const parts = path.split(/[\\\/]/);
+    return parts[parts.length - 1];
+  }
+
+  getFileIcon(fileName: string): string {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (extension === 'pdf') return 'picture_as_pdf';
+    if (['jpg', 'jpeg', 'png'].includes(extension || '')) return 'image';
+    return 'attachment';
   }
 
   showNotification(message: string, type: string): void {

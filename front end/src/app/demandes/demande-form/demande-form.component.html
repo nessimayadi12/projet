@@ -321,16 +321,43 @@
                 <div class="col-md-12">
                   <div class="form-group">
                     <label>Identifiant Unique RNE (Registre National des Entreprises) *</label>
-                    <input type="file" class="form-control-file" (change)="onFileSelected($event)" 
-                      accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <div class="custom-file">
+                      <input type="file" 
+                             class="custom-file-input" 
+                             id="fileInput"
+                             (change)="onFileSelected($event)" 
+                             accept=".pdf,.jpg,.jpeg,.png" 
+                             multiple>
+                      <label class="custom-file-label" for="fileInput">
+                        {{ selectedFiles.length > 0 ? selectedFiles.length + ' fichier(s) sélectionné(s)' : 'Choisir des fichiers...' }}
+                      </label>
+                    </div>
                     <small class="form-text text-muted">
-                      Formats acceptés: PDF, JPG, PNG. Taille max: 5 Mo par fichier.
+                      <i class="material-icons" style="font-size: 14px; vertical-align: middle;">info</i>
+                      Formats acceptés: PDF, JPG, PNG. Taille max: 5 Mo par fichier. Plusieurs fichiers autorisés.
                     </small>
-                    <div *ngIf="selectedFiles.length > 0" class="mt-2">
-                      <strong>Fichiers sélectionnés:</strong>
-                      <ul>
-                        <li *ngFor="let file of selectedFiles">{{ file.name }} ({{ (file.size / 1024).toFixed(2) }} KB)</li>
-                      </ul>
+                    
+                    <!-- Liste des fichiers sélectionnés -->
+                    <div *ngIf="selectedFiles.length > 0" class="mt-3">
+                      <strong><i class="material-icons" style="font-size: 16px; vertical-align: middle;">attach_file</i> Fichiers sélectionnés:</strong>
+                      <div class="list-group mt-2">
+                        <div *ngFor="let file of selectedFiles; let i = index" 
+                             class="list-group-item d-flex justify-content-between align-items-center">
+                          <div>
+                            <i class="material-icons text-primary" style="font-size: 18px; vertical-align: middle;">
+                              {{ file.type === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
+                            </i>
+                            <span class="ml-2">{{ file.name }}</span>
+                            <span class="badge badge-secondary ml-2">{{ (file.size / 1024).toFixed(2) }} KB</span>
+                          </div>
+                          <button type="button" 
+                                  class="btn btn-danger btn-sm" 
+                                  (click)="removeFile(i)"
+                                  title="Retirer ce fichier">
+                            <i class="material-icons" style="font-size: 16px;">close</i>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

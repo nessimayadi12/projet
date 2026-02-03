@@ -198,10 +198,53 @@ export class DemandeFormComponent implements OnInit {
   }
 
   onFileSelected(event: any): void {
-    const files = event.target.files;
-    if (files) {
-      this.selectedFiles = Array.from(files);
+    const files: FileList = event.target.files;
+    if (!files || files.length === 0) {
+      return;
     }
+
+    const maxSize = 5 * 1024 * 1024; // 5 MB
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+
+    Array.from(files).forEach(file => {
+      // Vérifier le type
+      if (!allowedTypes.includes(file.type)) {
+        errors.push(`${file.name}: Type de fichier non autorisé. Utilisez PDF, JPG ou PNG.`);
+        return;
+      }
+
+      // Vérifier la taille
+      if (file.size > maxSize) {
+        errors.push(`${file.name}: Fichier trop volumineux (max 5 MB). Taille: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    if (errors.length > 0) {
+      this.showNotification(
+        'Erreurs de validation:\n' + errors.join('\n'),
+        'warning'
+      );
+    }
+
+    if (validFiles.length > 0) {
+      this.selectedFiles = [...this.selectedFiles, ...validFiles];
+      this.showNotification(
+        `${validFiles.length} fichier(s) ajouté(s) avec succès`,
+        'success'
+      );
+    }
+
+    // Réinitialiser l'input pour permettre la sélection du même fichier
+    event.target.value = '';
+  }
+
+  removeFile(index: number): void {
+    this.selectedFiles.splice(index, 1);
   }
 
   onSubmit(): void {
@@ -246,28 +289,68 @@ export class DemandeFormComponent implements OnInit {
   }
 
   uploadPiecesJointes(demandeId: number): void {
+    if (this.selectedFiles.length === 0) {
+      this.showNotification(
+        `Demande ${this.isEditMode ? 'mise à jour' : 'créée'} avec succès`,
+        'success'
+      );
+      this.router.navigate(['/demandes']);
+      return;
+    }
+
     let uploadedCount = 0;
+    let errorCount = 0;
     const totalFiles = this.selectedFiles.length;
 
-    this.selectedFiles.forEach(file => {
+    this.selectedFiles.forEach((file, index) => {
       this.demandeService.uploadPieceJointe(demandeId, file).subscribe({
         next: () => {
           uploadedCount++;
-          if (uploadedCount === totalFiles) {
-            this.showNotification('Demande créée avec succès', 'success');
-            this.router.navigate(['/demandes']);
+          console.log(`Fichier ${index + 1}/${totalFiles} uploadé: ${file.name}`);
+          
+          if (uploadedCount + errorCount === totalFiles) {
+            this.handleUploadComplete(uploadedCount, errorCount, totalFiles);
           }
         },
         error: (err) => {
-          console.error('Erreur upload fichier:', err);
-          uploadedCount++;
-          if (uploadedCount === totalFiles) {
-            this.showNotification('Demande créée mais erreur upload fichiers', 'warning');
-            this.router.navigate(['/demandes']);
+          errorCount++;
+          console.error(`Erreur upload fichier ${file.name}:`, err);
+          console.error('Détails erreur:', {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.error?.message || err.message,
+            url: err.url
+          });
+          
+          if (uploadedCount + errorCount === totalFiles) {
+            this.handleUploadComplete(uploadedCount, errorCount, totalFiles);
           }
         }
       });
     });
+  }
+
+  private handleUploadComplete(uploaded: number, errors: number, total: number): void {
+    this.loading = false;
+    
+    if (errors === 0) {
+      this.showNotification(
+        `Demande créée avec succès. ${uploaded} fichier(s) uploadé(s).`,
+        'success'
+      );
+    } else if (uploaded > 0) {
+      this.showNotification(
+        `Demande créée avec succès. ${uploaded}/${total} fichier(s) uploadé(s) avec succès. ${errors} fichier(s) en erreur.`,
+        'warning'
+      );
+    } else {
+      this.showNotification(
+        `Demande créée avec succès mais échec de l'upload des fichiers (${errors}/${total}). Vous pourrez les ajouter via la modification de la demande.`,
+        'warning'
+      );
+    }
+    
+    this.router.navigate(['/demandes']);
   }
 
   cancel(): void {

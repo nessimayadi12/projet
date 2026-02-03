@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping({"/api/demandes", "/api/demande"})
@@ -63,5 +64,34 @@ public class DemandeController {
     public ResponseEntity<String> cloturerDemande(@PathVariable Long id) {
         demandeService.cloturerDemande(id);
         return ResponseEntity.ok("Demande clôturée avec succès");
+    }
+
+    @PostMapping("/{id}/piece-jointe")
+    @PreAuthorize("hasAnyRole('AGENCE', 'MONETIQUE', 'ADMIN')")
+    public ResponseEntity<String> uploadPieceJointe(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            demandeService.uploadPieceJointe(id, file);
+            return ResponseEntity.ok("Fichier uploadé avec succès");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de l'upload: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/piece-jointe/{fileName}")
+    @PreAuthorize("hasAnyRole('AGENCE', 'MONETIQUE', 'ADMIN')")
+    public ResponseEntity<byte[]> downloadPieceJointe(
+            @PathVariable Long id,
+            @PathVariable String fileName) {
+        try {
+            byte[] fileContent = demandeService.downloadPieceJointe(id, fileName);
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+                    .body(fileContent);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }
