@@ -55,6 +55,11 @@
                 </mat-form-field>
               </div>
               <div class="col-md-3 text-right">
+                <button mat-raised-button color="accent" (click)="exportToExcel()" 
+                        class="mr-2" [disabled]="demandesFiltrees.length === 0">
+                  <mat-icon>get_app</mat-icon>
+                  Exporter Excel
+                </button>
                 <button mat-raised-button color="primary" (click)="navigateToNew()">
                   <mat-icon>add</mat-icon>
                   Nouvelle Demande

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommercantService } from '../../services/commercant.service';
 import { Commercant, StatutCommercant } from '../../models/commercant.model';
+import { ExcelExportService } from '../../services/excel-export.service';
 
 @Component({
   selector: 'app-commercant-list',
@@ -19,7 +20,8 @@ export class CommercantListComponent implements OnInit {
 
   constructor(
     private commercantService: CommercantService,
-    private router: Router
+    private router: Router,
+    private excelExportService: ExcelExportService
   ) { }
 
   ngOnInit(): void {
@@ -81,6 +83,27 @@ export class CommercantListComponent implements OnInit {
         }
       });
     }
+  }
+
+  exportToExcel(): void {
+    if (this.filteredCommercants.length === 0) {
+      alert('Aucune donnée à exporter');
+      return;
+    }
+
+    // Préparer les données pour l'export
+    const dataToExport = this.filteredCommercants.map(commercant => ({
+      'Raison Sociale': commercant.raisonSociale,
+      'N° Compte': commercant.numeroCompte || '-',
+      'Adresse': commercant.adresse,
+      'Nom Contact': `${commercant.nomContact} ${commercant.prenomContact}`,
+      'Email': commercant.email,
+      'Téléphone': commercant.telephone || '-',
+      'Nb TPE': commercant.nombreTpes || 0,
+      'Statut': commercant.statut
+    }));
+
+    this.excelExportService.exportToExcel(dataToExport, 'liste_commercants', 'Commerçants');
   }
 
   getStatutClass(statut: StatutCommercant): string {

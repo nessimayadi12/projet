@@ -30,6 +30,7 @@
     "@angular/platform-browser-dynamic": "^14.2.0",
     "@angular/router": "^14.2.0",
     "@types/file-saver": "^2.0.7",
+    "@types/xlsx": "^0.0.35",
     "ajv": "8.11.0",
     "arrive": "2.4.1",
     "bootstrap": "4.6.1",
@@ -49,6 +50,7 @@
     "rxjs": "~7.5.0",
     "tslib": "^2.3.0",
     "web-animations-js": "2.3.2",
+    "xlsx": "^0.18.5",
     "zone.js": "~0.11.4"
   },
   "devDependencies": {

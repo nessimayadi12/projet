@@ -37,6 +37,12 @@
               </div>
               <div class="col-md-5 text-right">
                 <button 
+                  class="btn btn-success mt-4 mr-2" 
+                  (click)="exportToExcel()"
+                  [disabled]="filteredCommercants.length === 0">
+                  <i class="material-icons">get_app</i> Exporter Excel
+                </button>
+                <button 
                   class="btn btn-success mt-4" 
                   (click)="addNewCommercant()">
                   <i class="material-icons">add</i> Nouveau Commerçant

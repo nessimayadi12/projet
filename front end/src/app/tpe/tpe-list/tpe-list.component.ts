@@ -4,6 +4,7 @@ import { TpeService } from '../../services/tpe.service';
 import { TPE, StatutTPE } from '../../models/tpe.model';
 import { AuthService } from '../../services/auth.service';
 import { Role } from '../../models/utilisateur.model';
+import { ExcelExportService } from '../../services/excel-export.service';
 
 @Component({
   selector: 'app-tpe-list',
@@ -22,7 +23,8 @@ export class TpeListComponent implements OnInit {
   constructor(
     private tpeService: TpeService,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private excelExportService: ExcelExportService
   ) { }
 
   canCreateTPE(): boolean {
@@ -88,6 +90,25 @@ export class TpeListComponent implements OnInit {
         }
       });
     }
+  }
+
+  exportToExcel(): void {
+    if (this.filteredTpes.length === 0) {
+      alert('Aucune donnée à exporter');
+      return;
+    }
+
+    // Préparer les données pour l'export
+    const dataToExport = this.filteredTpes.map(tpe => ({
+      'N° Série': tpe.numeroSerie,
+      'Marque': tpe.marque,
+      'Modèle': tpe.modele,
+      'Statut': this.getStatutLabel(tpe.statut),
+      'Commerçant': tpe.commercantActuelNom || '-',
+      'Date Acquisition': tpe.dateAcquisition ? new Date(tpe.dateAcquisition).toLocaleDateString('fr-FR') : '-'
+    }));
+
+    this.excelExportService.exportToExcel(dataToExport, 'liste_tpe', 'TPE');
   }
 
   getStatutClass(statut: StatutTPE): string {

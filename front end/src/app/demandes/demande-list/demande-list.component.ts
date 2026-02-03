@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DemandeValidationComponent } from '../demande-validation/demande-validation.component';
+import { ExcelExportService } from '../../services/excel-export.service';
 
 @Component({
   selector: 'app-demande-list',
@@ -44,7 +45,8 @@ export class DemandeListComponent implements OnInit {
     private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private excelExportService: ExcelExportService
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
@@ -368,6 +370,30 @@ export class DemandeListComponent implements OnInit {
       'CRITIQUE': 'urgence-critique'
     };
     return classes[urgence] || '';
+  }
+
+  exportToExcel(): void {
+    if (this.demandesFiltrees.length === 0) {
+      this.showNotification('Aucune donnée à exporter', 'info');
+      return;
+    }
+
+    // Préparer les données pour l'export
+    const dataToExport = this.demandesFiltrees.map(demande => ({
+      'Référence': demande.reference,
+      'Commerçant': demande.commercantNom,
+      'Type Demande': demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 
+                       demande.typeDemande === 'ECOMMERCE' ? 'E-Commerce' : demande.typeDemande,
+      'Statut': demande.statut,
+      'Urgence': demande.urgence,
+      'Date Création': demande.createdAt ? new Date(demande.createdAt).toLocaleDateString('fr-FR') : '-',
+      'TPE Affecté': demande.tpeAffecteNumeroSerie || '-',
+      'Description': demande.description || '-',
+      'Commentaires': demande.commentaires || '-'
+    }));
+
+    this.excelExportService.exportToExcel(dataToExport, 'liste_demandes_tpe', 'Demandes');
+    this.showNotification('Export Excel effectué avec succès', 'success');
   }
 
   private showNotification(message: string, type: 'success' | 'error' | 'info'): void {
