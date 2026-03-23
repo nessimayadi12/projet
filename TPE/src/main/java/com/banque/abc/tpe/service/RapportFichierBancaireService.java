@@ -80,43 +80,37 @@ public class RapportFichierBancaireService {
         if (ecritures.isEmpty()) {
             sb.append("Aucune écriture trouvée pour cette session.\n");
         } else {
-            // En-tête du tableau  
-            sb.append(String.format("%-10s %-40s %-15s %-30s %-5s %-5s %-8s %-20s %-12s %-15s %-10s %-40s\n",
-                    "BRANCH", "PROFIT CENTER", "CLIENT", "ACCOUNT RB OR GL", "CCY", "SEQ NO", "REF",
-                    "TRAN TYPE", "date", "Montant CR/DR", "NARRATIVE", ""));
-            sb.append("-".repeat(220)).append("\n");
+                // Format tabulé avec largeurs alignées sur l'exemple utilisateur.
+            sb.append(String.join("\t",
+                    "BRANCH", "PROFIT CENTER", "CLIENT", "ACCOUNT", "RB OR GL", "CCY", "SEQ NO", "REF",
+                    "TRAN TYPE", "date", "Montant", "CR/DR", "NARRATIVE"
+            )).append("\n");
 
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
             for (TPEPostingComp ecriture : ecritures) {
-                // Combiner ACCOUNT et RB_GL
-                String accountRbGl = nvl(ecriture.getAccount());
-                if (ecriture.getRbGl() != null && !ecriture.getRbGl().isEmpty()) {
-                    accountRbGl = accountRbGl + (accountRbGl.isEmpty() ? "" : " ") + ecriture.getRbGl();
-                }
-                
-                // Combiner Amount et CR/DR
+                // Formater montant sans zéros inutiles (ex: 2.559, 470.7)
                 String montantCrDr = "";
                 if (ecriture.getAmount() != null) {
-                    montantCrDr = String.format("%.1f", ecriture.getAmount());
+                    montantCrDr = ecriture.getAmount().stripTrailingZeros().toPlainString();
                 }
-                
-                sb.append(String.format("%-10s %-40s %-15s %-30s %-5s %-5s %-8s %-20s %-12s %15s %-10s %-40s\n",
-                        nvl(ecriture.getBranch()),
-                        nvl(ecriture.getProfitCenter()),
-                        nvl(ecriture.getClient()),
-                        accountRbGl,
-                        nvl(ecriture.getCcy()),
-                        nvl(ecriture.getSeqNo()),
-                        nvl(ecriture.getRef()),
-                        nvl(ecriture.getTranType()),
-                        ecriture.getDate() != null ? ecriture.getDate().format(dateFormatter) : "",
-                        montantCrDr,
-                        nvl(ecriture.getCrDr()),
-                        nvl(ecriture.getNarrative())));
-            }
 
-            sb.append("-".repeat(220)).append("\n");
+                sb.append(String.join("\t",
+                    trimValue(ecriture.getBranch()),
+                    trimValue(ecriture.getProfitCenter()),
+                    trimValue(ecriture.getClient()),
+                    padRight(trimValue(ecriture.getAccount()), 20),
+                    trimValue(ecriture.getRbGl()),
+                    trimValue(ecriture.getCcy()),
+                    padRight(trimValue(ecriture.getSeqNo()), 4),
+                    padRight(trimValue(ecriture.getRef()), 15),
+                    trimValue(ecriture.getTranType()),
+                        ecriture.getDate() != null ? ecriture.getDate().format(dateFormatter) : "",
+                    padRight(montantCrDr, 40),
+                    trimValue(ecriture.getCrDr()),
+                    padRight(trimValue(ecriture.getNarrative()), 40)
+                )).append("\n");
+            }
         }
 
         return sb.toString();
@@ -127,6 +121,18 @@ public class RapportFichierBancaireService {
      */
     private String nvl(String value) {
         return value != null ? value : "";
+    }
+
+    private String trimValue(String value) {
+        return nvl(value).trim();
+    }
+
+    private String padRight(String value, int width) {
+        String trimmed = trimValue(value);
+        if (trimmed.length() >= width) {
+            return trimmed.substring(0, width);
+        }
+        return trimmed + " ".repeat(width - trimmed.length());
     }
 
     /**
