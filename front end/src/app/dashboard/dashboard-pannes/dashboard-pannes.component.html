@@ -1,0 +1,386 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-danger">
+            <h4 class="card-title">🔧 Dashboard Pannes & Maintenance</h4>
+            <p class="card-category">Analyse technique et maintenance préventive des TPE</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="row" *ngIf="loading">
+      <div class="col-md-12 text-center">
+        <mat-spinner style="margin: 50px auto;"></mat-spinner>
+        <p>Chargement des données...</p>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="row" *ngIf="error">
+      <div class="col-md-12">
+        <div class="alert alert-danger">
+          <strong>Erreur :</strong> {{ error }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenu Principal -->
+    <div *ngIf="stats && !loading">
+      <!-- KPIs -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-danger card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">error</i>
+              </div>
+              <p class="card-category">Pannes En Cours</p>
+              <h3 class="card-title">{{ stats.pannesEnCours || stats.tpeEnPanne }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">warning</i> À traiter
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">done_all</i>
+              </div>
+              <p class="card-category">Résolues ce Mois</p>
+              <h3 class="card-title">{{ stats.pannesResoluesCeMois }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">check_circle</i> Complété
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">schedule</i>
+              </div>
+              <p class="card-category">MTTR (heures)</p>
+              <h3 class="card-title">{{ stats.mttr?.toFixed(1) || '0.0' }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">timer</i> Temps moyen réparation
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-warning card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">trending_down</i>
+              </div>
+              <p class="card-category">Taux de Panne</p>
+              <h3 class="card-title">{{ stats.tauxPanne?.toFixed(2) || '0.00' }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">assessment</i> Performance
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs Ligne 2 -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-primary card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">build</i>
+              </div>
+              <p class="card-category">TPE en Maintenance</p>
+              <h3 class="card-title">{{ stats.tpeEnMaintenance }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">autorenew</i> En intervention
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">verified</i>
+              </div>
+              <p class="card-category">Taux Résolution</p>
+              <h3 class="card-title">{{ tauxResolution.toFixed(0) }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">trending_up</i> Ce mois
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">settings</i>
+              </div>
+              <p class="card-category">Maint. Préventive</p>
+              <h3 class="card-title">12</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">event</i> À planifier
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-warning card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">shopping_cart</i>
+              </div>
+              <p class="card-category">En Attente Pièces</p>
+              <h3 class="card-title">3</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">hourglass_empty</i> Commande en cours
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 1 -->
+      <div class="row">
+        <!-- Évolution des Pannes -->
+        <div class="col-lg-8 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-danger">
+              <h4 class="card-title">Évolution des Pannes (12 mois)</h4>
+              <p class="card-category">Tendances par type de panne</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="evolutionPannesChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Répartition par Type -->
+        <div class="col-lg-4 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-warning">
+              <h4 class="card-title">Types de Pannes</h4>
+              <p class="card-category">Répartition par catégorie</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="typePanneChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 2 -->
+      <div class="row">
+        <!-- Analyse de Pareto (80/20) -->
+        <div class="col-lg-12 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-primary">
+              <h4 class="card-title">Analyse de Pareto - Top 10 TPE Problématiques</h4>
+              <p class="card-category">80% des pannes proviennent de 20% des TPE</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 350px;">
+                <canvas id="paretoChart"></canvas>
+              </div>
+              <div class="alert alert-info mt-3">
+                <strong><i class="material-icons" style="vertical-align: middle;">info</i> Recommandation :</strong>
+                Remplacer ces 10 TPE en priorité pour réduire 80% des pannes récurrentes.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 3 -->
+      <div class="row">
+        <!-- Carte Thermique -->
+        <div class="col-lg-8 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-info">
+              <h4 class="card-title">Heatmap Temporelle des Pannes</h4>
+              <p class="card-category">Distribution par jour et plage horaire</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="heatmapChart"></canvas>
+              </div>
+              <div class="alert alert-warning mt-3">
+                <strong><i class="material-icons" style="vertical-align: middle;">lightbulb_outline</i> Insight :</strong>
+                Pic de pannes le <strong>Vendredi 12h-18h</strong> (période commerçante intense)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Durée de Résolution -->
+        <div class="col-lg-4 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-success">
+              <h4 class="card-title">Durée Résolution</h4>
+              <p class="card-category">Moyenne par type</p>
+            </div>
+            <div class="card-body">
+              <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>
+                    <i class="material-icons text-danger">settings</i>
+                    Matériel
+                  </span>
+                  <span class="badge badge-primary">24h</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>
+                    <i class="material-icons text-warning">computer</i>
+                    Logiciel
+                  </span>
+                  <span class="badge badge-success">8h</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>
+                    <i class="material-icons text-info">wifi</i>
+                    Réseau
+                  </span>
+                  <span class="badge badge-info">16h</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>
+                    <i class="material-icons text-secondary">help_outline</i>
+                    Autre
+                  </span>
+                  <span class="badge badge-secondary">6h</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TPE nécessitant Maintenance Préventive -->
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header card-header-warning">
+              <h4 class="card-title">🛠️ TPE Nécessitant Maintenance Préventive</h4>
+              <p class="card-category">Dernière maintenance > 90 jours</p>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Terminal</th>
+                      <th>Marque/Modèle</th>
+                      <th>Dernière Maintenance</th>
+                      <th>Jours Écoulés</th>
+                      <th>Priorité</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>TPE-00045</strong></td>
+                      <td>Ingenico iWL250</td>
+                      <td>12/11/2025</td>
+                      <td><span class="badge badge-danger">98j</span></td>
+                      <td><span class="badge badge-danger">🔴 Urgent</span></td>
+                      <td>
+                        <button class="btn btn-sm btn-warning">
+                          <i class="material-icons">build</i> Planifier
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>TPE-00123</strong></td>
+                      <td>Verifone VX520</td>
+                      <td>28/12/2025</td>
+                      <td><span class="badge badge-warning">52j</span></td>
+                      <td><span class="badge badge-warning">🟡 Moyenne</span></td>
+                      <td>
+                        <button class="btn btn-sm btn-warning">
+                          <i class="material-icons">build</i> Planifier
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>TPE-00278</strong></td>
+                      <td>PAX A920</td>
+                      <td>05/01/2026</td>
+                      <td><span class="badge badge-info">44j</span></td>
+                      <td><span class="badge badge-success">🟢 Normale</span></td>
+                      <td>
+                        <button class="btn btn-sm btn-info">
+                          <i class="material-icons">event</i> Programmer
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="text-center mt-3">
+                <button mat-raised-button color="primary">
+                  <mat-icon>event</mat-icon> Planifier Maintenance Préventive (12 TPE)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-body text-center">
+              <button mat-raised-button color="primary" (click)="exportData()" class="mr-3">
+                <mat-icon>download</mat-icon> Exporter Rapport
+              </button>
+              <button mat-raised-button color="warn" class="mr-3">
+                <mat-icon>email</mat-icon> Alerter Techniciens
+              </button>
+              <button mat-raised-button color="accent">
+                <mat-icon>print</mat-icon> Imprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

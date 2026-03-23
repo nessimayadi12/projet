@@ -1,0 +1,394 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-warning">
+            <h4 class="card-title">📋 Dashboard Demandes d'Affectation</h4>
+            <p class="card-category">Suivi du workflow de traitement des demandes TPE</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="row" *ngIf="loading">
+      <div class="col-md-12 text-center">
+        <mat-spinner style="margin: 50px auto;"></mat-spinner>
+        <p>Chargement des données...</p>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="row" *ngIf="error">
+      <div class="col-md-12">
+        <div class="alert alert-danger">
+          <strong>Erreur :</strong> {{ error }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenu Principal -->
+    <div *ngIf="stats && !loading">
+      <!-- KPIs Ligne 1 -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-warning card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">fiber_new</i>
+              </div>
+              <p class="card-category">Nouvelles Demandes</p>
+              <h3 class="card-title">{{ stats.demandesNouvelles }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">access_time</i> À traiter
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">autorenew</i>
+              </div>
+              <p class="card-category">En Cours</p>
+              <h3 class="card-title">{{ stats.demandesEnCours }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">update</i> En traitement
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">done_all</i>
+              </div>
+              <p class="card-category">Délai Moyen</p>
+              <h3 class="card-title">{{ delaiMoyenJours.toFixed(1) }}j</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">schedule</i> Temps de traitement
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-danger card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">warning</i>
+              </div>
+              <p class="card-category">En Retard</p>
+              <h3 class="card-title">{{ demandesEnRetard }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">alarm</i> SLA dépassé (>48h)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs Ligne 2 -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-primary card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">trending_up</i>
+              </div>
+              <p class="card-category">Taux de Conversion</p>
+              <h3 class="card-title">{{ tauxConversion }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">assessment</i> Pipeline
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">check_circle</i>
+              </div>
+              <p class="card-category">Clôturées ce Mois</p>
+              <h3 class="card-title">156</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">date_range</i> Février 2026
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">speed</i>
+              </div>
+              <p class="card-category">SLA Respect</p>
+              <h3 class="card-title">89%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">timer</i> Objectif: >85%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-warning card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">person</i>
+              </div>
+              <p class="card-category">Productivité</p>
+              <h3 class="card-title">7.2</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">work</i> Demandes/jour/agent
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 1 -->
+      <div class="row">
+        <!-- Pipeline des demandes (Entonnoir) -->
+        <div class="col-lg-6 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-warning">
+              <h4 class="card-title">Pipeline de Traitement</h4>
+              <p class="card-category">Entonnoir de conversion des demandes</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 350px;">
+                <canvas id="funnelChart"></canvas>
+              </div>
+              <div class="text-center mt-3">
+                <p class="text-muted">
+                  <i class="material-icons" style="vertical-align: middle;">info</i>
+                  Taux de conversion global: <strong>37.6%</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demandes par Statut -->
+        <div class="col-lg-6 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-info">
+              <h4 class="card-title">Répartition par Statut</h4>
+              <p class="card-category">État actuel des demandes</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 350px;">
+                <canvas id="statutDemandesChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 2 -->
+      <div class="row">
+        <!-- Évolution Mensuelle -->
+        <div class="col-lg-8 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-success">
+              <h4 class="card-title">Évolution Mensuelle</h4>
+              <p class="card-category">Volume de demandes sur 6 mois</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="evolutionDemandesChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Délai par Étape -->
+        <div class="col-lg-4 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-primary">
+              <h4 class="card-title">Délai par Étape</h4>
+              <p class="card-category">Temps moyen de traitement</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="delaiChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alertes et Actions -->
+      <div class="row">
+        <div class="col-lg-6 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-danger">
+              <h4 class="card-title">⚠️ Demandes en Retard (>3 jours)</h4>
+              <p class="card-category">Actions urgentes requises</p>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Commerçant</th>
+                      <th>Créée le</th>
+                      <th>Jours</th>
+                      <th>Statut</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>D-245</td>
+                      <td>Café Central</td>
+                      <td>12/02/2026</td>
+                      <td><span class="badge badge-danger">6j</span></td>
+                      <td>EN_COURS</td>
+                      <td>
+                        <button class="btn btn-sm btn-warning">
+                          <i class="material-icons">notification_important</i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>D-238</td>
+                      <td>Pharmacie Habib</td>
+                      <td>10/02/2026</td>
+                      <td><span class="badge badge-danger">8j</span></td>
+                      <td>VALIDEE</td>
+                      <td>
+                        <button class="btn btn-sm btn-warning">
+                          <i class="material-icons">notification_important</i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>D-231</td>
+                      <td>Épicerie Saïd</td>
+                      <td>08/02/2026</td>
+                      <td><span class="badge badge-danger">10j</span></td>
+                      <td>EN_COURS</td>
+                      <td>
+                        <button class="btn btn-sm btn-warning">
+                          <i class="material-icons">notification_important</i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="text-center mt-3">
+                <button mat-raised-button color="warn">
+                  <mat-icon>email</mat-icon> Notifier les Responsables
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance par Agence -->
+        <div class="col-lg-6 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-info">
+              <h4 class="card-title">Performance par Agence</h4>
+              <p class="card-category">Benchmarking inter-agences</p>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Agence</th>
+                      <th>Demandes Traitées</th>
+                      <th>Délai Moyen</th>
+                      <th>Taux SLA</th>
+                      <th>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Lac 2</strong></td>
+                      <td>45</td>
+                      <td>2.1j</td>
+                      <td><span class="badge badge-success">92%</span></td>
+                      <td>⭐⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Sousse</strong></td>
+                      <td>38</td>
+                      <td>2.8j</td>
+                      <td><span class="badge badge-warning">85%</span></td>
+                      <td>⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Sfax</strong></td>
+                      <td>35</td>
+                      <td>2.3j</td>
+                      <td><span class="badge badge-success">90%</span></td>
+                      <td>⭐⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Centre Ville</strong></td>
+                      <td>32</td>
+                      <td>3.1j</td>
+                      <td><span class="badge badge-danger">78%</span></td>
+                      <td>⭐⭐⭐</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-body text-center">
+              <button mat-raised-button color="primary" (click)="exportData()" class="mr-3">
+                <mat-icon>download</mat-icon> Exporter Rapport
+              </button>
+              <button mat-raised-button color="accent" class="mr-3">
+                <mat-icon>print</mat-icon> Imprimer
+              </button>
+              <button mat-raised-button>
+                <mat-icon>refresh</mat-icon> Actualiser
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

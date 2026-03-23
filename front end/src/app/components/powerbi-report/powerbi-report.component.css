@@ -1,0 +1,73 @@
+.powerbi-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+}
+
+.powerbi-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+}
+
+.powerbi-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+  display: flex;
+  gap: 8px;
+}
+
+.powerbi-toolbar button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.powerbi-toolbar button:hover {
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.powerbi-toolbar button i {
+  font-size: 18px;
+}
+
+.powerbi-report-container {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Style pour le rapport embedé */
+.powerbi-report-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.alert {
+  margin: 20px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alert i {
+  font-size: 24px;
+}

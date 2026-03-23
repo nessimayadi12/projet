@@ -3,8 +3,9 @@ import { Router } from '@angular/router';
 import { TpeService } from '../../services/tpe.service';
 import { TPE, StatutTPE } from '../../models/tpe.model';
 import { AuthService } from '../../services/auth.service';
-import { Role } from '../../models/utilisateur.model';
+import { ScreenService } from '../../services/screen.service';
 import { ExcelExportService } from '../../services/excel-export.service';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-tpe-list',
@@ -20,15 +21,24 @@ export class TpeListComponent implements OnInit {
   selectedStatut: StatutTPE | '' = '';
   statuts = Object.values(StatutTPE);
 
+  // Permissions observables
+  canCreateTPE$: Observable<boolean>;
+  canEditTPE$: Observable<boolean>;
+  canDeleteTPE$: Observable<boolean>;
+  canExportTPE$: Observable<boolean>;
+
   constructor(
     private tpeService: TpeService,
     private router: Router,
     private authService: AuthService,
-    private excelExportService: ExcelExportService
-  ) { }
-
-  canCreateTPE(): boolean {
-    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
+    private excelExportService: ExcelExportService,
+    private screenService: ScreenService
+  ) {
+    // Initialiser les permissions
+    this.canCreateTPE$ = this.screenService.hasPermission('CREER_TPE', 'canCreate');
+    this.canEditTPE$ = this.screenService.hasPermission('MODIFIER_TPE', 'canEdit');
+    this.canDeleteTPE$ = this.screenService.hasPermission('MODIFIER_TPE', 'canDelete');
+    this.canExportTPE$ = this.screenService.hasPermission('LISTE_TPE', 'canExport');
   }
 
   ngOnInit(): void {

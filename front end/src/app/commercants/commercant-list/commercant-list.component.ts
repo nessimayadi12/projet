@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { CommercantService } from '../../services/commercant.service';
 import { Commercant, StatutCommercant } from '../../models/commercant.model';
 import { ExcelExportService } from '../../services/excel-export.service';
+import { ScreenService } from '../../services/screen.service';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-commercant-list',
@@ -18,11 +20,24 @@ export class CommercantListComponent implements OnInit {
   selectedStatut: StatutCommercant | '' = '';
   statuts = Object.values(StatutCommercant);
 
+  // Permissions observables
+  canCreateCommercant$: Observable<boolean>;
+  canEditCommercant$: Observable<boolean>;
+  canDeleteCommercant$: Observable<boolean>;
+  canExportCommercant$: Observable<boolean>;
+
   constructor(
     private commercantService: CommercantService,
     private router: Router,
-    private excelExportService: ExcelExportService
-  ) { }
+    private excelExportService: ExcelExportService,
+    private screenService: ScreenService
+  ) {
+    // Initialiser les permissions
+    this.canCreateCommercant$ = this.screenService.hasPermission('CREER_COMMERCANT', 'canCreate');
+    this.canEditCommercant$ = this.screenService.hasPermission('MODIFIER_COMMERCANT', 'canEdit');
+    this.canDeleteCommercant$ = this.screenService.hasPermission('MODIFIER_COMMERCANT', 'canDelete');
+    this.canExportCommercant$ = this.screenService.hasPermission('LISTE_COMMERCANTS', 'canExport');
+  }
 
   ngOnInit(): void {
     this.loadCommercants();

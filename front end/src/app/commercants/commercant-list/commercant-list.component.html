@@ -39,12 +39,14 @@
                 <button 
                   class="btn btn-success mt-4 mr-2" 
                   (click)="exportToExcel()"
-                  [disabled]="filteredCommercants.length === 0">
+                  [disabled]="filteredCommercants.length === 0"
+                  *ngIf="(canExportCommercant$ | async)">
                   <i class="material-icons">get_app</i> Exporter Excel
                 </button>
                 <button 
                   class="btn btn-success mt-4" 
-                  (click)="addNewCommercant()">
+                  (click)="addNewCommercant()"
+                  *ngIf="(canCreateCommercant$ | async)">
                   <i class="material-icons">add</i> Nouveau Commerçant
                 </button>
               </div>
@@ -102,14 +104,16 @@
                         type="button" 
                         class="btn btn-success btn-sm"
                         (click)="editCommercant(commercant.id!)"
-                        title="Modifier">
+                        title="Modifier"
+                        *ngIf="(canEditCommercant$ | async)">
                         <i class="material-icons">edit</i>
                       </button>
                       <button 
                         type="button" 
                         class="btn btn-danger btn-sm"
                         (click)="deleteCommercant(commercant.id!, commercant.raisonSociale)"
-                        title="Supprimer">
+                        title="Supprimer"
+                        *ngIf="(canDeleteCommercant$ | async)">
                         <i class="material-icons">delete</i>
                       </button>
                     </td>

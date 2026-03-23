@@ -1,0 +1,256 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">📟 Dashboard Gestion du Parc TPE</h4>
+            <p class="card-category">Vue détaillée de tous les terminaux de paiement électronique</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-3">
+                <mat-form-field class="full-width">
+                  <mat-label>Statut</mat-label>
+                  <mat-select [(ngModel)]="selectedStatut" (selectionChange)="applyFilters()">
+                    <mat-option *ngFor="let statut of statuts" [value]="statut">
+                      {{ statut }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="col-md-3">
+                <mat-form-field class="full-width">
+                  <mat-label>Marque</mat-label>
+                  <mat-select [(ngModel)]="selectedMarque" (selectionChange)="applyFilters()">
+                    <mat-option *ngFor="let marque of marques" [value]="marque">
+                      {{ marque }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="col-md-3">
+                <mat-form-field class="full-width">
+                  <mat-label>Agence</mat-label>
+                  <mat-select [(ngModel)]="selectedAgence" (selectionChange)="applyFilters()">
+                    <mat-option value="TOUTES">TOUTES</mat-option>
+                    <mat-option value="Lac 2">Lac 2</mat-option>
+                    <mat-option value="Sousse">Sousse</mat-option>
+                    <mat-option value="Sfax">Sfax</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="col-md-3">
+                <button mat-raised-button color="primary" (click)="exportData()" style="margin-top: 10px;">
+                  <mat-icon>download</mat-icon> Exporter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="row" *ngIf="loading">
+      <div class="col-md-12 text-center">
+        <mat-spinner style="margin: 50px auto;"></mat-spinner>
+        <p>Chargement des données...</p>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="row" *ngIf="error">
+      <div class="col-md-12">
+        <div class="alert alert-danger">
+          <strong>Erreur :</strong> {{ error }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenu Principal -->
+    <div *ngIf="stats && !loading">
+      <!-- KPIs Principaux -->
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">devices</i>
+              </div>
+              <p class="card-category">Total TPE</p>
+              <h3 class="card-title">{{ stats.totalTPE }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">update</i> Parc complet
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-info card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">check_circle</i>
+              </div>
+              <p class="card-category">Taux Disponibilité</p>
+              <h3 class="card-title">{{ tauxDisponibilite.toFixed(1) }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">trending_up</i> Performance
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-primary card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">business</i>
+              </div>
+              <p class="card-category">Taux Affectation</p>
+              <h3 class="card-title">{{ tauxAffectation.toFixed(1) }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">local_offer</i> En service
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-danger card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">warning</i>
+              </div>
+              <p class="card-category">Taux de Panne</p>
+              <h3 class="card-title">{{ tauxPanne.toFixed(1) }}%</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">build</i> À surveiller
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 1 -->
+      <div class="row">
+        <!-- Répartition par Statut -->
+        <div class="col-lg-6 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-primary">
+              <h4 class="card-title">Répartition par Statut</h4>
+              <p class="card-category">Distribution des TPE selon leur état</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="statutChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Répartition par Marque -->
+        <div class="col-lg-6 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-info">
+              <h4 class="card-title">Répartition par Marque</h4>
+              <p class="card-category">Nombre de TPE par fabricant</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="marqueChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphiques Ligne 2 -->
+      <div class="row">
+        <!-- Évolution sur 6 mois -->
+        <div class="col-lg-8 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-success">
+              <h4 class="card-title">Évolution des Statuts (6 derniers mois)</h4>
+              <p class="card-category">Tendances temporelles du parc TPE</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 300px;">
+                <canvas id="evolutionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats par Statut -->
+        <div class="col-lg-4 col-md-12">
+          <div class="card">
+            <div class="card-header card-header-warning">
+              <h4 class="card-title">Détails par Statut</h4>
+              <p class="card-category">Répartition détaillée</p>
+            </div>
+            <div class="card-body">
+              <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span><i class="material-icons" style="color: #28a745;">check_circle</i> Disponibles</span>
+                  <span class="badge badge-success badge-pill">{{ stats.tpeDisponibles }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span><i class="material-icons" style="color: #007bff;">business</i> Affectés</span>
+                  <span class="badge badge-primary badge-pill">{{ stats.tpeAffectes }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span><i class="material-icons" style="color: #dc3545;">warning</i> En Panne</span>
+                  <span class="badge badge-danger badge-pill">{{ stats.tpeEnPanne }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span><i class="material-icons" style="color: #ffc107;">build</i> Maintenance</span>
+                  <span class="badge badge-warning badge-pill">{{ stats.tpeEnMaintenance }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span><i class="material-icons" style="color: #6c757d;">block</i> Hors Service</span>
+                  <span class="badge badge-secondary badge-pill">{{ stats.tpeHorsService }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte thermique par Agence -->
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header card-header-danger">
+              <h4 class="card-title">Distribution par Agence (17 agences)</h4>
+              <p class="card-category">Répartition géographique du parc TPE</p>
+            </div>
+            <div class="card-body">
+              <div style="height: 350px;">
+                <canvas id="agenceChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

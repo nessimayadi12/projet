@@ -1,12 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core'; 
 import { Router } from '@angular/router';
 import { DemandeTPE, StatutDemande, TypeDemande, Urgence } from '../../models/demande-tpe.model';
 import { DemandeService } from '../../services/demande.service';
 import { AuthService } from '../../services/auth.service';
+import { ScreenService } from '../../services/screen.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DemandeValidationComponent } from '../demande-validation/demande-validation.component';
 import { ExcelExportService } from '../../services/excel-export.service';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-demande-list',
@@ -18,6 +20,12 @@ export class DemandeListComponent implements OnInit {
   demandesFiltrees: DemandeTPE[] = [];
   loading = false;
   currentUserRole: string = '';
+
+  // Permissions observables
+  canCreateDemande$: Observable<boolean>;
+  canEditDemande$: Observable<boolean>;
+  canExportDemande$: Observable<boolean>;
+  canAffecterTPE$: Observable<boolean>;
 
   // Filtres
   filtreStatut: string = 'TOUS';
@@ -43,6 +51,7 @@ export class DemandeListComponent implements OnInit {
   constructor(
     private demandeService: DemandeService,
     private authService: AuthService,
+    private screenService: ScreenService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private router: Router,
@@ -50,6 +59,12 @@ export class DemandeListComponent implements OnInit {
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
+    
+    // Initialiser les permissions
+    this.canCreateDemande$ = this.screenService.hasPermission('CREER_DEMANDE', 'canCreate');
+    this.canEditDemande$ = this.screenService.hasPermission('MODIFIER_DEMANDE', 'canEdit');
+    this.canExportDemande$ = this.screenService.hasPermission('LISTE_DEMANDES', 'canExport');
+    this.canAffecterTPE$ = this.screenService.hasPermission('AFFECTER_TPE', 'canView');
   }
 
   ngOnInit(): void {
@@ -125,19 +140,7 @@ export class DemandeListComponent implements OnInit {
   }
 
   affecterTPE(demande: DemandeTPE): void {
-    // Rediriger vers le composant d'affectation
-    // À implémenter avec routing
-    console.log('Affecter TPE pour demande:', demande.id);
-  }
-
-  canValider(): boolean {
-    return this.currentUserRole === 'MONETIQUE' || 
-           this.currentUserRole === 'ADMIN';
-  }
-
-  canAffecter(): boolean {
-    return this.currentUserRole === 'MONETIQUE' || 
-           this.currentUserRole === 'ADMIN';
+    this.router.navigate(['/demandes', demande.id, 'affecter']);
   }
 
   imprimerDemande(demande: DemandeTPE): void {
@@ -322,7 +325,7 @@ export class DemandeListComponent implements OnInit {
           </div>
           <div class="info-row">
             <div class="info-label">Loyer:</div>
-            <div class="info-value">${demande.loyer || '-'} MAD</div>
+            <div class="info-value">${demande.loyer || '-'}</div>
           </div>
         </div>
         ` : ''}

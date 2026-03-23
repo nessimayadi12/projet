@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DashboardService } from '../services/dashboard.service';
 import { DashboardStats } from '../models/dashboard.model';
+import { environment } from '../../environments/environment';
 import * as Chartist from 'chartist';
 
 @Component({
@@ -12,6 +13,12 @@ export class DashboardComponent implements OnInit {
   stats: DashboardStats | null = null;
   loading = true;
   error: string | null = null;
+
+  // Configuration Power BI depuis environment
+  powerBIEnabled = environment.powerBI?.enabled || false;
+  powerBIReportId = environment.powerBI?.reportId || '';
+  powerBIEmbedUrl = environment.powerBI?.embedUrl || '';
+  powerBIPublicUrl = environment.powerBI?.publicUrl || '';
 
   constructor(private dashboardService: DashboardService) { }
 

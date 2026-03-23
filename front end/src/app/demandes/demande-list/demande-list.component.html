@@ -56,11 +56,13 @@
               </div>
               <div class="col-md-3 text-right">
                 <button mat-raised-button color="accent" (click)="exportToExcel()" 
-                        class="mr-2" [disabled]="demandesFiltrees.length === 0">
+                        class="mr-2" [disabled]="demandesFiltrees.length === 0"
+                        *ngIf="(canExportDemande$ | async)">
                   <mat-icon>get_app</mat-icon>
                   Exporter Excel
                 </button>
-                <button mat-raised-button color="primary" (click)="navigateToNew()">
+                <button mat-raised-button color="primary" (click)="navigateToNew()"
+                        *ngIf="(canCreateDemande$ | async)">
                   <mat-icon>add</mat-icon>
                   Nouvelle Demande
                 </button>
@@ -116,22 +118,22 @@
                         <mat-icon>print</mat-icon>
                       </button>
 
-                      <!-- Bouton Valider (Monétique) -->
-                      <button *ngIf="canValider() && demande.statut === 'NOUVELLE'" 
+                      <!-- Bouton Valider (avec permission Edit) -->
+                      <button *ngIf="(canEditDemande$ | async) && demande.statut === 'NOUVELLE'" 
                               type="button" mat-icon-button matTooltip="Valider" 
                               color="accent" (click)="validerDemande(demande)">
                         <mat-icon>check_circle</mat-icon>
                       </button>
 
-                      <!-- Bouton Rejeter (Monétique) -->
-                      <button *ngIf="canValider() && (demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS')" 
+                      <!-- Bouton Rejeter (avec permission Edit) -->
+                      <button *ngIf="(canEditDemande$ | async) && (demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS')" 
                               type="button" mat-icon-button matTooltip="Rejeter" 
                               color="warn" (click)="rejeterDemande(demande)">
                         <mat-icon>cancel</mat-icon>
                       </button>
 
-                      <!-- Bouton Affecter (Monétique) -->
-                      <button *ngIf="canAffecter() && demande.statut === 'VALIDEE'" 
+                      <!-- Bouton Affecter (avec permission sur AFFECTER_TPE) -->
+                      <button *ngIf="(canAffecterTPE$ | async) && demande.statut === 'VALIDEE'" 
                               type="button" mat-raised-button color="primary" 
                               class="btn-sm" (click)="affecterTPE(demande)">
                         <mat-icon>assignment</mat-icon>

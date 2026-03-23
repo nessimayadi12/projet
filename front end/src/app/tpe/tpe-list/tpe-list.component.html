@@ -41,13 +41,14 @@
                 <button 
                   class="btn btn-success mt-4 mr-2" 
                   (click)="exportToExcel()"
-                  [disabled]="filteredTpes.length === 0">
+                  [disabled]="filteredTpes.length === 0"
+                  *ngIf="(canExportTPE$ | async)">
                   <i class="material-icons">get_app</i> Exporter Excel
                 </button>
                 <button 
-                  *ngIf="canCreateTPE()"
                   class="btn btn-primary mt-4" 
-                  (click)="addNewTPE()">
+                  (click)="addNewTPE()"
+                  *ngIf="(canCreateTPE$ | async)">
                   <i class="material-icons">add</i> Nouveau TPE
                 </button>
               </div>
@@ -101,14 +102,16 @@
                         type="button" 
                         class="btn btn-success btn-sm"
                         (click)="editTPE(tpe.id!)"
-                        title="Modifier">
+                        title="Modifier"
+                        *ngIf="(canEditTPE$ | async)">
                         <i class="material-icons">edit</i>
                       </button>
                       <button 
                         type="button" 
                         class="btn btn-danger btn-sm"
                         (click)="deleteTPE(tpe.id!, tpe.numeroSerie)"
-                        title="Supprimer">
+                        title="Supprimer"
+                        *ngIf="(canDeleteTPE$ | async)">
                         <i class="material-icons">delete</i>
                       </button>
                     </td>

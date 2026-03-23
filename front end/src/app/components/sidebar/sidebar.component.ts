@@ -16,6 +16,8 @@ export const ROUTES: RouteInfo[] = [
     { path: '/commercants', title: 'Commerçants',  icon:'store', class: '' },
     { path: '/demandes', title: 'Demandes TPE',  icon:'assignment', class: '' },
     { path: '/pannes', title: 'Maintenance',  icon:'build', class: '' },
+    { path: '/file-upload', title: 'Upload Transactions',  icon:'cloud_upload', class: '', roles: [Role.ADMIN, Role.MONETIQUE] },
+    { path: '/admin/screens', title: 'Gestion Permissions',  icon:'admin_panel_settings', class: '', roles: [Role.ADMIN] },
     { path: '/user-profile', title: 'Mon Profil',  icon:'person', class: '' }
 ];
 

@@ -1,0 +1,58 @@
+.card {
+  margin-bottom: 20px;
+}
+
+.card-stats:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.table-responsive {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+mat-icon {
+  vertical-align: middle;
+}
+
+.mr-3 {
+  margin-right: 15px;
+}
+
+.text-muted {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.mt-3 {
+  margin-top: 20px;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.btn mat-icon,
+button mat-icon {
+  margin-right: 5px;
+  font-size: 18px;
+}

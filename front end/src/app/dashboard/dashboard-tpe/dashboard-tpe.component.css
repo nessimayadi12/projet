@@ -1,0 +1,40 @@
+.full-width {
+  width: 100%;
+}
+
+.card {
+  margin-bottom: 20px;
+}
+
+.card-stats {
+  transition: transform 0.3s ease;
+}
+
+.card-stats:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.list-group-item {
+  border: none;
+  padding: 10px 15px;
+}
+
+.list-group-item i {
+  vertical-align: middle;
+  margin-right: 10px;
+  font-size: 20px;
+}
+
+.badge-pill {
+  font-size: 14px;
+  padding: 8px 15px;
+}
+
+mat-spinner {
+  margin: 50px auto;
+}
+
+button mat-icon {
+  margin-right: 5px;
+}
