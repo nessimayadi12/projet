@@ -1,17 +1,22 @@
 package com.banque.abc.tpe.controller;
 
 import com.banque.abc.tpe.dto.tpe.TPERequest;
+import com.banque.abc.tpe.dto.tpe.TPEImportResult;
+import com.banque.abc.tpe.dto.tpe.TPEImportRecordDTO;
 import com.banque.abc.tpe.dto.tpe.TPEResponse;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
 import com.banque.abc.tpe.service.TPEService;
+import com.banque.abc.tpe.service.TPEExcelImportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -22,6 +27,7 @@ import java.util.List;
 public class TPEController {
 
     private final TPEService tpeService;
+    private final TPEExcelImportService tpeExcelImportService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
@@ -89,6 +95,25 @@ public class TPEController {
     public ResponseEntity<String> genererTID(@RequestBody TPERequest request) {
         String tid = tpeService.generateTID(request.getRib(), request.getCodeAgence());
         return ResponseEntity.ok(tid);
+    }
+
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<TPEImportResult> importExcel(@RequestParam("file") MultipartFile file) {
+        TPEImportResult result = tpeExcelImportService.importExcel(file);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/import-records")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<Page<TPEImportRecordDTO>> getImportRecords(Pageable pageable) {
+        return ResponseEntity.ok(tpeExcelImportService.getImportRecords(pageable));
+    }
+
+    @GetMapping("/import-records/export")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<List<TPEImportRecordDTO>> getAllImportRecords() {
+        return ResponseEntity.ok(tpeExcelImportService.getImportRecords(Pageable.unpaged()).getContent());
     }
 
     @DeleteMapping("/{id}")

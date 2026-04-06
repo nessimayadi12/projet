@@ -5,6 +5,37 @@ import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { TPE, StatutTPE, TypeTPE, TPEHistorique } from '../models/tpe.model';
 
+export interface TPEImportRecord {
+  id: number;
+  nAffiliation: string;
+  sourceRowNumber: number;
+  sourceFileName?: string;
+  typeTPE?: string;
+  numeroSerie?: string;
+  numeroTerminal?: string;
+  raisonSociale?: string;
+  activite?: string;
+  mcc?: string;
+  numeroCompte?: string;
+  codeAgence?: string;
+  adresse?: string;
+  codePostal?: string;
+  telephone?: string;
+  email?: string;
+  privilegeSecteur?: string;
+  tauxCommission?: string;
+  tauxCommissionInter?: string;
+  loyer?: string;
+  nCompteIntern?: string;
+  groupe?: string;
+  numSeq?: string;
+  active?: boolean;
+  valueDate?: Date | string;
+  dateAffiliation?: Date | string;
+  createdDate?: Date | string;
+  lastModifiedDate?: Date | string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -15,8 +46,27 @@ export class TpeService {
 
   // Récupérer tous les TPE
   getAllTPE(): Observable<TPE[]> {
-    return this.http.get<any>(this.apiUrl).pipe(
-      map(response => response.content || response)
+    const params = new HttpParams()
+      .set('page', '0')
+      .set('size', '5000')
+      .set('sort', 'id,desc');
+
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
+      map(response => {
+        if (Array.isArray(response)) {
+          return response as TPE[];
+        }
+        if (Array.isArray(response?.content)) {
+          return response.content as TPE[];
+        }
+        if (Array.isArray(response?.data?.content)) {
+          return response.data.content as TPE[];
+        }
+        if (Array.isArray(response?.data)) {
+          return response.data as TPE[];
+        }
+        return [];
+      })
     );
   }
 
@@ -111,6 +161,15 @@ export class TpeService {
     const formData = new FormData();
     formData.append('file', file);
     return this.http.post(`${this.apiUrl}/import`, formData);
+  }
+
+  // Lister les lignes importées dans le staging
+  getImportRecords(page: number = 0, size: number = 50): Observable<any> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', 'sourceRowNumber,asc');
+    return this.http.get<any>(`${this.apiUrl}/import-records`, { params });
   }
 
   // Export Excel

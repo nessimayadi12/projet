@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -14,7 +14,28 @@ export class CommercantService {
   constructor(private http: HttpClient) { }
 
   getAllCommercants(): Observable<Commercant[]> {
-    return this.http.get<Commercant[]>(this.apiUrl);
+    const params = new HttpParams()
+      .set('page', '0')
+      .set('size', '5000')
+      .set('sort', 'id,desc');
+
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
+      map(response => {
+        if (Array.isArray(response)) {
+          return response as Commercant[];
+        }
+        if (Array.isArray(response?.content)) {
+          return response.content as Commercant[];
+        }
+        if (Array.isArray(response?.data?.content)) {
+          return response.data.content as Commercant[];
+        }
+        if (Array.isArray(response?.data)) {
+          return response.data as Commercant[];
+        }
+        return [];
+      })
+    );
   }
 
   getCommercantById(id: number): Observable<Commercant> {

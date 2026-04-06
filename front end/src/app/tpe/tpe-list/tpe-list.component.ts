@@ -17,6 +17,7 @@ export class TpeListComponent implements OnInit {
   filteredTpes: TPE[] = [];
   loading = true;
   error: string | null = null;
+  importing = false;
   searchTerm = '';
   selectedStatut: StatutTPE | '' = '';
   statuts = Object.values(StatutTPE);
@@ -49,8 +50,9 @@ export class TpeListComponent implements OnInit {
     this.loading = true;
     this.tpeService.getAllTPE().subscribe({
       next: (data) => {
-        this.tpes = data;
-        this.filteredTpes = data;
+        const items = Array.isArray(data) ? data : [];
+        this.tpes = items;
+        this.filteredTpes = items;
         this.loading = false;
       },
       error: (err) => {
@@ -63,11 +65,17 @@ export class TpeListComponent implements OnInit {
 
   filterTPEs(): void {
     this.filteredTpes = this.tpes.filter(tpe => {
+      const serie = (tpe.numeroSerie || '').toLowerCase();
+      const marque = (tpe.marque || '').toLowerCase();
+      const modele = (tpe.modele || '').toLowerCase();
+      const commercant = (tpe.commercantActuelNom || '').toLowerCase();
+      const query = (this.searchTerm || '').toLowerCase();
+
       const matchesSearch = !this.searchTerm || 
-        tpe.numeroSerie.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        tpe.marque.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        tpe.modele.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        (tpe.commercantActuelNom && tpe.commercantActuelNom.toLowerCase().includes(this.searchTerm.toLowerCase()));
+        serie.includes(query) ||
+        marque.includes(query) ||
+        modele.includes(query) ||
+        commercant.includes(query);
       
       const matchesStatut = !this.selectedStatut || tpe.statut === this.selectedStatut;
       
@@ -81,6 +89,10 @@ export class TpeListComponent implements OnInit {
 
   addNewTPE(): void {
     this.router.navigate(['/tpe/new']);
+  }
+
+  viewImportRecords(): void {
+    this.router.navigate(['/tpe/imports']);
   }
 
   editTPE(id: number): void {
@@ -121,6 +133,40 @@ export class TpeListComponent implements OnInit {
     this.excelExportService.exportToExcel(dataToExport, 'liste_tpe', 'TPE');
   }
 
+  triggerImportFile(): void {
+    const input = document.getElementById('tpe-import-input') as HTMLInputElement | null;
+    input?.click();
+  }
+
+  onImportFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    this.importing = true;
+    this.tpeService.importTPE(file).subscribe({
+      next: (result) => {
+        const summary = result
+          ? `Import terminé: ${result.storedRows ?? 0} lignes stockées, ${result.importedRows ?? 0} créés, ${result.updatedRows ?? 0} mis à jour, ${result.affectedRows ?? 0} affectés, ${result.skippedRows ?? 0} ignorés`
+          : 'Import terminé avec succès';
+
+        alert(summary);
+        this.loadTPEs();
+        input.value = '';
+        this.importing = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors de l\'import Excel:', err);
+        alert('Impossible d\'importer le fichier Excel');
+        input.value = '';
+        this.importing = false;
+      }
+    });
+  }
+
   getStatutClass(statut: StatutTPE): string {
     switch(statut) {
       case StatutTPE.DISPONIBLE: return 'badge-success';
@@ -134,6 +180,6 @@ export class TpeListComponent implements OnInit {
   }
 
   getStatutLabel(statut: StatutTPE): string {
-    return statut.replace(/_/g, ' ');
+    return (statut || '').replace(/_/g, ' ');
   }
 }

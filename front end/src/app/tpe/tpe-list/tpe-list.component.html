@@ -38,12 +38,30 @@
                 </div>
               </div>
               <div class="col-md-5 text-right">
+                <input
+                  id="tpe-import-input"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  class="d-none"
+                  (change)="onImportFileSelected($event)">
+                <button
+                  class="btn btn-warning mt-4 mr-2"
+                  (click)="triggerImportFile()"
+                  [disabled]="importing">
+                  <i class="material-icons">upload_file</i> {{ importing ? 'Import en cours...' : 'Importer Excel' }}
+                </button>
                 <button 
                   class="btn btn-success mt-4 mr-2" 
                   (click)="exportToExcel()"
                   [disabled]="filteredTpes.length === 0"
                   *ngIf="(canExportTPE$ | async)">
                   <i class="material-icons">get_app</i> Exporter Excel
+                </button>
+                <button
+                  class="btn btn-info mt-4 mr-2"
+                  (click)="viewImportRecords()"
+                  *ngIf="(canExportTPE$ | async)">
+                  <i class="material-icons">table_view</i> Lignes importées
                 </button>
                 <button 
                   class="btn btn-primary mt-4" 

@@ -17,10 +17,14 @@ public interface TPERepository extends JpaRepository<TPE, Long>, JpaSpecificatio
     Optional<TPE> findByNumeroSerie(String numeroSerie);
     
     Optional<TPE> findByNumeroTerminal(String numeroTerminal);
+
+    Optional<TPE> findByNumeroAffiliation(String numeroAffiliation);
     
     boolean existsByNumeroSerie(String numeroSerie);
     
     boolean existsByNumeroTerminal(String numeroTerminal);
+
+    boolean existsByNumeroAffiliation(String numeroAffiliation);
     
     @Query("SELECT COUNT(t) FROM TPE t WHERE t.numeroTerminal IS NOT NULL AND t.numeroTerminal != ''")
     long countTPEsWithNumeroTerminal();

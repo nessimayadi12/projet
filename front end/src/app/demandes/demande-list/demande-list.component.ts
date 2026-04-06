@@ -18,6 +18,7 @@ import { Observable } from 'rxjs';
 export class DemandeListComponent implements OnInit {
   demandes: DemandeTPE[] = [];
   demandesFiltrees: DemandeTPE[] = [];
+  pagedDemandes: DemandeTPE[] = [];
   loading = false;
   currentUserRole: string = '';
 
@@ -32,6 +33,9 @@ export class DemandeListComponent implements OnInit {
   filtreType: string = 'TOUS';
   filtreUrgence: string = 'TOUS';
   rechercheText: string = '';
+  page = 1;
+  pageSize = 25;
+  pageSizeOptions = [10, 25, 50, 100];
 
   // Options pour filtres
   statuts = ['TOUS', ...Object.values(StatutDemande)];
@@ -79,7 +83,7 @@ export class DemandeListComponent implements OnInit {
     this.loading = true;
     this.demandeService.getAllDemandes().subscribe({
       next: (data) => {
-        this.demandes = data;
+        this.demandes = Array.isArray(data) ? data : [];
         this.appliquerFiltres();
         this.loading = false;
       },
@@ -96,12 +100,47 @@ export class DemandeListComponent implements OnInit {
       const matchStatut = this.filtreStatut === 'TOUS' || demande.statut === this.filtreStatut;
       const matchType = this.filtreType === 'TOUS' || demande.typeDemande === this.filtreType;
       const matchUrgence = this.filtreUrgence === 'TOUS' || demande.urgence === this.filtreUrgence;
+      const query = (this.rechercheText || '').toLowerCase();
       const matchRecherche = !this.rechercheText || 
-        demande.reference?.toLowerCase().includes(this.rechercheText.toLowerCase()) ||
-        demande.commercantNom?.toLowerCase().includes(this.rechercheText.toLowerCase());
+        (demande.reference || '').toLowerCase().includes(query) ||
+        (demande.commercantNom || '').toLowerCase().includes(query);
 
       return matchStatut && matchType && matchUrgence && matchRecherche;
     });
+
+    this.page = 1;
+    this.updatePagedDemandes();
+  }
+
+  get totalPages(): number {
+    const total = Math.ceil(this.demandesFiltrees.length / this.pageSize);
+    return total > 0 ? total : 1;
+  }
+
+  onPageSizeChange(value: string): void {
+    this.pageSize = Number(value);
+    this.page = 1;
+    this.updatePagedDemandes();
+  }
+
+  previousPage(): void {
+    if (this.page > 1) {
+      this.page--;
+      this.updatePagedDemandes();
+    }
+  }
+
+  nextPage(): void {
+    if (this.page < this.totalPages) {
+      this.page++;
+      this.updatePagedDemandes();
+    }
+  }
+
+  private updatePagedDemandes(): void {
+    const startIndex = (this.page - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    this.pagedDemandes = this.demandesFiltrees.slice(startIndex, endIndex);
   }
 
   onFiltreChange(): void {

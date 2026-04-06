@@ -4,11 +4,13 @@ import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TpeListComponent } from './tpe-list/tpe-list.component';
 import { TpeFormComponent } from './tpe-form/tpe-form.component';
+import { TpeImportRecordsComponent } from './tpe-import-records/tpe-import-records.component';
 
 @NgModule({
   declarations: [
     TpeListComponent,
-    TpeFormComponent
+    TpeFormComponent,
+    TpeImportRecordsComponent
   ],
   imports: [
     CommonModule,

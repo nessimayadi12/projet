@@ -14,11 +14,15 @@ import { Observable } from 'rxjs';
 export class CommercantListComponent implements OnInit {
   commercants: Commercant[] = [];
   filteredCommercants: Commercant[] = [];
+  pagedCommercants: Commercant[] = [];
   loading = true;
   error: string | null = null;
   searchTerm = '';
   selectedStatut: StatutCommercant | '' = '';
   statuts = Object.values(StatutCommercant);
+  page = 1;
+  pageSize = 25;
+  pageSizeOptions = [10, 25, 50, 100];
 
   // Permissions observables
   canCreateCommercant$: Observable<boolean>;
@@ -47,8 +51,10 @@ export class CommercantListComponent implements OnInit {
     this.loading = true;
     this.commercantService.getAllCommercants().subscribe({
       next: (data) => {
-        this.commercants = data;
-        this.filteredCommercants = data;
+        const items = Array.isArray(data) ? data : [];
+        this.commercants = items;
+        this.filteredCommercants = items;
+        this.updatePagedCommercants();
         this.loading = false;
       },
       error: (err) => {
@@ -61,16 +67,56 @@ export class CommercantListComponent implements OnInit {
 
   filterCommercants(): void {
     this.filteredCommercants = this.commercants.filter(commercant => {
+      const raisonSociale = (commercant.raisonSociale || '').toLowerCase();
+      const adresse = (commercant.adresse || '').toLowerCase();
+      const nomContact = (commercant.nomContact || '').toLowerCase();
+      const prenomContact = (commercant.prenomContact || '').toLowerCase();
+      const query = (this.searchTerm || '').toLowerCase();
+
       const matchesSearch = !this.searchTerm || 
-        commercant.raisonSociale.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        (commercant.adresse && commercant.adresse.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
-        (commercant.nomContact && commercant.nomContact.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
-        (commercant.prenomContact && commercant.prenomContact.toLowerCase().includes(this.searchTerm.toLowerCase()));
+        raisonSociale.includes(query) ||
+        adresse.includes(query) ||
+        nomContact.includes(query) ||
+        prenomContact.includes(query);
       
       const matchesStatut = !this.selectedStatut || commercant.statut === this.selectedStatut;
       
       return matchesSearch && matchesStatut;
     });
+
+    this.page = 1;
+    this.updatePagedCommercants();
+  }
+
+  get totalPages(): number {
+    const total = Math.ceil(this.filteredCommercants.length / this.pageSize);
+    return total > 0 ? total : 1;
+  }
+
+  onPageSizeChange(value: string): void {
+    this.pageSize = Number(value);
+    this.page = 1;
+    this.updatePagedCommercants();
+  }
+
+  previousPage(): void {
+    if (this.page > 1) {
+      this.page--;
+      this.updatePagedCommercants();
+    }
+  }
+
+  nextPage(): void {
+    if (this.page < this.totalPages) {
+      this.page++;
+      this.updatePagedCommercants();
+    }
+  }
+
+  private updatePagedCommercants(): void {
+    const startIndex = (this.page - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    this.pagedCommercants = this.filteredCommercants.slice(startIndex, endIndex);
   }
 
   viewDetails(id: number): void {
@@ -108,14 +154,14 @@ export class CommercantListComponent implements OnInit {
 
     // Préparer les données pour l'export
     const dataToExport = this.filteredCommercants.map(commercant => ({
-      'Raison Sociale': commercant.raisonSociale,
+      'Raison Sociale': commercant.raisonSociale || '-',
       'N° Compte': commercant.numeroCompte || '-',
-      'Adresse': commercant.adresse,
-      'Nom Contact': `${commercant.nomContact} ${commercant.prenomContact}`,
-      'Email': commercant.email,
+      'Adresse': commercant.adresse || '-',
+      'Nom Contact': `${commercant.nomContact || ''} ${commercant.prenomContact || ''}`.trim() || '-',
+      'Email': commercant.email || '-',
       'Téléphone': commercant.telephone || '-',
       'Nb TPE': commercant.nombreTpes || 0,
-      'Statut': commercant.statut
+      'Statut': commercant.statut || '-'
     }));
 
     this.excelExportService.exportToExcel(dataToExport, 'liste_commercants', 'Commerçants');

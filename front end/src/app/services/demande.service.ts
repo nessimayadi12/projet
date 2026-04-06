@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -14,8 +14,27 @@ export class DemandeService {
   constructor(private http: HttpClient) { }
 
   getAllDemandes(): Observable<DemandeTPE[]> {
-    return this.http.get<any>(this.apiUrl).pipe(
-      map(response => response.content || response)
+    const params = new HttpParams()
+      .set('page', '0')
+      .set('size', '5000')
+      .set('sort', 'id,desc');
+
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
+      map(response => {
+        if (Array.isArray(response)) {
+          return response as DemandeTPE[];
+        }
+        if (Array.isArray(response?.content)) {
+          return response.content as DemandeTPE[];
+        }
+        if (Array.isArray(response?.data?.content)) {
+          return response.data.content as DemandeTPE[];
+        }
+        if (Array.isArray(response?.data)) {
+          return response.data as DemandeTPE[];
+        }
+        return [];
+      })
     );
   }
 
@@ -44,7 +63,11 @@ export class DemandeService {
   }
 
   affecterTPE(demandeId: number, tpeId: number): Observable<DemandeTPE> {
-    return this.http.post<DemandeTPE>(`${this.apiUrl}/${demandeId}/affecter/${tpeId}`, {});
+    return this.http.post<DemandeTPE>(`${environment.apiUrl}/affectations`, {
+      demandeId,
+      tpeId,
+      commentaire: 'Affectation depuis workflow Demande'
+    });
   }
 
   deleteDemande(id: number): Observable<void> {
@@ -58,12 +81,14 @@ export class DemandeService {
 
   // Rejeter une demande
   rejeterDemande(id: number, motif: string): Observable<DemandeTPE> {
-    return this.http.post<DemandeTPE>(`${this.apiUrl}/${id}/rejeter`, { motif });
+    return this.http.post<DemandeTPE>(`${this.apiUrl}/${id}/rejeter`, motif, {
+      headers: new HttpHeaders({ 'Content-Type': 'text/plain' })
+    });
   }
 
   // Clôturer une demande
-  cloturerDemande(id: number): Observable<DemandeTPE> {
-    return this.http.post<DemandeTPE>(`${this.apiUrl}/${id}/cloturer`, {});
+  cloturerDemande(id: number): Observable<string> {
+    return this.http.patch(`${this.apiUrl}/${id}/cloturer`, null, { responseType: 'text' });
   }
 
   // Ajouter un commentaire

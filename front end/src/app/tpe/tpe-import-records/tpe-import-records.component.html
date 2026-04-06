@@ -1,0 +1,88 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="card-title">Lignes importées</h4>
+              <p class="card-category">Consultation du staging Excel par N_AFFILIATION</p>
+            </div>
+            <button class="btn btn-light" (click)="goToTpeList()">
+              <i class="material-icons">arrow_back</i> Retour TPE
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="text-muted">
+                {{ totalElements }} lignes importées stockées
+              </div>
+              <div class="form-inline">
+                <label class="mr-2 mb-0">Lignes / page</label>
+                <select class="form-control form-control-sm" [value]="size" (change)="onPageSizeChange($event.target.value)">
+                  <option *ngFor="let option of pageSizeOptions" [value]="option">{{ option }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div *ngIf="loading" class="text-center py-4">
+              <p>Chargement des lignes importées...</p>
+            </div>
+
+            <div *ngIf="error" class="alert alert-danger">
+              {{ error }}
+            </div>
+
+            <div *ngIf="!loading && !error" class="table-responsive">
+              <table class="table table-hover table-sm">
+                <thead class="text-primary">
+                  <tr>
+                    <th>Ligne</th>
+                    <th>N_AFFILIATION</th>
+                    <th>Raison sociale</th>
+                    <th>N° Série</th>
+                    <th>N° Terminal</th>
+                    <th>Type</th>
+                    <th>Code agence</th>
+                    <th>Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let record of records">
+                    <td>{{ record.sourceRowNumber }}</td>
+                    <td>{{ record.nAffiliation }}</td>
+                    <td>{{ record.raisonSociale || '-' }}</td>
+                    <td>{{ record.numeroSerie || '-' }}</td>
+                    <td>{{ record.numeroTerminal || '-' }}</td>
+                    <td>{{ record.typeTPE || '-' }}</td>
+                    <td>{{ record.codeAgence || '-' }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="record.active ? 'badge-success' : 'badge-secondary'">
+                        {{ record.active ? 'Oui' : 'Non' }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="records.length === 0">
+                    <td colspan="8" class="text-center">Aucune ligne importée trouvée</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3" *ngIf="totalElements > 0">
+              <button class="btn btn-outline-primary" (click)="previousPage()" [disabled]="page === 0">
+                Précédent
+              </button>
+              <div>
+                Page {{ page + 1 }} / {{ totalPages }} - {{ totalElements }} lignes
+              </div>
+              <button class="btn btn-outline-primary" (click)="nextPage()" [disabled]="page >= totalPages - 1">
+                Suivant
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
