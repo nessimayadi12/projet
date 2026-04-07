@@ -141,7 +141,11 @@ public class TPEExcelImportService {
         rawData.put("N_COMPTE_INTERN", readString(row, headers, formatter, "N_COMPTE_INTERN"));
         rawData.put("GROUP", readString(row, headers, formatter, "GROUP"));
         rawData.put("NUM_SEQ", readString(row, headers, formatter, "NUM_SEQ"));
-        rawData.put("ACTIVE", readBoolean(row, headers, formatter, "ACTIVE"));
+        Boolean active = resolveActiveStatus(row, headers, formatter,
+            readLocalDate(row, headers, formatter, "VALUE_DATE"),
+            readLocalDate(row, headers, formatter, "DATE_AFFILIATION"),
+            readString(row, headers, formatter, "N_TERMINAL"));
+        rawData.put("ACTIVE", active);
         rawData.put("VALUE_DATE", readString(row, headers, formatter, "VALUE_DATE"));
         rawData.put("DATE_AFFILIATION", readString(row, headers, formatter, "DATE_AFFILIATION"));
 
@@ -170,7 +174,7 @@ public class TPEExcelImportService {
         record.setNCompteIntern(readString(row, headers, formatter, "N_COMPTE_INTERN"));
         record.setGroupe(readString(row, headers, formatter, "GROUP"));
         record.setNumSeq(readString(row, headers, formatter, "NUM_SEQ"));
-        record.setActive(readBoolean(row, headers, formatter, "ACTIVE"));
+        record.setActive(active);
         record.setValueDate(readLocalDate(row, headers, formatter, "VALUE_DATE"));
         record.setDateAffiliation(readLocalDate(row, headers, formatter, "DATE_AFFILIATION"));
         record.setRawDataJson(objectMapper.writeValueAsString(rawData));
@@ -205,9 +209,9 @@ public class TPEExcelImportService {
         String nCompteIntern = readString(row, headers, formatter, "N_COMPTE_INTERN");
         String groupe = readString(row, headers, formatter, "GROUP");
         String numSeq = readString(row, headers, formatter, "NUM_SEQ");
-        Boolean active = readBoolean(row, headers, formatter, "ACTIVE");
         LocalDate valueDate = readLocalDate(row, headers, formatter, "VALUE_DATE");
         LocalDate dateAffiliation = readLocalDate(row, headers, formatter, "DATE_AFFILIATION");
+        Boolean active = resolveActiveStatus(row, headers, formatter, valueDate, dateAffiliation, numeroTerminal);
 
         if (numeroSerie == null || numeroSerie.isBlank()) {
             throw new BusinessException("numéro de série manquant (colonnes série introuvables)");
@@ -507,6 +511,38 @@ public class TPEExcelImportService {
                 || "YES".equals(normalized)
                 || "Y".equals(normalized)
                 || "ACTIF".equals(normalized);
+    }
+
+    private Boolean resolveActiveStatus(Row row,
+                                        Map<String, Integer> headers,
+                                        DataFormatter formatter,
+                                        LocalDate valueDate,
+                                        LocalDate dateAffiliation,
+                                        String numeroTerminal) {
+        String rawActive = readString(row, headers, formatter, "ACTIVE");
+        String normalized = rawActive == null ? null : normalizeHeader(rawActive);
+
+        if (normalized != null && !normalized.isBlank()) {
+            if ("1".equals(normalized) || "TRUE".equals(normalized) || "OUI".equals(normalized)
+                    || "YES".equals(normalized) || "Y".equals(normalized) || "ACTIF".equals(normalized)
+                    || "A".equals(normalized) || "ACTIVE".equals(normalized)) {
+                return true;
+            }
+            if ("0".equals(normalized) || "FALSE".equals(normalized) || "NON".equals(normalized)
+                    || "NO".equals(normalized) || "N".equals(normalized) || "INACTIF".equals(normalized)
+                    || "I".equals(normalized) || "INACTIVE".equals(normalized)) {
+                return false;
+            }
+        }
+
+        // Fallback for source files where ACTIVE is missing/unreliable.
+        if (dateAffiliation != null) {
+            return true;
+        }
+        if (valueDate != null && blankToNull(numeroTerminal) != null) {
+            return true;
+        }
+        return false;
     }
 
     private LocalDate readLocalDate(Row row, Map<String, Integer> headers, DataFormatter formatter, String headerName) {
