@@ -15,12 +15,16 @@ import { Observable } from 'rxjs';
 export class TpeListComponent implements OnInit {
   tpes: TPE[] = [];
   filteredTpes: TPE[] = [];
+  pagedTpes: TPE[] = [];
   loading = true;
   error: string | null = null;
   importing = false;
   searchTerm = '';
   selectedStatut: StatutTPE | '' = '';
   statuts = Object.values(StatutTPE);
+  page = 1;
+  pageSize = 25;
+  pageSizeOptions = [10, 25, 50, 100];
 
   // Permissions observables
   canCreateTPE$: Observable<boolean>;
@@ -53,6 +57,7 @@ export class TpeListComponent implements OnInit {
         const items = Array.isArray(data) ? data : [];
         this.tpes = items;
         this.filteredTpes = items;
+        this.updatePagedTpes();
         this.loading = false;
       },
       error: (err) => {
@@ -81,6 +86,40 @@ export class TpeListComponent implements OnInit {
       
       return matchesSearch && matchesStatut;
     });
+
+    this.page = 1;
+    this.updatePagedTpes();
+  }
+
+  get totalPages(): number {
+    const total = Math.ceil(this.filteredTpes.length / this.pageSize);
+    return total > 0 ? total : 1;
+  }
+
+  onPageSizeChange(value: string): void {
+    this.pageSize = Number(value);
+    this.page = 1;
+    this.updatePagedTpes();
+  }
+
+  previousPage(): void {
+    if (this.page > 1) {
+      this.page--;
+      this.updatePagedTpes();
+    }
+  }
+
+  nextPage(): void {
+    if (this.page < this.totalPages) {
+      this.page++;
+      this.updatePagedTpes();
+    }
+  }
+
+  private updatePagedTpes(): void {
+    const startIndex = (this.page - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    this.pagedTpes = this.filteredTpes.slice(startIndex, endIndex);
   }
 
   viewDetails(id: number): void {

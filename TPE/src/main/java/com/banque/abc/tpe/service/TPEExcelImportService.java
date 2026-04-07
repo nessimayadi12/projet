@@ -156,8 +156,9 @@ public class TPEExcelImportService {
         record.setSourceFileName(sourceFileName);
         record.setTypeTPE(firstNonBlank(readString(row, headers, formatter, "TYPE_TPE"), null));
         String resolvedNumeroSerie = resolveNumeroSerie(row, headers, formatter);
-        record.setNumeroSerie(firstNonBlank(resolvedNumeroSerie, numeroAffiliation));
-        record.setNumeroTerminal(readString(row, headers, formatter, "N_TERMINAL"));
+        String normalizedTerminal = normalizeTerminal(readString(row, headers, formatter, "N_TERMINAL"));
+        record.setNumeroSerie(firstNonBlank(resolvedNumeroSerie, normalizedTerminal, numeroAffiliation));
+        record.setNumeroTerminal(normalizedTerminal);
         record.setRaisonSociale(firstNonBlank(readString(row, headers, formatter, "RAISON_SOCIALE"), numeroAffiliation));
         record.setActivite(readString(row, headers, formatter, "ACTIVITE"));
         record.setMcc(readString(row, headers, formatter, "MCC"));
@@ -188,7 +189,7 @@ public class TPEExcelImportService {
         String typeValue = readString(row, headers, formatter, "TYPE_TPE");
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), rawKey);
         String numeroSerie = resolveNumeroSerie(row, headers, formatter);
-        String numeroTerminal = readString(row, headers, formatter, "N_TERMINAL");
+        String numeroTerminal = normalizeTerminal(readString(row, headers, formatter, "N_TERMINAL"));
         String raisonSociale = readString(row, headers, formatter, "RAISON_SOCIALE");
         String activite = readString(row, headers, formatter, "ACTIVITE");
         String mcc = readString(row, headers, formatter, "MCC");
@@ -213,9 +214,11 @@ public class TPEExcelImportService {
         LocalDate dateAffiliation = readLocalDate(row, headers, formatter, "DATE_AFFILIATION");
         Boolean active = resolveActiveStatus(row, headers, formatter, valueDate, dateAffiliation, numeroTerminal);
 
-        if (numeroSerie == null || numeroSerie.isBlank()) {
-            throw new BusinessException("numéro de série manquant (colonnes série introuvables)");
+        if ((numeroSerie == null || numeroSerie.isBlank()) && (numeroTerminal == null || numeroTerminal.isBlank())) {
+            throw new BusinessException("numéro de série et numéro terminal manquants");
         }
+
+        numeroSerie = firstNonBlank(numeroSerie, "SERIE-" + numeroTerminal);
 
         String safeRaisonSociale = firstNonBlank(raisonSociale, numeroAffiliation, numeroSerie);
         String safeActivite = blankToNull(activite);
@@ -386,13 +389,19 @@ public class TPEExcelImportService {
     }
 
     private TPE findOrCreateTPE(String numeroSerie, String numeroAffiliation, String numeroTerminal) {
-        TPE tpe = tpeRepository.findByNumeroAffiliation(numeroAffiliation)
-                .orElseGet(() -> tpeRepository.findByNumeroSerie(numeroSerie).orElseGet(() -> {
-                    if (numeroTerminal != null && !numeroTerminal.isBlank()) {
-                        return tpeRepository.findByNumeroTerminal(numeroTerminal).orElse(null);
-                    }
-                    return null;
-                }));
+        TPE tpe = null;
+
+        if (numeroTerminal != null && !numeroTerminal.isBlank()) {
+            tpe = tpeRepository.findByNumeroTerminal(numeroTerminal).orElse(null);
+        }
+
+        if (tpe == null && numeroSerie != null && !numeroSerie.isBlank()) {
+            tpe = tpeRepository.findByNumeroSerie(numeroSerie).orElse(null);
+        }
+
+        if (tpe == null && numeroAffiliation != null && !numeroAffiliation.isBlank()) {
+            tpe = tpeRepository.findByNumeroAffiliation(numeroAffiliation).orElse(null);
+        }
 
         return tpe != null ? tpe : new TPE();
     }
@@ -674,6 +683,26 @@ public class TPEExcelImportService {
         } catch (NumberFormatException ex) {
             String digitsOnly = normalized.replaceAll("\\D", "");
             return digitsOnly.isBlank() ? normalized : digitsOnly;
+        }
+    }
+
+    private String normalizeTerminal(String value) {
+        String raw = blankToNull(value);
+        if (raw == null) {
+            return null;
+        }
+
+        String normalized = raw.replace(" ", "").replace(',', '.');
+        try {
+            BigDecimal bigDecimal = new BigDecimal(normalized);
+            String plain = bigDecimal.toPlainString();
+            if (plain.contains(".")) {
+                plain = plain.substring(0, plain.indexOf('.'));
+            }
+            String digitsOnly = plain.replaceAll("\\D", "");
+            return digitsOnly.isBlank() ? plain : digitsOnly;
+        } catch (NumberFormatException ex) {
+            return normalized;
         }
     }
 
