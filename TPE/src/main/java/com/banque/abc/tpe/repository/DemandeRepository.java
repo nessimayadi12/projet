@@ -38,4 +38,7 @@ public interface DemandeRepository extends JpaRepository<Demande, Long>, JpaSpec
     Long countByDateBetween(LocalDateTime debut, LocalDateTime fin);
     
     boolean existsByReference(String reference);
+
+    @Query("SELECT d FROM Demande d WHERE d.reference LIKE CONCAT(:prefix, '%') AND d.statut = :statut")
+    List<Demande> findByReferenceStartingWithAndStatut(String prefix, StatutDemande statut);
 }

@@ -99,6 +99,8 @@ public class TPEExcelImportService {
                 }
             }
 
+            reconcileImportedValidatedDemandes(result);
+
             auditService.logAction("IMPORT", "TPE", null,
                     String.format("Import Excel terminé: %d lignes stockées, %d créées, %d mises à jour, %d affectations, %d ignorées",
                         result.getStoredRows(), result.getImportedRows(), result.getUpdatedRows(), result.getAffectedRows(), result.getSkippedRows()),
@@ -259,6 +261,53 @@ public class TPEExcelImportService {
         if (!Boolean.TRUE.equals(active)) {
             deactivateActiveAffectationIfNeeded(tpe);
         }
+    }
+
+    private void reconcileImportedValidatedDemandes(TPEImportResult result) {
+        List<Demande> pendingDemandes = demandeRepository.findByReferenceStartingWithAndStatut("IMP-", StatutDemande.VALIDEE_MONETIQUE);
+        for (Demande demande : pendingDemandes) {
+            if (demande.getCommercant() == null) {
+                continue;
+            }
+
+            TPE tpe = resolveTpeForDemande(demande);
+            if (tpe == null) {
+                continue;
+            }
+
+            tpe.setCommercant(demande.getCommercant());
+            tpe.setStatut(StatutTPE.AFFECTE);
+            tpeRepository.save(tpe);
+
+            LocalDate effectiveDate = demande.getValueDate() != null
+                    ? demande.getValueDate().toLocalDate()
+                    : LocalDate.now();
+            upsertActiveAffectation(tpe, demande.getCommercant(), demande, effectiveDate, result);
+
+            demande.setStatut(StatutDemande.AFFECTEE);
+            demande.setDateCloture(LocalDateTime.now());
+            demandeRepository.save(demande);
+        }
+    }
+
+    private TPE resolveTpeForDemande(Demande demande) {
+        String numeroTerminal = normalizeTerminal(demande.getNumeroTerminal());
+        if (numeroTerminal != null) {
+            Optional<TPE> byTerminal = tpeRepository.findByNumeroTerminal(numeroTerminal);
+            if (byTerminal.isPresent()) {
+                return byTerminal.get();
+            }
+        }
+
+        String serie = blankToNull(demande.getSerieTpe());
+        if (serie != null) {
+            Optional<TPE> bySerie = tpeRepository.findByNumeroSerie(serie);
+            if (bySerie.isPresent()) {
+                return bySerie.get();
+            }
+        }
+
+        return null;
     }
 
     private Demande upsertDemande(Row row,
