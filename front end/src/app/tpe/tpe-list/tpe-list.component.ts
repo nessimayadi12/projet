@@ -71,16 +71,26 @@ export class TpeListComponent implements OnInit {
   filterTPEs(): void {
     this.filteredTpes = this.tpes.filter(tpe => {
       const serie = (tpe.numeroSerie || '').toLowerCase();
+      const terminal = (tpe.numeroTerminal || '').toLowerCase();
+      const affiliation = (tpe.numeroAffiliation || '').toLowerCase();
       const marque = (tpe.marque || '').toLowerCase();
       const modele = (tpe.modele || '').toLowerCase();
       const commercant = (tpe.commercantActuelNom || '').toLowerCase();
+      const raisonSociale = (tpe.raisonSociale || '').toLowerCase();
       const query = (this.searchTerm || '').toLowerCase();
+      const normalizedQuery = this.normalizeForSearch(query);
 
       const matchesSearch = !this.searchTerm || 
         serie.includes(query) ||
+        terminal.includes(query) ||
+        affiliation.includes(query) ||
         marque.includes(query) ||
         modele.includes(query) ||
-        commercant.includes(query);
+        commercant.includes(query) ||
+        raisonSociale.includes(query) ||
+        this.normalizeForSearch(serie).includes(normalizedQuery) ||
+        this.normalizeForSearch(terminal).includes(normalizedQuery) ||
+        this.normalizeForSearch(affiliation).includes(normalizedQuery);
       
       const matchesStatut = !this.selectedStatut || tpe.statut === this.selectedStatut;
       
@@ -220,5 +230,9 @@ export class TpeListComponent implements OnInit {
 
   getStatutLabel(statut: StatutTPE): string {
     return (statut || '').replace(/_/g, ' ');
+  }
+
+  private normalizeForSearch(value: string): string {
+    return (value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 }

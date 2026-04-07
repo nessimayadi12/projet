@@ -293,6 +293,11 @@ public class TPEExcelImportService {
             if (byTerminal.isPresent()) {
                 return byTerminal.get();
             }
+
+            Optional<TPE> byCanonicalTerminal = findByCanonicalTerminal(numeroTerminal);
+            if (byCanonicalTerminal.isPresent()) {
+                return byCanonicalTerminal.get();
+            }
         }
 
         String serie = blankToNull(demande.getSerieTpe());
@@ -300,6 +305,11 @@ public class TPEExcelImportService {
             Optional<TPE> bySerie = tpeRepository.findByNumeroSerie(serie);
             if (bySerie.isPresent()) {
                 return bySerie.get();
+            }
+
+            Optional<TPE> byCanonicalSerie = findByCanonicalSerie(serie);
+            if (byCanonicalSerie.isPresent()) {
+                return byCanonicalSerie.get();
             }
         }
 
@@ -438,10 +448,16 @@ public class TPEExcelImportService {
 
         if (numeroTerminal != null && !numeroTerminal.isBlank()) {
             tpe = tpeRepository.findByNumeroTerminal(numeroTerminal).orElse(null);
+            if (tpe == null) {
+                tpe = findByCanonicalTerminal(numeroTerminal).orElse(null);
+            }
         }
 
         if (tpe == null && numeroSerie != null && !numeroSerie.isBlank()) {
             tpe = tpeRepository.findByNumeroSerie(numeroSerie).orElse(null);
+            if (tpe == null) {
+                tpe = findByCanonicalSerie(numeroSerie).orElse(null);
+            }
         }
 
         if (tpe == null && numeroAffiliation != null && !numeroAffiliation.isBlank()) {
@@ -749,6 +765,37 @@ public class TPEExcelImportService {
         } catch (NumberFormatException ex) {
             return normalized;
         }
+    }
+
+    private Optional<TPE> findByCanonicalTerminal(String terminal) {
+        String canonicalTerminal = canonicalizeKey(terminal);
+        if (canonicalTerminal == null) {
+            return Optional.empty();
+        }
+
+        return tpeRepository.findAll().stream()
+                .filter(tpe -> canonicalTerminal.equals(canonicalizeKey(tpe.getNumeroTerminal())))
+                .findFirst();
+    }
+
+    private Optional<TPE> findByCanonicalSerie(String serie) {
+        String canonicalSerie = canonicalizeKey(serie);
+        if (canonicalSerie == null) {
+            return Optional.empty();
+        }
+
+        return tpeRepository.findAll().stream()
+                .filter(tpe -> canonicalSerie.equals(canonicalizeKey(tpe.getNumeroSerie())))
+                .findFirst();
+    }
+
+    private String canonicalizeKey(String value) {
+        String raw = blankToNull(value);
+        if (raw == null) {
+            return null;
+        }
+        String canonical = raw.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
+        return canonical.isBlank() ? null : canonical;
     }
 
     private String resolveSafeMerchantEmail(Long commercantId, String email) {
