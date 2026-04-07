@@ -21,7 +21,7 @@ import java.time.LocalDate;
 @Builder
 public class TPEImportRecord extends BaseEntity {
 
-    @Column(name = "n_affiliation", nullable = false, unique = true)
+    @Column(name = "n_affiliation", nullable = false)
     private String nAffiliation;
 
     @Column(name = "source_row_number", nullable = false)

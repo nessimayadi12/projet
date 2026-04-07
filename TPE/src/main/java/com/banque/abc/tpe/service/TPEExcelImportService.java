@@ -147,8 +147,7 @@ public class TPEExcelImportService {
         rawData.put("VALUE_DATE", readString(row, headers, formatter, "VALUE_DATE"));
         rawData.put("DATE_AFFILIATION", readString(row, headers, formatter, "DATE_AFFILIATION"));
 
-        TPEImportRecord record = tpeImportRecordRepository.findByNAffiliation(numeroAffiliation)
-                .orElseGet(TPEImportRecord::new);
+        TPEImportRecord record = new TPEImportRecord();
         record.setNAffiliation(numeroAffiliation);
         record.setSourceRowNumber(sourceRowNumber);
         record.setSourceFileName(sourceFileName);
@@ -216,7 +215,7 @@ public class TPEExcelImportService {
             throw new BusinessException("numéro de série et numéro terminal manquants");
         }
 
-        numeroSerie = firstNonBlank(numeroSerie, "SERIE-" + numeroTerminal);
+        numeroSerie = resolveSafeNumeroSerie(numeroSerie, numeroTerminal, numeroAffiliation, null);
 
         String safeRaisonSociale = firstNonBlank(raisonSociale, numeroAffiliation, numeroSerie);
         String safeActivite = blankToNull(activite);
@@ -229,7 +228,7 @@ public class TPEExcelImportService {
         boolean isNew = tpe.getId() == null;
 
         tpe.setTypeTPE(parseTypeTPE(typeValue));
-        tpe.setNumeroSerie(numeroSerie);
+        tpe.setNumeroSerie(resolveSafeNumeroSerie(numeroSerie, numeroTerminal, numeroAffiliation, tpe.getId()));
         tpe.setNumeroTerminal(blankToNull(numeroTerminal));
         tpe.setNumeroAffiliation(blankToNull(numeroAffiliation != null ? numeroAffiliation : numeroSerie));
         tpe.setStatut(Boolean.TRUE.equals(active) ? StatutTPE.AFFECTE : StatutTPE.DISPONIBLE);
@@ -465,6 +464,42 @@ public class TPEExcelImportService {
         }
 
         return tpe != null ? tpe : new TPE();
+    }
+
+    private String resolveSafeNumeroSerie(String numeroSerie,
+                                          String numeroTerminal,
+                                          String numeroAffiliation,
+                                          Long currentTpeId) {
+        String baseSerie = firstNonBlank(numeroSerie, numeroTerminal != null ? "SERIE-" + numeroTerminal : null);
+        if (baseSerie == null) {
+            throw new BusinessException("numéro de série introuvable");
+        }
+
+        Optional<TPE> existingBySerie = tpeRepository.findByNumeroSerie(baseSerie);
+        if (existingBySerie.isEmpty()) {
+            return baseSerie;
+        }
+
+        if (currentTpeId != null && existingBySerie.get().getId().equals(currentTpeId)) {
+            return baseSerie;
+        }
+
+        String candidate = firstNonBlank(
+                numeroTerminal != null ? "SERIE-" + numeroTerminal : null,
+                numeroAffiliation != null ? "SERIE-" + numeroAffiliation : null,
+                baseSerie + "-IMP"
+        );
+
+        Optional<TPE> existingByCandidate = tpeRepository.findByNumeroSerie(candidate);
+        if (existingByCandidate.isEmpty()) {
+            return candidate;
+        }
+
+        if (currentTpeId != null && existingByCandidate.get().getId().equals(currentTpeId)) {
+            return candidate;
+        }
+
+        return candidate + "-" + Math.abs(candidate.hashCode());
     }
 
     private String resolveNumeroSerie(Row row, Map<String, Integer> headers, DataFormatter formatter) {
