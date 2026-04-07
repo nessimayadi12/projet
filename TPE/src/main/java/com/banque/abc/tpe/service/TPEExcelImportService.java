@@ -224,7 +224,7 @@ public class TPEExcelImportService {
 
         Commercant commercant = findOrCreateCommercant(safeRaisonSociale, safeActivite, safeNumeroCompte, numeroAffiliation, adresse, codePostal, safeCodeAgence, telephone, email, loyer, typeValue);
 
-        TPE tpe = findOrCreateTPE(numeroSerie, numeroAffiliation, numeroTerminal);
+        TPE tpe = findOrCreateTPE(numeroSerie, numeroTerminal);
         boolean isNew = tpe.getId() == null;
 
         tpe.setTypeTPE(parseTypeTPE(typeValue));
@@ -442,7 +442,7 @@ public class TPEExcelImportService {
         return commercantRepository.save(commercant);
     }
 
-    private TPE findOrCreateTPE(String numeroSerie, String numeroAffiliation, String numeroTerminal) {
+    private TPE findOrCreateTPE(String numeroSerie, String numeroTerminal) {
         TPE tpe = null;
 
         if (numeroTerminal != null && !numeroTerminal.isBlank()) {
@@ -457,10 +457,6 @@ public class TPEExcelImportService {
             if (tpe == null) {
                 tpe = findByCanonicalSerie(numeroSerie).orElse(null);
             }
-        }
-
-        if (tpe == null && numeroAffiliation != null && !numeroAffiliation.isBlank()) {
-            tpe = tpeRepository.findByNumeroAffiliation(numeroAffiliation).orElse(null);
         }
 
         return tpe != null ? tpe : new TPE();
