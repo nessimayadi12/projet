@@ -73,6 +73,9 @@ public class FichierBancaireService {
                 }
                 
                 String numeroCompte = commercant.getNumeroCompte();
+                String narrative = commercant.getRaisonSociale() != null && !commercant.getRaisonSociale().isBlank()
+                    ? commercant.getRaisonSociale().trim()
+                    : numeroTerminal;
                 String numeroAffiliation = tpe.getNumeroAffiliation() != null ? tpe.getNumeroAffiliation() : numeroTerminal;
                 
                 // Type de transaction: "10" ou "20"
@@ -80,12 +83,12 @@ public class FichierBancaireService {
                 
                 if ("10".equals(typeTransaction)) {
                     // Traitement des transactions de type 10 (Commissions)
-                    compteurEcritures += traiterType10(line, numeroCompte, numeroAffiliation, numeroTerminal, sessionLocalDate, sessionDate);
+                    compteurEcritures += traiterType10(line, numeroCompte, numeroAffiliation, numeroTerminal, narrative, sessionLocalDate, sessionDate);
                     
                 } else if ("20".equals(typeTransaction)) {
                     // Traitement des transactions de type 20 (Paiements)
                     // Note: Sans les tables PORTEUR, FM_CURRENCY, RATES, on traite uniquement en TND
-                    compteurEcritures += traiterType20(line, numeroCompte, numeroTerminal, sessionLocalDate, sessionDate);
+                    compteurEcritures += traiterType20(line, numeroCompte, numeroTerminal, narrative, sessionLocalDate, sessionDate);
                 }
                 
             } catch (Exception e) {
@@ -100,8 +103,8 @@ public class FichierBancaireService {
      * Traite les transactions de type 10 (Commissions) - Génère écritures GL
      * Chaque montant non nul génère 2 écritures: 1 DR (principal) + 1 CR (commission)
      */
-    private int traiterType10(String line, String numeroCompte, String numeroAffiliation, 
-                              String numeroTerminal, LocalDate sessionLocalDate, String sessionDate) {
+    private int traiterType10(String line, String numeroCompte, String numeroAffiliation,
+                              String numeroTerminal, String narrative, LocalDate sessionLocalDate, String sessionDate) {
         int count = 0;
         
         try {
@@ -115,8 +118,7 @@ public class FichierBancaireService {
             // Extraire CLIENT du compte (position 5, 6 chars) - ex: "28000000501100000181" → "000501"
             String client = numeroCompte.length() >= 11 ? numeroCompte.substring(5, 11) : "000000";
             
-            // Construire NARRATIVE au format: TPE-{BRANCH}-{SESSION_DATE}-{PROCESSING_DATE}-{TERMINAL}
-            String narrative = String.format("TPE-%s-%s-%s-%s", branch, sessionDateFile, processingDate, numeroTerminal);
+            // NARRATIVE = raison sociale du commerçant
             
             // Extraire les 3 paires (montant, commission) possibles
             // Position 219: premier montant/commission
@@ -207,8 +209,8 @@ public class FichierBancaireService {
      * Traite les transactions de type 20 (Paiements) - Génère écritures sur compte client
      * Crée 2 écritures: 1 CADV (crédit avance) + 1 CTPE (débit commission)
      */
-    private int traiterType20(String line, String numeroCompte, String numeroTerminal, 
-                              LocalDate sessionLocalDate, String sessionDate) {
+    private int traiterType20(String line, String numeroCompte, String numeroTerminal,
+                              String narrative, LocalDate sessionLocalDate, String sessionDate) {
         int count = 0;
         
         try {
@@ -222,8 +224,7 @@ public class FichierBancaireService {
             // Extraire CLIENT du compte (position 5, 6 chars)
             String client = numeroCompte.length() >= 11 ? numeroCompte.substring(5, 11) : "000000";
             
-            // Construire NARRATIVE au format: TPE-{BRANCH}-{SESSION_DATE}-{PROCESSING_DATE}-{TERMINAL}
-            String narrative = String.format("TPE-%s-%s-%s-%s", branch, sessionDateFile, processingDate, numeroTerminal);
+            // NARRATIVE = raison sociale du commerçant
             
             // Montant: position 215, longueur 12
             double montant = parseMontant(extractSubstring(line, 215, 12)) / 1000.0;

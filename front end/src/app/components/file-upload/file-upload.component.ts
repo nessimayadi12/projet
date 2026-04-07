@@ -230,7 +230,7 @@ export class FileUploadComponent implements OnInit {
             continue;
           }
           
-          const narrative = line.substring(50, 75).trim();
+          const narrative = (tpeInfo.raisonSociale || line.substring(50, 75).trim()).trim();
           const montantBrut = line.substring(242, 254).trim(); // Position 242, 12 caractères
           const commission = line.substring(219, 231).trim(); // Position 219, 12 caractères
           
@@ -353,7 +353,7 @@ export class FileUploadComponent implements OnInit {
               continue;
             }
             
-            const narrative = line.substring(50, 75).trim();
+            const narrative = (tpeInfo.raisonSociale || line.substring(50, 75).trim()).trim();
             const montant = line.substring(215, 227).trim(); // Position 215, 12 caractères
             const ref = line.substring(209, 215).trim(); // Position 209, 6 caractères
             const tranDate = line.substring(203, 209).trim(); // Position 203, 6 caractères

@@ -14,4 +14,5 @@ public class TPEInfoDTO {
     private String branch;
     private String profitCentre;
     private String clientId;
+    private String raisonSociale;
 }

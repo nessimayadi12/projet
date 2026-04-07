@@ -38,6 +38,7 @@ public class TPEPostingService {
         
         if (tpeOpt.isPresent()) {
             TPE tpe = tpeOpt.get();
+            String raisonSociale = tpe.getCommercant() != null ? tpe.getCommercant().getRaisonSociale() : null;
             // Format du compte simulé : "branch-profitCentre-clientId-accountNo"
             String nCompte = "999-TR-910234-150.1103.0000"; // En production, vient de la base
             
@@ -47,7 +48,8 @@ public class TPEPostingService {
                 true,
                 "999",
                 "TR",
-                "910234"
+                "910234",
+                raisonSociale
             );
         }
         
@@ -58,7 +60,8 @@ public class TPEPostingService {
             true, // Mettre à false en production pour rejeter
             "999",
             "TR",
-            "910234"
+            "910234",
+            null
         );
     }
 

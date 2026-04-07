@@ -11,6 +11,7 @@ export interface TPEInfo {
   branch: string;
   profitCentre: string;
   clientId: string;
+  raisonSociale?: string;
 }
 
 export interface PorteurInfo {
