@@ -101,7 +101,7 @@ public class TPEPostingCompController {
             return ResponseEntity.ok(tpeInfo);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new TPEInfoDTO(affiliation, null, false, null, null, null));
+                    .body(new TPEInfoDTO(affiliation, null, false, null, null, null, null));
         }
     }
 
