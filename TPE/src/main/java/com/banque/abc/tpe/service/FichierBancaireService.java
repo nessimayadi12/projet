@@ -108,95 +108,89 @@ public class FichierBancaireService {
         int count = 0;
         
         try {
-            // Extraire éléments du fichier
-            String sessionDateFile = extractSubstring(line, 10, 6); // Position 10, 6 chars: "180226"
-            String processingDate = sessionDate; // Date de traitement actuelle
-            
-            // Extraire BRANCH du compte (position 2, 3 chars) - ex: "28000000501" → "000"
-            String branch = numeroCompte.length() >= 5 ? numeroCompte.substring(2, 5) : "000";
-            
-            // Extraire CLIENT du compte (position 5, 6 chars) - ex: "28000000501100000181" → "000501"
-            String client = numeroCompte.length() >= 11 ? numeroCompte.substring(5, 11) : "000000";
-            
-            // NARRATIVE = raison sociale du commerçant
-            
-            // Extraire les 3 paires (montant, commission) possibles
-            // Position 219: premier montant/commission
-            // Position 231: deuxième montant/commission  
-            // Position 243: troisième montant/commission (si présent)
-            
-            double[] montants = new double[3];
-            double[] commissions = new double[3];
-            String[] accountSuffixes = {"0000", "0001", "0002"};
-            
-            // Montant 1: position 219, taille 12
-            montants[0] = parseMontant(extractSubstring(line, 219, 12)) / 1000.0;
-            // Commission 1: position 248, taille 12
-            commissions[0] = parseMontant(extractSubstring(line, 248, 12)) / 10000.0;
-            
-            // Montant 2: position 231, taille 12  
-            montants[1] = parseMontant(extractSubstring(line, 231, 12)) / 1000.0;
-            // Commission 2: position 260, taille 12
-            commissions[1] = parseMontant(extractSubstring(line, 260, 12)) / 10000.0;
-            
-            // Montant 3: position 272, taille 12 (si ligne assez longue)
-            if (line.length() >= 284) {
-                montants[2] = parseMontant(extractSubstring(line, 272, 12)) / 1000.0;
-                // Commission 3: position 284, taille 12
-                if (line.length() >= 296) {
-                    commissions[2] = parseMontant(extractSubstring(line, 284, 12)) / 10000.0;
-                }
-            }
-            
-            // Créer écritures pour chaque paire non nulle
-            for (int i = 0; i < 3; i++) {
-                if (montants[i] > 0) {
-                    // Date de valeur = sessionLocalDate + 3 jours (approximation)
-                    LocalDate dateValeur = sessionLocalDate.plusDays(3);
-                    
-                    // Écriture 1: DR sur compte 151.1105.xxxx
-                    TPEPostingComp ecriture1 = TPEPostingComp.builder()
-                            .branch(branch)
-                            .profitCenter("TR")
-                            .client(client)
-                            .account("151.1105." + accountSuffixes[i])
-                            .rbGl("G")
-                            .ccy("TND")
-                            .seqNo("1")
-                            .ref(numeroTerminal)
-                            .tranType("")
-                            .date(dateValeur)
-                            .amount(BigDecimal.valueOf(montants[i]).setScale(3, RoundingMode.HALF_UP))
-                            .crDr("DR")
-                            .narrative(narrative)
-                            .sessionDate(sessionDate)
-                            .build();
-                    tpePostingCompRepository.save(ecriture1);
-                    count++;
-                    
-                    // Écriture 2: CR commission sur 707.9102.1000
-                    if (commissions[i] > 0) {
-                        TPEPostingComp ecriture2 = TPEPostingComp.builder()
-                                .branch(branch)
-                                .profitCenter("TR")
-                                .client(client)
-                                .account("707.9102.1000")
-                                .rbGl("G")
-                                .ccy("TND")
-                                .seqNo("1")
-                                .ref(numeroTerminal)
-                                .tranType("")
-                                .date(sessionLocalDate)
-                                .amount(BigDecimal.valueOf(commissions[i]).setScale(3, RoundingMode.HALF_UP))
-                                .crDr("CR")
-                                .narrative(narrative)
-                                .sessionDate(sessionDate)
-                                .build();
-                        tpePostingCompRepository.save(ecriture2);
-                        count++;
-                    }
-                }
-            }
+            double montantPrincipal = parseMontant(extractSubstring(line, 242, 12)) / 1000.0;
+            double montantCommission = parseMontant(extractSubstring(line, 219, 12)) / 10000.0;
+
+            String client = numeroCompte.length() >= 11
+                ? numeroCompte.substring(5, 11)
+                : "000000";
+            String narrativeNettoyee = extractSubstring(line, 50, 25).trim();
+
+            TPEPostingComp ecriture1 = TPEPostingComp.builder()
+                    .branch("999")
+                    .profitCenter("TR")
+                    .client(client)
+                    .account("150.1103.0000")
+                    .rbGl("G")
+                    .ccy("TND")
+                    .seqNo("1")
+                    .ref(numeroAffiliation)
+                    .tranType("")
+                    .date(sessionLocalDate)
+                    .amount(BigDecimal.valueOf(montantPrincipal).setScale(3, RoundingMode.HALF_UP))
+                    .crDr("DR")
+                    .narrative(narrativeNettoyee)
+                    .sessionDate(sessionDate)
+                    .build();
+            tpePostingCompRepository.save(ecriture1);
+            count++;
+
+            TPEPostingComp ecriture2 = TPEPostingComp.builder()
+                    .branch("999")
+                    .profitCenter("TR")
+                    .client(client)
+                    .account("151.1105.0000")
+                    .rbGl("G")
+                    .ccy("TND")
+                    .seqNo("1")
+                    .ref(numeroAffiliation)
+                    .tranType("")
+                    .date(sessionLocalDate)
+                    .amount(BigDecimal.valueOf(montantPrincipal).setScale(3, RoundingMode.HALF_UP))
+                    .crDr("CR")
+                    .narrative(narrativeNettoyee)
+                    .sessionDate(sessionDate)
+                    .build();
+            tpePostingCompRepository.save(ecriture2);
+            count++;
+
+            TPEPostingComp ecriture3 = TPEPostingComp.builder()
+                    .branch("999")
+                    .profitCenter("TR")
+                    .client(client)
+                    .account("601.9106.0000")
+                    .rbGl("G")
+                    .ccy("TND")
+                    .seqNo("1")
+                    .ref(numeroAffiliation)
+                    .tranType("")
+                    .date(sessionLocalDate)
+                    .amount(BigDecimal.valueOf(montantCommission).setScale(3, RoundingMode.HALF_UP))
+                    .crDr("DR")
+                    .narrative(narrativeNettoyee)
+                    .sessionDate(sessionDate)
+                    .build();
+            tpePostingCompRepository.save(ecriture3);
+            count++;
+
+            TPEPostingComp ecriture4 = TPEPostingComp.builder()
+                    .branch("999")
+                    .profitCenter("TR")
+                    .client(client)
+                    .account("150.1103.0000")
+                    .rbGl("G")
+                    .ccy("TND")
+                    .seqNo("1")
+                    .ref(numeroAffiliation)
+                    .tranType("")
+                    .date(sessionLocalDate)
+                    .amount(BigDecimal.valueOf(montantCommission).setScale(3, RoundingMode.HALF_UP))
+                    .crDr("CR")
+                    .narrative(narrativeNettoyee)
+                    .sessionDate(sessionDate)
+                    .build();
+            tpePostingCompRepository.save(ecriture4);
+            count++;
             
         } catch (Exception e) {
             log.error("Erreur traitement Type 10", e);
