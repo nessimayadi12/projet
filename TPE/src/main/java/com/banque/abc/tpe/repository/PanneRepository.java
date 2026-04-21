@@ -29,6 +29,9 @@ public interface PanneRepository extends JpaRepository<Panne, Long>, JpaSpecific
     
     @Query("SELECT COUNT(p) FROM Panne p WHERE p.statut IN ('DECLAREE', 'DIAGNOSTIQUEE', 'EN_REPARATION')")
     Long countPannesEnCours();
+
+    @Query("SELECT COUNT(p) FROM Panne p WHERE p.statut = :statut")
+    Long countByStatut(StatutPanne statut);
     
     @Query("SELECT p.statut, COUNT(p) FROM Panne p GROUP BY p.statut")
     List<Object[]> countByStatutGrouped();
@@ -50,6 +53,9 @@ public interface PanneRepository extends JpaRepository<Panne, Long>, JpaSpecific
     
     @Query("SELECT p.statut, COUNT(p) as cnt FROM Panne p WHERE p.dateDeclaration BETWEEN :debut AND :fin GROUP BY p.statut")
     List<Object[]> countByDateBetweenGrouped(LocalDateTime debut, LocalDateTime fin);
+
+    @Query(value = "SELECT DAYOFWEEK(p.date_declaration) AS day_of_week, CASE WHEN HOUR(p.date_declaration) < 6 THEN '00h-06h' WHEN HOUR(p.date_declaration) < 12 THEN '06h-12h' WHEN HOUR(p.date_declaration) < 18 THEN '12h-18h' ELSE '18h-24h' END AS time_slot, COUNT(*) AS total FROM pannes p GROUP BY DAYOFWEEK(p.date_declaration), CASE WHEN HOUR(p.date_declaration) < 6 THEN '00h-06h' WHEN HOUR(p.date_declaration) < 12 THEN '06h-12h' WHEN HOUR(p.date_declaration) < 18 THEN '12h-18h' ELSE '18h-24h' END ORDER BY day_of_week, time_slot", nativeQuery = true)
+    List<Object[]> countHeatmapByDayAndPeriod();
     
     @Query("SELECT p.statut, COUNT(p) as frequency FROM Panne p GROUP BY p.statut ORDER BY frequency DESC")
     List<Object[]> findTopPannesByFrequency();

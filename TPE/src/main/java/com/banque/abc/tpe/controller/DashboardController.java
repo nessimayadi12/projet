@@ -73,6 +73,24 @@ public class DashboardController {
     }
 
     /**
+     * Obtenir l'évolution du parc TPE par statut sur les 6 derniers mois
+     */
+    @GetMapping("/evolution-tpe")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<List<Map<String, Object>>> getEvolutionTpe() {
+        return ResponseEntity.ok(dashboardService.getEvolutionTpe());
+    }
+
+    /**
+     * Obtenir les statistiques du parc TPE par agence et statut
+     */
+    @GetMapping("/stats-par-agence")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
+    public ResponseEntity<List<Map<String, Object>>> getStatistiquesParAgence() {
+        return ResponseEntity.ok(dashboardService.getStatistiquesParAgence());
+    }
+
+    /**
      * Obtenir les pannes par période
      */
     @GetMapping("/pannes-periode")
@@ -107,6 +125,15 @@ public class DashboardController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<List<Map<String, Object>>> getTopPannes() {
         return ResponseEntity.ok(dashboardService.getTopPannes());
+    }
+
+    /**
+     * Obtenir la heatmap des pannes par jour et plage horaire
+     */
+    @GetMapping("/heatmap-pannes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<List<Map<String, Object>>> getHeatmapPannes() {
+        return ResponseEntity.ok(dashboardService.getHeatmapPannes());
     }
 
     /**

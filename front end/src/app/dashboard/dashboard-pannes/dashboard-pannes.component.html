@@ -145,7 +145,7 @@
                 <i class="material-icons">settings</i>
               </div>
               <p class="card-category">Maint. Préventive</p>
-              <h3 class="card-title">12</h3>
+              <h3 class="card-title">{{ stats.tpeEnMaintenance || 0 }}</h3>
             </div>
             <div class="card-footer">
               <div class="stats">
@@ -161,13 +161,11 @@
               <div class="card-icon">
                 <i class="material-icons">shopping_cart</i>
               </div>
-              <p class="card-category">En Attente Pièces</p>
-              <h3 class="card-title">3</h3>
+              <p class="card-category">En Réparation</p>
+              <h3 class="card-title">{{ stats.pannesEnReparation || stats.pannesEnCours || 0 }}</h3>
             </div>
             <div class="card-footer">
-              <div class="stats">
-                <i class="material-icons">hourglass_empty</i> Commande en cours
-              </div>
+              <div class="stats"><i class="material-icons">hourglass_empty</i> Suivi des pannes</div>
             </div>
           </div>
         </div>

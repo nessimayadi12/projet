@@ -36,6 +36,9 @@ public interface DemandeRepository extends JpaRepository<Demande, Long>, JpaSpec
     
     @Query("SELECT COUNT(d) FROM Demande d WHERE d.createdDate BETWEEN :debut AND :fin")
     Long countByDateBetween(LocalDateTime debut, LocalDateTime fin);
+
+    @Query(value = "SELECT AVG(TIMESTAMPDIFF(HOUR, d.created_date, COALESCE(d.date_validation, d.date_cloture))) FROM demandes d WHERE COALESCE(d.date_validation, d.date_cloture) IS NOT NULL", nativeQuery = true)
+    Double calculateAverageTreatmentDelayHours();
     
     boolean existsByReference(String reference);
 

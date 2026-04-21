@@ -19,6 +19,7 @@ export interface DashboardStats {
   // Pannes
   pannesEnCours: number;
   pannesResoluesCeMois: number;
+  pannesEnReparation: number;
   mttr: number; // Mean Time To Repair
   tauxPanne: number;
 

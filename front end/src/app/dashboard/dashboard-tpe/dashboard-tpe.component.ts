@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DashboardService } from '../../services/dashboard.service';
 import { Chart } from 'chart.js/auto';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard-tpe',
@@ -9,6 +10,8 @@ import { Chart } from 'chart.js/auto';
 })
 export class DashboardTpeComponent implements OnInit {
   stats: any = null;
+  evolutionData: any[] = [];
+  agenceData: any[] = [];
   loading = true;
   error: string | null = null;
 
@@ -25,7 +28,7 @@ export class DashboardTpeComponent implements OnInit {
 
   statuts = ['TOUS', 'DISPONIBLE', 'AFFECTE', 'EN_PANNE', 'MAINTENANCE', 'HORS_SERVICE'];
   marques: string[] = [];
-  agences: string[] = [];
+  agences: string[] = ['TOUTES'];
 
   constructor(private dashboardService: DashboardService) { }
 
@@ -35,10 +38,17 @@ export class DashboardTpeComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
-    this.dashboardService.getStats().subscribe({
-      next: (data) => {
-        this.stats = data;
-        this.marques = ['TOUTES', ...Object.keys(data.repartitionParMarque || {})];
+    forkJoin({
+      stats: this.dashboardService.getStats(),
+      evolution: this.dashboardService.getEvolutionTpe(),
+      agences: this.dashboardService.getStatistiquesParAgence()
+    }).subscribe({
+      next: ({ stats, evolution, agences }) => {
+        this.stats = stats;
+        this.evolutionData = evolution || [];
+        this.agenceData = agences || [];
+        this.marques = ['TOUTES', ...Object.keys(stats.repartitionParMarque || {})];
+        this.agences = ['TOUTES', ...Array.from(new Set((this.agenceData || []).map((item) => item.agence).filter(Boolean)))];
         this.loading = false;
         this.initCharts();
       },
@@ -170,8 +180,12 @@ export class DashboardTpeComponent implements OnInit {
       this.evolutionChart.destroy();
     }
 
-    // Données simulées pour l'évolution (à remplacer par des vraies données du backend)
-    const derniersMois = ['Sep', 'Oct', 'Nov', 'Déc', 'Jan', 'Fév'];
+    const derniersMois = this.evolutionData.map((item) => item.mois);
+    const disponible = this.evolutionData.map((item) => Number(item.disponible || 0));
+    const affecte = this.evolutionData.map((item) => Number(item.affecte || 0));
+    const enPanne = this.evolutionData.map((item) => Number(item.enPanne || 0));
+    const maintenance = this.evolutionData.map((item) => Number(item.maintenance || 0));
+    const horsService = this.evolutionData.map((item) => Number(item.horsService || 0));
     
     this.evolutionChart = new Chart(ctx, {
       type: 'line',
@@ -180,23 +194,37 @@ export class DashboardTpeComponent implements OnInit {
         datasets: [
           {
             label: 'Disponibles',
-            data: [180, 175, 185, 182, 178, this.stats?.tpeDisponibles || 0],
+            data: disponible,
             borderColor: '#28a745',
             backgroundColor: 'rgba(40, 167, 69, 0.1)',
             tension: 0.4
           },
           {
             label: 'Affectés',
-            data: [620, 635, 642, 648, 655, this.stats?.tpeAffectes || 0],
+            data: affecte,
             borderColor: '#007bff',
             backgroundColor: 'rgba(0, 123, 255, 0.1)',
             tension: 0.4
           },
           {
             label: 'En Panne',
-            data: [15, 18, 12, 14, 11, this.stats?.tpeEnPanne || 0],
+            data: enPanne,
             borderColor: '#dc3545',
             backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            tension: 0.4
+          },
+          {
+            label: 'Maintenance',
+            data: maintenance,
+            borderColor: '#ffc107',
+            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            tension: 0.4
+          },
+          {
+            label: 'Hors Service',
+            data: horsService,
+            borderColor: '#6c757d',
+            backgroundColor: 'rgba(108, 117, 125, 0.1)',
             tension: 0.4
           }
         ]
@@ -226,33 +254,29 @@ export class DashboardTpeComponent implements OnInit {
       this.agenceChart.destroy();
     }
 
-    // Données simulées par agence
-    const agences = ['Lac 2', 'Centre Ville', 'Sousse', 'Sfax', 'Menzah'];
-    const disponibles = [25, 18, 22, 19, 15];
-    const affectes = [112, 89, 98, 95, 78];
-    const pannes = [2, 1, 3, 1, 2];
+    const agences = Array.from(new Set((this.agenceData || []).map((item) => item.agence))).filter(Boolean);
+    const statuts = ['DISPONIBLE', 'AFFECTE', 'EN_PANNE', 'MAINTENANCE', 'HORS_SERVICE'];
+    const colors: Record<string, string> = {
+      DISPONIBLE: '#28a745',
+      AFFECTE: '#007bff',
+      EN_PANNE: '#dc3545',
+      MAINTENANCE: '#ffc107',
+      HORS_SERVICE: '#6c757d'
+    };
+    const datasets = statuts.map((statut) => ({
+      label: statut,
+      data: agences.map((agence) => {
+        const match = this.agenceData.find((item) => item.agence === agence && item.statut === statut);
+        return match ? Number(match.count || 0) : 0;
+      }),
+      backgroundColor: colors[statut]
+    }));
 
     this.agenceChart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: agences,
-        datasets: [
-          {
-            label: 'Disponibles',
-            data: disponibles,
-            backgroundColor: '#28a745'
-          },
-          {
-            label: 'Affectés',
-            data: affectes,
-            backgroundColor: '#007bff'
-          },
-          {
-            label: 'En Panne',
-            data: pannes,
-            backgroundColor: '#dc3545'
-          }
-        ]
+        datasets
       },
       options: {
         responsive: true,

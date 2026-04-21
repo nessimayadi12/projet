@@ -2,6 +2,7 @@ package com.banque.abc.tpe.service;
 
 import com.banque.abc.tpe.dto.DashboardStatsDTO;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
+import com.banque.abc.tpe.entity.enums.StatutPanne;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
 import com.banque.abc.tpe.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +30,7 @@ public class DashboardService {
     private final PanneRepository panneRepository;
     private final AffectationRepository affectationRepository;
     private final CommercantRepository commercantRepository;
+    private final HistoriqueStatutRepository historiqueStatutRepository;
 
     public DashboardStatsDTO getGlobalStats() {
         // Statistiques TPE
@@ -53,7 +57,7 @@ public class DashboardService {
             // Demandes
             Long demandesNouvelles = demandeRepository.countByStatut(StatutDemande.NOUVELLE);
             Long demandesEnCours = demandeRepository.countByStatut(StatutDemande.EN_COURS);
-            Long demandesEnAttente = demandesNouvelles;
+            Long demandesEnAttente = (demandesNouvelles != null ? demandesNouvelles : 0L) + (demandesEnCours != null ? demandesEnCours : 0L);
             demandesNouvelles = demandesNouvelles != null ? demandesNouvelles : 0L;
             demandesEnCours = demandesEnCours != null ? demandesEnCours : 0L;
             demandesEnAttente = demandesEnAttente != null ? demandesEnAttente : 0L;
@@ -65,6 +69,14 @@ public class DashboardService {
                 pannesEnCours = pannesEnCours != null ? pannesEnCours : 0L;
             } catch (Exception e) {
                 // Ignorer l'erreur si la table pannes n'existe pas encore
+            }
+
+            Long pannesEnReparation = 0L;
+            try {
+                pannesEnReparation = panneRepository.countByStatut(StatutPanne.EN_REPARATION);
+                pannesEnReparation = pannesEnReparation != null ? pannesEnReparation : 0L;
+            } catch (Exception e) {
+                // Ignorer l'erreur
             }
 
             // Pannes résolues ce mois
@@ -101,7 +113,22 @@ public class DashboardService {
             }
 
             // Répartition par marque - using empty map for now to avoid loading all TPE
-            Map<String, Long> repartitionParMarque = new HashMap<>();
+            Map<String, Long> repartitionParMarque = new LinkedHashMap<>();
+            try {
+                List<Object[]> marques = tpeRepository.countByMarqueGrouped();
+                if (marques != null) {
+                    repartitionParMarque = marques.stream()
+                        .filter(obj -> obj != null && obj.length >= 2 && obj[0] != null)
+                        .collect(Collectors.toMap(
+                            obj -> obj[0].toString(),
+                            obj -> obj[1] != null ? ((Number) obj[1]).longValue() : 0L,
+                            (a, b) -> a,
+                            LinkedHashMap::new
+                        ));
+                }
+            } catch (Exception e) {
+                // Keep empty map on error
+            }
 
         // Top 10 commerçants (par nombre de TPE)
         Map<String, Long> top10Commercants = new LinkedHashMap<>();
@@ -155,9 +182,10 @@ public class DashboardService {
             .demandesNouvelles(demandesNouvelles)
             .demandesEnCours(demandesEnCours)
             .demandesEnAttente(demandesEnAttente)
-            .delaiMoyenTraitementHeures(0.0) // À implémenter si nécessaire
+            .delaiMoyenTraitementHeures(getAverageTreatmentDelayHours())
             .pannesEnCours(pannesEnCours)
             .pannesResoluesCeMois(pannesResoluesCeMois)
+            .pannesEnReparation(pannesEnReparation)
             .mttr(mttr)
             .tauxPanne(tauxPanne)
             .affectationsActives(affectationsActives)
@@ -169,6 +197,15 @@ public class DashboardService {
             .alertesStockBas(alertesStockBas)
             .alertesPannesDepassantSLA(alertesPannesDepassantSLA)
             .build();
+    }
+
+    private Double getAverageTreatmentDelayHours() {
+        try {
+            Double value = demandeRepository.calculateAverageTreatmentDelayHours();
+            return value != null ? value : 0.0;
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 
     public List<Map<String, Object>> getDemandesParStatut() {
@@ -249,11 +286,15 @@ public class DashboardService {
 
     public List<Map<String, Object>> getRepartitionParStatut() {
         List<Object[]> results = tpeRepository.countByStatutGrouped();
+        if (results == null) {
+            return new ArrayList<>();
+        }
         return results.stream()
+            .filter(result -> result != null && result.length >= 2 && result[0] != null)
             .map(result -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("statut", result[0].toString());
-                map.put("count", result[1]);
+                map.put("count", result[1] != null ? result[1] : 0L);
                 return map;
             })
             .collect(Collectors.toList());
@@ -261,11 +302,87 @@ public class DashboardService {
 
     public List<Map<String, Object>> getRepartitionParType() {
         List<Object[]> results = tpeRepository.countByTypeGrouped();
+        if (results == null) {
+            return new ArrayList<>();
+        }
         return results.stream()
+            .filter(result -> result != null && result.length >= 2)
             .map(result -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("type", result[0] != null ? result[0].toString() : "Inconnu");
-                map.put("count", result[1]);
+                map.put("count", result[1] != null ? result[1] : 0L);
+                return map;
+            })
+            .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getEvolutionTpe() {
+        LocalDate currentDate = LocalDate.now();
+        YearMonth startMonth = YearMonth.from(currentDate.minusMonths(5));
+        List<YearMonth> months = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            months.add(startMonth.plusMonths(i));
+        }
+
+        Map<YearMonth, Map<String, Long>> evolution = new LinkedHashMap<>();
+        for (YearMonth month : months) {
+            Map<String, Long> values = new LinkedHashMap<>();
+            values.put(StatutTPE.DISPONIBLE.name(), 0L);
+            values.put(StatutTPE.AFFECTE.name(), 0L);
+            values.put(StatutTPE.EN_PANNE.name(), 0L);
+            values.put(StatutTPE.MAINTENANCE.name(), 0L);
+            values.put(StatutTPE.HORS_SERVICE.name(), 0L);
+            evolution.put(month, values);
+        }
+
+        try {
+            List<Object[]> rows = historiqueStatutRepository.countChangesByMonthSince(startMonth.atDay(1).atStartOfDay());
+            if (rows != null) {
+                for (Object[] row : rows) {
+                    if (row == null || row.length < 4 || row[0] == null || row[1] == null || row[2] == null) {
+                        continue;
+                    }
+                    YearMonth month = YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue());
+                    Map<String, Long> values = evolution.get(month);
+                    if (values == null) {
+                        continue;
+                    }
+                    String statut = row[2].toString();
+                    Long count = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+                    values.put(statut, count);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erreur chargement évolution TPE", e);
+        }
+
+        return evolution.entrySet().stream()
+            .map(entry -> {
+                Map<String, Object> result = new HashMap<>();
+                result.put("mois", entry.getKey().toString());
+                result.put("disponible", entry.getValue().get(StatutTPE.DISPONIBLE.name()));
+                result.put("affecte", entry.getValue().get(StatutTPE.AFFECTE.name()));
+                result.put("enPanne", entry.getValue().get(StatutTPE.EN_PANNE.name()));
+                result.put("maintenance", entry.getValue().get(StatutTPE.MAINTENANCE.name()));
+                result.put("horsService", entry.getValue().get(StatutTPE.HORS_SERVICE.name()));
+                return result;
+            })
+            .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getStatistiquesParAgence() {
+        List<Object[]> results = tpeRepository.countByAgenceAndStatutGrouped();
+        if (results == null) {
+            return new ArrayList<>();
+        }
+
+        return results.stream()
+            .filter(result -> result != null && result.length >= 3)
+            .map(result -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("agence", result[0] != null ? result[0].toString() : "INCONNU");
+                map.put("statut", result[1] != null ? result[1].toString() : "INCONNU");
+                map.put("count", result[2] != null ? result[2] : 0L);
                 return map;
             })
             .collect(Collectors.toList());
@@ -305,10 +422,12 @@ public class DashboardService {
 
     public Map<String, Object> getPerformanceDemandes() {
         Map<String, Object> performance = new HashMap<>();
-        performance.put("totalDemandes", demandeRepository.count());
-        performance.put("demandesTraitees", demandeRepository.countByStatut(StatutDemande.CLOTUREE));
-        performance.put("delaiMoyen", 0.0); // À implémenter
-        performance.put("tauxSatisfaction", 95.0); // À implémenter
+        long totalDemandes = demandeRepository.count();
+        long demandesTraitees = demandeRepository.countByStatut(StatutDemande.CLOTUREE);
+        performance.put("totalDemandes", totalDemandes);
+        performance.put("demandesTraitees", demandesTraitees);
+        performance.put("delaiMoyen", getAverageTreatmentDelayHours());
+        performance.put("tauxSatisfaction", totalDemandes > 0 ? (demandesTraitees * 100.0) / totalDemandes : 0.0);
         return performance;
     }
 
@@ -325,11 +444,33 @@ public class DashboardService {
 
     public List<Map<String, Object>> getTopPannes() {
         List<Object[]> results = panneRepository.findTopPannesByFrequency();
+        if (results == null) {
+            return new ArrayList<>();
+        }
         return results.stream()
+            .filter(result -> result != null && result.length >= 2 && result[0] != null)
             .map(result -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("type", result[0] != null ? result[0].toString() : "Inconnu");
-                map.put("count", result[1]);
+                map.put("count", result[1] != null ? result[1] : 0L);
+                return map;
+            })
+            .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getHeatmapPannes() {
+        List<Object[]> results = panneRepository.countHeatmapByDayAndPeriod();
+        if (results == null) {
+            return new ArrayList<>();
+        }
+
+        return results.stream()
+            .filter(result -> result != null && result.length >= 3 && result[0] != null && result[1] != null)
+            .map(result -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("dayOfWeek", ((Number) result[0]).intValue());
+                map.put("period", result[1].toString());
+                map.put("count", result[2] != null ? result[2] : 0L);
                 return map;
             })
             .collect(Collectors.toList());

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DashboardService } from '../../services/dashboard.service';
 import { Chart } from 'chart.js/auto';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard-demandes',
@@ -9,6 +10,9 @@ import { Chart } from 'chart.js/auto';
 })
 export class DashboardDemandesComponent implements OnInit {
   stats: any = null;
+  demandesStatutData: any[] = [];
+  evolutionData: any[] = [];
+  performanceData: any = null;
   loading = true;
   error: string | null = null;
 
@@ -26,9 +30,17 @@ export class DashboardDemandesComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
-    this.dashboardService.getStats().subscribe({
-      next: (data) => {
-        this.stats = data;
+    forkJoin({
+      stats: this.dashboardService.getStats(),
+      statuts: this.dashboardService.getDemandesParStatut(),
+      evolution: this.dashboardService.getEvolutionMensuelle(),
+      performance: this.dashboardService.getPerformanceDemandes()
+    }).subscribe({
+      next: ({ stats, statuts, evolution, performance }) => {
+        this.stats = stats;
+        this.demandesStatutData = statuts || [];
+        this.evolutionData = evolution || [];
+        this.performanceData = performance || {};
         this.loading = false;
         this.initCharts();
       },
@@ -57,23 +69,19 @@ export class DashboardDemandesComponent implements OnInit {
       this.statutDemandesChart.destroy();
     }
 
-    // Données simulées pour les différents statuts de demandes
-    const statutsData = {
-      'NOUVELLE': this.stats.demandesNouvelles || 24,
-      'EN_COURS': this.stats.demandesEnCours || 18,
-      'VALIDEE': 42,
-      'APPROUVEE': 35,
-      'AFFECTEE': 28,
-      'CLOTUREE': 156
-    };
+    const orderedStatuses = ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE', 'AFFECTEE', 'CLOTUREE', 'REJETEE'];
+    const countsByStatus = orderedStatuses.map((status) => {
+      const match = this.demandesStatutData.find((item) => item.statut === status);
+      return match ? Number(match.count || 0) : 0;
+    });
 
     this.statutDemandesChart = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: Object.keys(statutsData),
+        labels: orderedStatuses,
         datasets: [{
           label: 'Nombre de demandes',
-          data: Object.values(statutsData),
+          data: countsByStatus,
           backgroundColor: [
             '#ffc107', // NOUVELLE - Orange
             '#17a2b8', // EN_COURS - Cyan
@@ -110,7 +118,9 @@ export class DashboardDemandesComponent implements OnInit {
       this.evolutionChart.destroy();
     }
 
-    const mois = ['Sep', 'Oct', 'Nov', 'Déc', 'Jan', 'Fév'];
+    const mois = this.evolutionData.map((item) => item.mois);
+    const demandes = this.evolutionData.map((item) => Number(item.demandes || 0));
+    const pannes = this.evolutionData.map((item) => Number(item.pannes || 0));
     
     this.evolutionChart = new Chart(ctx, {
       type: 'line',
@@ -118,16 +128,16 @@ export class DashboardDemandesComponent implements OnInit {
         labels: mois,
         datasets: [
           {
-            label: 'Nouvelles',
-            data: [35, 42, 38, 45, 48, this.stats?.demandesNouvelles || 24],
+            label: 'Demandes',
+            data: demandes,
             borderColor: '#ffc107',
             backgroundColor: 'rgba(255, 193, 7, 0.1)',
             tension: 0.4,
             fill: true
           },
           {
-            label: 'Clôturées',
-            data: [120, 135, 128, 142, 148, 156],
+            label: 'Pannes',
+            data: pannes,
             borderColor: '#28a745',
             backgroundColor: 'rgba(40, 167, 69, 0.1)',
             tension: 0.4,
@@ -160,39 +170,30 @@ export class DashboardDemandesComponent implements OnInit {
       this.delaiChart.destroy();
     }
 
-    // Délais par étape (en heures)
+    const totalDemandes = Number(this.performanceData?.totalDemandes || this.stats?.demandesEnAttente || 0);
+    const demandesTraitees = Number(this.performanceData?.demandesTraitees || this.stats?.demandesEnCours || 0);
+    const demandesRestantes = Math.max(totalDemandes - demandesTraitees, 0);
+
     this.delaiChart = new Chart(ctx, {
-      type: 'bar',
+      type: 'doughnut',
       data: {
-        labels: ['Validation Initiale', 'Approbation Monétique', 'Affectation TPE', 'Clôture'],
+        labels: ['Traitées', 'En attente'],
         datasets: [{
-          label: 'Délai moyen (heures)',
-          data: [8, 12, 6, 10],
+          label: 'Demandes',
+          data: [demandesTraitees, demandesRestantes],
           backgroundColor: [
-            '#007bff',
-            '#17a2b8',
             '#28a745',
-            '#6c757d'
+            '#ffc107'
           ],
           borderWidth: 1
         }]
       },
       options: {
-        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: false
-          }
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Heures'
-            }
+            position: 'bottom'
           }
         }
       }
@@ -207,14 +208,19 @@ export class DashboardDemandesComponent implements OnInit {
       this.funnelChart.destroy();
     }
 
-    // Pipeline des demandes (entonnoir de conversion)
+    const orderedStatuses = ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE', 'AFFECTEE', 'CLOTUREE', 'REJETEE'];
+    const values = orderedStatuses.map((status) => {
+      const match = this.demandesStatutData.find((item) => item.statut === status);
+      return match ? Number(match.count || 0) : 0;
+    });
+
     this.funnelChart = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['NOUVELLE', 'EN_COURS', 'VALIDEE', 'APPROUVEE', 'AFFECTEE', 'CLOTUREE'],
+        labels: orderedStatuses,
         datasets: [{
           label: 'Nombre de demandes',
-          data: [85, 65, 58, 45, 38, 32],
+          data: values,
           backgroundColor: [
             '#ffc107',
             '#17a2b8',
@@ -237,7 +243,8 @@ export class DashboardDemandesComponent implements OnInit {
             callbacks: {
               label: function(context) {
                 const value = context.parsed.y;
-                const percentage = ((value / 85) * 100).toFixed(1);
+                const total = values.reduce((sum, current) => sum + current, 0) || 1;
+                const percentage = ((value / total) * 100).toFixed(1);
                 return `${value} demandes (${percentage}% du total)`;
               }
             }
@@ -258,13 +265,16 @@ export class DashboardDemandesComponent implements OnInit {
   }
 
   get tauxConversion(): number {
-    // Taux de conversion (demandes clôturées / demandes nouvelles)
-    return 37.6; // À calculer depuis les vraies données
+    const total = Number(this.performanceData?.totalDemandes || 0);
+    const traitees = Number(this.performanceData?.demandesTraitees || 0);
+    if (total === 0) return 0;
+    return (traitees / total) * 100;
   }
 
   get demandesEnRetard(): number {
-    // Demandes dépassant le SLA de 48h
-    return 3; // À récupérer depuis le backend
+    return this.demandesStatutData
+      .filter((item) => ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE', 'AFFECTEE'].includes(item.statut))
+      .reduce((sum, item) => sum + Number(item.count || 0), 0);
   }
 
   exportData(): void {

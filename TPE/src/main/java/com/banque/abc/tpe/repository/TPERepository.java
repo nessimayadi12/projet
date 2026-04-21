@@ -48,4 +48,10 @@ public interface TPERepository extends JpaRepository<TPE, Long>, JpaSpecificatio
     
     @Query("SELECT t.typeTPE, COUNT(t) FROM TPE t GROUP BY t.typeTPE")
     List<Object[]> countByTypeGrouped();
+
+    @Query("SELECT COALESCE(c.codeAgence, 'INCONNU'), t.statut, COUNT(t) FROM TPE t LEFT JOIN t.commercant c GROUP BY COALESCE(c.codeAgence, 'INCONNU'), t.statut ORDER BY COALESCE(c.codeAgence, 'INCONNU'), t.statut")
+    List<Object[]> countByAgenceAndStatutGrouped();
+
+    @Query("SELECT COALESCE(t.marque, 'Inconnu'), COUNT(t) FROM TPE t GROUP BY COALESCE(t.marque, 'Inconnu') ORDER BY COALESCE(t.marque, 'Inconnu')")
+    List<Object[]> countByMarqueGrouped();
 }

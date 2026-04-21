@@ -32,6 +32,7 @@ public class DashboardStatsDTO {
     // Pannes
     private Long pannesEnCours;
     private Long pannesResoluesCeMois;
+    private Long pannesEnReparation;
     private Double mttr; // Mean Time To Repair
     private Double tauxPanne;
 

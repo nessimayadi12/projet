@@ -42,10 +42,9 @@
                 <mat-form-field class="full-width">
                   <mat-label>Agence</mat-label>
                   <mat-select [(ngModel)]="selectedAgence" (selectionChange)="applyFilters()">
-                    <mat-option value="TOUTES">TOUTES</mat-option>
-                    <mat-option value="Lac 2">Lac 2</mat-option>
-                    <mat-option value="Sousse">Sousse</mat-option>
-                    <mat-option value="Sfax">Sfax</mat-option>
+                    <mat-option *ngFor="let agence of agences" [value]="agence">
+                      {{ agence }}
+                    </mat-option>
                   </mat-select>
                 </mat-form-field>
               </div>

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DashboardService } from '../../services/dashboard.service';
 import { Chart } from 'chart.js/auto';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard-pannes',
@@ -9,6 +10,10 @@ import { Chart } from 'chart.js/auto';
 })
 export class DashboardPannesComponent implements OnInit {
   stats: any = null;
+  evolutionData: any[] = [];
+  typePanneData: any[] = [];
+  paretoData: any[] = [];
+  heatmapData: any[] = [];
   loading = true;
   error: string | null = null;
 
@@ -26,9 +31,20 @@ export class DashboardPannesComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
-    this.dashboardService.getStats().subscribe({
-      next: (data) => {
-        this.stats = data;
+    forkJoin({
+      stats: this.dashboardService.getStats(),
+      evolution: this.dashboardService.getEvolutionMensuelle(),
+      types: this.dashboardService.getPannesParType(),
+      pareto: this.dashboardService.getTopPannes(),
+      heatmap: this.dashboardService.getHeatmapPannes()
+    }).subscribe({
+      next: (result: { stats: any; evolution: any[]; types: any[]; pareto: any[]; heatmap: any[] }) => {
+        const { stats, evolution, types, pareto, heatmap } = result;
+        this.stats = stats;
+        this.evolutionData = evolution || [];
+        this.typePanneData = types || [];
+        this.paretoData = pareto || [];
+        this.heatmapData = heatmap || [];
         this.loading = false;
         this.initCharts();
       },
@@ -57,7 +73,8 @@ export class DashboardPannesComponent implements OnInit {
       this.evolutionPannesChart.destroy();
     }
 
-    const mois = ['Sep', 'Oct', 'Nov', 'Déc', 'Jan', 'Fév'];
+    const mois = this.evolutionData.map((item) => item.mois);
+    const pannes = this.evolutionData.map((item) => Number(item.pannes || 0));
     
     this.evolutionPannesChart = new Chart(ctx, {
       type: 'line',
@@ -65,26 +82,10 @@ export class DashboardPannesComponent implements OnInit {
         labels: mois,
         datasets: [
           {
-            label: 'Pannes Matérielles',
-            data: [15, 18, 12, 14, 11, 13],
+            label: 'Pannes',
+            data: pannes,
             borderColor: '#dc3545',
             backgroundColor: 'rgba(220, 53, 69, 0.1)',
-            tension: 0.4,
-            fill: true
-          },
-          {
-            label: 'Pannes Logicielles',
-            data: [8, 10, 7, 9, 6, 8],
-            borderColor: '#ffc107',
-            backgroundColor: 'rgba(255, 193, 7, 0.1)',
-            tension: 0.4,
-            fill: true
-          },
-          {
-            label: 'Pannes Réseau',
-            data: [5, 7, 4, 6, 5, 6],
-            borderColor: '#17a2b8',
-            backgroundColor: 'rgba(23, 162, 184, 0.1)',
             tension: 0.4,
             fill: true
           }
@@ -115,12 +116,15 @@ export class DashboardPannesComponent implements OnInit {
       this.typePanneChart.destroy();
     }
 
+    const labels = this.typePanneData.map((item) => item.type || 'Inconnu');
+    const values = this.typePanneData.map((item) => Number(item.count || 0));
+
     this.typePanneChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Matériel', 'Logiciel', 'Réseau', 'Autre'],
+        labels,
         datasets: [{
-          data: [45, 28, 18, 9],
+          data: values,
           backgroundColor: [
             '#dc3545', // Rouge
             '#ffc107', // Orange
@@ -159,10 +163,8 @@ export class DashboardPannesComponent implements OnInit {
       this.paretoChart.destroy();
     }
 
-    // Top 10 TPE problématiques
-    const tpes = ['TPE-123', 'TPE-456', 'TPE-789', 'TPE-234', 'TPE-567', 
-                  'TPE-890', 'TPE-345', 'TPE-678', 'TPE-901', 'TPE-432'];
-    const pannes = [15, 12, 11, 9, 8, 7, 6, 5, 4, 3];
+    const tpes = this.paretoData.map((item) => item.type || 'Inconnu');
+    const pannes = this.paretoData.map((item) => Number(item.count || 0));
     
     // Calculer pourcentage cumulé
     const total = pannes.reduce((a, b) => a + b, 0);
@@ -248,11 +250,35 @@ export class DashboardPannesComponent implements OnInit {
       this.heatmapChart.destroy();
     }
 
-    // Simulation de carte thermique par plage horaire
     const jours = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     const plages = ['00h-06h', '06h-12h', '12h-18h', '18h-24h'];
+    const dayIndexToLabel: Record<number, string> = {
+      1: 'Dim',
+      2: 'Lun',
+      3: 'Mar',
+      4: 'Mer',
+      5: 'Jeu',
+      6: 'Ven',
+      7: 'Sam'
+    };
+
+    const periodOrder = ['00h-06h', '06h-12h', '12h-18h', '18h-24h'];
+    const matrix: Record<string, Record<string, number>> = {};
+    jours.forEach((day) => {
+      matrix[day] = {};
+      periodOrder.forEach((period) => {
+        matrix[day][period] = 0;
+      });
+    });
+
+    (this.heatmapData || []).forEach((item) => {
+      const day = dayIndexToLabel[Number(item.dayOfWeek)];
+      const period = item.period;
+      if (day && period in matrix[day]) {
+        matrix[day][period] = Number(item.count || 0);
+      }
+    });
     
-    // Données simulées (en réalité, ce serait une vraie heatmap)
     this.heatmapChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -260,22 +286,22 @@ export class DashboardPannesComponent implements OnInit {
         datasets: [
           {
             label: '00h-06h',
-            data: [1, 0, 1, 1, 0, 0, 0],
+            data: jours.map((day) => matrix[day]['00h-06h']),
             backgroundColor: 'rgba(23, 162, 184, 0.3)'
           },
           {
             label: '06h-12h',
-            data: [3, 4, 3, 4, 5, 2, 1],
+            data: jours.map((day) => matrix[day]['06h-12h']),
             backgroundColor: 'rgba(255, 193, 7, 0.5)'
           },
           {
             label: '12h-18h',
-            data: [6, 5, 4, 6, 8, 3, 2],
+            data: jours.map((day) => matrix[day]['12h-18h']),
             backgroundColor: 'rgba(220, 53, 69, 0.7)'
           },
           {
             label: '18h-24h',
-            data: [3, 2, 3, 2, 3, 2, 1],
+            data: jours.map((day) => matrix[day]['18h-24h']),
             backgroundColor: 'rgba(0, 123, 255, 0.5)'
           }
         ]
