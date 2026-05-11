@@ -10,6 +10,10 @@
             </p>
           </div>
           <div class="card-body">
+            <div *ngIf="showReworkflowNotice" class="alert alert-warning">
+              <strong>Attention:</strong> Cette demande est deja affectee. Toute modification relance le workflow
+              (statut repasse a NOUVELLE) et necessite une nouvelle saisie/validation des taux.
+            </div>
             <form [formGroup]="demandeForm" (ngSubmit)="onSubmit()">
               
               <!-- Section: Type de demande -->

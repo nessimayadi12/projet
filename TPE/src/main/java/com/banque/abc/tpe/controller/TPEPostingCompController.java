@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -81,6 +82,7 @@ public class TPEPostingCompController {
      * Supprime toutes les transactions (pour tests uniquement)
      */
     @DeleteMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> deleteAll() {
         tpePostingCompRepository.deleteAll();
         

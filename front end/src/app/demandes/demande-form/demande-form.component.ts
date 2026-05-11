@@ -18,6 +18,8 @@ export class DemandeFormComponent implements OnInit {
   isEditMode = false;
   demandeId: number | null = null;
   loading = false;
+  currentDemande: DemandeTPE | null = null;
+  showReworkflowNotice = false;
   typesDemande = Object.values(TypeDemande);
   urgences = Object.values(Urgence);
   isAgence = false;
@@ -71,8 +73,8 @@ export class DemandeFormComponent implements OnInit {
     // Vérifier le rôle
     const currentUser = this.authService.currentUserValue;
     if (currentUser) {
-      this.isAgence = currentUser.role === Role.AGENCE;
-      this.isMonetique = currentUser.role === Role.MONETIQUE || currentUser.role === Role.ADMIN;
+      this.isAgence = this.authService.hasAnyRole([Role.AGENCE]);
+      this.isMonetique = this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
     }
 
     // Écouter les changements de type de demande pour adapter les validateurs
@@ -186,6 +188,8 @@ export class DemandeFormComponent implements OnInit {
     this.loading = true;
     this.demandeService.getDemandeById(id).subscribe({
       next: (demande) => {
+        this.currentDemande = demande;
+        this.showReworkflowNotice = this.isEditMode && demande.statut === StatutDemande.AFFECTEE;
         this.demandeForm.patchValue(demande);
         this.loading = false;
       },

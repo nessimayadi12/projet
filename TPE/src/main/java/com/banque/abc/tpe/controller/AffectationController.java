@@ -26,7 +26,7 @@ public class AffectationController {
      * Affecter un TPE à un commerçant suite à une demande validée
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<AffectationResponse> affecterTPE(@Valid @RequestBody AffectationRequest request) {
         AffectationResponse response = affectationService.affecterTPE(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -36,7 +36,7 @@ public class AffectationController {
      * Obtenir toutes les affectations (paginées)
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'LOGISTIQUE', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<Page<AffectationResponse>> getAllAffectations(Pageable pageable) {
         Page<AffectationResponse> affectations = affectationService.getAllAffectations(pageable);
         return ResponseEntity.ok(affectations);
@@ -46,7 +46,7 @@ public class AffectationController {
      * Obtenir une affectation par ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'LOGISTIQUE', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<AffectationResponse> getAffectationById(@PathVariable Long id) {
         AffectationResponse response = affectationService.getAffectationById(id);
         return ResponseEntity.ok(response);
@@ -56,7 +56,7 @@ public class AffectationController {
      * Obtenir les affectations d'un commerçant
      */
     @GetMapping("/commercant/{commercantId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'LOGISTIQUE', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<List<AffectationResponse>> getAffectationsByCommercant(@PathVariable Long commercantId) {
         List<AffectationResponse> affectations = affectationService.getAffectationsByCommercant(commercantId);
         return ResponseEntity.ok(affectations);
@@ -66,7 +66,7 @@ public class AffectationController {
      * Obtenir toutes les affectations actives
      */
     @GetMapping("/actives")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'LOGISTIQUE', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<List<AffectationResponse>> getAffectationsActives() {
         List<AffectationResponse> affectations = affectationService.getAffectationsActives();
         return ResponseEntity.ok(affectations);
@@ -76,7 +76,7 @@ public class AffectationController {
      * Mettre un TPE en service
      */
     @PostMapping("/{id}/mise-en-service")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LOGISTIQUE', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<AffectationResponse> mettreEnService(
             @PathVariable Long id,
             @RequestParam LocalDate dateMiseEnService) {

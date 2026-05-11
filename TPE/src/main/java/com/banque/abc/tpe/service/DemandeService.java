@@ -11,6 +11,8 @@ import com.banque.abc.tpe.entity.PieceJointe;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
 import com.banque.abc.tpe.exception.BusinessException;
 import com.banque.abc.tpe.exception.ResourceNotFoundException;
+import com.banque.abc.tpe.entity.enums.RoleType;
+import com.banque.abc.tpe.repository.AffectationRepository;
 import com.banque.abc.tpe.repository.CommercantRepository;
 import com.banque.abc.tpe.repository.DemandeRepository;
 import com.banque.abc.tpe.repository.UserRepository;
@@ -47,6 +49,7 @@ public class DemandeService {
     private final AuditService auditService;
     private final NotificationService notificationService;
     private final AffectationService affectationService;
+    private final AffectationRepository affectationRepository;
 
     @Transactional
     public DemandeResponse createDemande(DemandeRequest request) {
@@ -115,24 +118,116 @@ public class DemandeService {
     }
 
     @Transactional
-    public DemandeResponse validerDemande(Long id, ValiderDemandeRequest request) {
+    public DemandeResponse updateDemande(Long id, DemandeRequest request) {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
 
-        if (demande.getStatut() != StatutDemande.NOUVELLE && demande.getStatut() != StatutDemande.EN_COURS) {
-            throw new BusinessException("Cette demande ne peut plus être validée");
+        UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+
+        boolean isMonetique = hasAnyAuthority(userPrincipal,
+                RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN);
+
+        if (demande.getStatut() == StatutDemande.AFFECTEE) {
+            if (!isMonetique) {
+                throw new BusinessException("Seul le service Monétique peut modifier après affectation");
+            }
+
+            resetWorkflowForModification(demande);
+        } else if (demande.getStatut() != StatutDemande.NOUVELLE
+                && demande.getStatut() != StatutDemande.EN_COURS) {
+            throw new BusinessException("Cette demande ne peut pas être modifiée à ce statut");
         }
+
+        Commercant commercant = findOrCreateCommercant(request);
+        demande.setCommercant(commercant);
+
+        demande.setTypeDemande(request.getTypeDemande());
+        demande.setDescription(request.getDescription());
+        demande.setUrgence(request.getUrgence());
+
+        demande.setRaisonSociale(request.getRaisonSociale());
+        demande.setActivite(request.getActivite());
+        demande.setNumeroCompte(request.getNumeroCompte());
+        demande.setAdresse(request.getAdresse());
+        demande.setCodePostal(request.getCodePostal());
+        demande.setCodeAgence(request.getCodeAgence());
+        demande.setTelephone(request.getTelephone());
+        demande.setEmailNotification(request.getEmailNotification());
+
+        demande.setLocalite(request.getLocalite());
+        demande.setRib(request.getRib());
+        demande.setWebmaster(request.getWebmaster());
+        demande.setContactTechnique(request.getContactTechnique());
+        demande.setUrlSiteMarchand(request.getUrlSiteMarchand());
+
+        Demande updatedDemande = demandeRepository.save(demande);
+
+        auditService.logAction("UPDATE", "Demande", updatedDemande.getId().toString(),
+                "Demande modifiée", "SUCCESS");
+
+        return mapToResponse(updatedDemande);
+    }
+
+    @Transactional
+    public DemandeResponse validerDemande(Long id, ValiderDemandeRequest request) {
+        Demande demande = demandeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
 
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
         User valideur = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
+        if (demande.getStatut() == StatutDemande.NOUVELLE) {
+            if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_INPUTER, RoleType.ROLE_ADMIN)) {
+                throw new BusinessException("Seuls les Inputer peuvent saisir les donnees monetiques");
+            }
+
+            if (!Boolean.TRUE.equals(request.getApprouver())) {
+                throw new BusinessException("La saisie des taux ne peut pas rejeter la demande");
+            }
+
+            // Etape 1: Inputer Monétique saisit les taux
+            demande.setInputer(valideur);
+            demande.setDateSaisieTaux(LocalDateTime.now());
+            demande.setCommentaireValidation(request.getCommentaire());
+
+            demande.setMcc(request.getMcc());
+            demande.setTauxCommission(request.getTauxCommission());
+            demande.setTauxCommissionInter(request.getTauxCommissionInter());
+            demande.setLoyer(request.getLoyer());
+            demande.setSerieTpe(request.getSerieTpe());
+            demande.setNumeroTerminal(request.getNumeroTerminal());
+            demande.setValueDate(request.getValueDate());
+
+            demande.setStatut(StatutDemande.EN_COURS);
+
+            Demande updatedDemande = demandeRepository.save(demande);
+            auditService.logAction("TAUX_INPUT", "Demande", updatedDemande.getId().toString(),
+                    "Taux saisis par monétique", "SUCCESS");
+
+            return mapToResponse(updatedDemande);
+        }
+
+        if (demande.getStatut() != StatutDemande.EN_COURS) {
+            throw new BusinessException("Cette demande ne peut plus être validée");
+        }
+
+        // Etape 2: Authorizer Monétique valide ou rejette
+        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_AUTHORIZER, RoleType.ROLE_ADMIN)) {
+            throw new BusinessException("Seuls les Authorizer peuvent valider ou rejeter une demande");
+        }
+
+        if (demande.getInputer() != null && demande.getInputer().getId().equals(valideur.getId())) {
+            throw new BusinessException("Vous ne pouvez pas valider vos propres saisies (Règle 4 yeux)");
+        }
+
         demande.setValideur(valideur);
         demande.setDateValidation(LocalDateTime.now());
         demande.setCommentaireValidation(request.getCommentaire());
-        
-        // Champs de validation Monétique
+
+        // Autoriser la modification des taux avant validation finale
         demande.setMcc(request.getMcc());
         demande.setTauxCommission(request.getTauxCommission());
         demande.setTauxCommissionInter(request.getTauxCommissionInter());
@@ -141,7 +236,7 @@ public class DemandeService {
         demande.setNumeroTerminal(request.getNumeroTerminal());
         demande.setValueDate(request.getValueDate());
 
-        if (request.getApprouver()) {
+        if (Boolean.TRUE.equals(request.getApprouver())) {
             demande.setStatut(StatutDemande.VALIDEE_MONETIQUE);
             notificationService.notifierDemandeValidee(demande);
         } else {
@@ -152,20 +247,19 @@ public class DemandeService {
 
         Demande updatedDemande = demandeRepository.save(demande);
 
-        // Affectation automatique si approuvée
-        if (request.getApprouver()) {
-            try {
+        if (Boolean.TRUE.equals(request.getApprouver())) {
+            if (affectationRepository.existsByDemandeIdAndActifTrue(updatedDemande.getId())) {
+                updatedDemande.setStatut(StatutDemande.AFFECTEE);
+                updatedDemande.setDateCloture(LocalDateTime.now());
+                updatedDemande = demandeRepository.save(updatedDemande);
+            } else {
                 AffectationRequest affectationRequest = new AffectationRequest();
                 affectationRequest.setDemandeId(updatedDemande.getId());
-                affectationRequest.setCommentaire("Affectation automatique suite à validation monétique");
-                
+                affectationRequest.setCommentaire("Affectation automatique suite a validation monetique");
+
                 affectationService.affecterTPE(affectationRequest);
-                log.info("TPE affecté automatiquement pour la demande {}", updatedDemande.getReference());
-            } catch (Exception e) {
-                log.error("Erreur lors de l'affectation automatique du TPE pour la demande {}", 
-                        updatedDemande.getReference(), e);
-                // Ne pas bloquer la validation si l'affectation échoue
-                // L'affectation pourra être faite manuellement plus tard
+                updatedDemande = demandeRepository.findById(updatedDemande.getId())
+                        .orElse(updatedDemande);
             }
         }
 
@@ -180,14 +274,22 @@ public class DemandeService {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
 
-        if (demande.getStatut() != StatutDemande.NOUVELLE && demande.getStatut() != StatutDemande.EN_COURS) {
-            throw new BusinessException("Cette demande ne peut plus être rejetée");
+        if (demande.getStatut() != StatutDemande.EN_COURS) {
+            throw new BusinessException("Seule une demande en cours peut etre rejetee par un Authorizer");
         }
 
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
         User valideur = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+
+        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_AUTHORIZER, RoleType.ROLE_ADMIN)) {
+            throw new BusinessException("Seuls les Authorizer peuvent rejeter une demande");
+        }
+
+        if (demande.getInputer() != null && demande.getInputer().getId().equals(valideur.getId())) {
+            throw new BusinessException("Vous ne pouvez pas rejeter vos propres saisies (Regle 4 yeux)");
+        }
 
         demande.setValideur(valideur);
         demande.setDateValidation(LocalDateTime.now());
@@ -232,6 +334,12 @@ public class DemandeService {
         
         response.setDemandeurId(demande.getDemandeur().getId());
         response.setDemandeurNom(demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom());
+
+        if (demande.getInputer() != null) {
+            response.setInputerId(demande.getInputer().getId());
+            response.setInputerNom(demande.getInputer().getNom() + " " + demande.getInputer().getPrenom());
+            response.setDateSaisieTaux(demande.getDateSaisieTaux());
+        }
         
         if (demande.getValideur() != null) {
             response.setValideurId(demande.getValideur().getId());
@@ -248,6 +356,37 @@ public class DemandeService {
         }
         
         return response;
+    }
+
+    private void resetWorkflowForModification(Demande demande) {
+        demande.setStatut(StatutDemande.NOUVELLE);
+
+        demande.setInputer(null);
+        demande.setDateSaisieTaux(null);
+        demande.setValideur(null);
+        demande.setDateValidation(null);
+        demande.setDateCloture(null);
+        demande.setCommentaireValidation(null);
+
+        demande.setMcc(null);
+        demande.setTauxCommission(null);
+        demande.setTauxCommissionInter(null);
+        demande.setLoyer(null);
+        demande.setSerieTpe(null);
+        demande.setNumeroTerminal(null);
+        demande.setValueDate(null);
+    }
+
+    private boolean hasAnyAuthority(UserPrincipal userPrincipal, RoleType... roles) {
+        return userPrincipal.getAuthorities().stream()
+                .anyMatch(auth -> {
+                    for (RoleType role : roles) {
+                        if (auth.getAuthority().equals(role.name())) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
     }
 
     /**

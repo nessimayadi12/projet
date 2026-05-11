@@ -39,10 +39,10 @@ public interface PanneRepository extends JpaRepository<Panne, Long>, JpaSpecific
     @Query("SELECT CASE WHEN p.sousGarantie = true THEN 'Garantie' ELSE 'Hors Garantie' END, COUNT(p) FROM Panne p GROUP BY p.sousGarantie")
     List<Object[]> countByTypeGrouped();
     
-    @Query("SELECT COUNT(p) FROM Panne p WHERE p.statut = 'RESOLUE' AND p.dateResolution BETWEEN :debut AND :fin")
+    @Query("SELECT COUNT(p) FROM Panne p WHERE p.statut IN ('REPAREE', 'TESTEE') AND p.dateResolution BETWEEN :debut AND :fin")
     Long countPannesResoluesDansLaPeriode(LocalDateTime debut, LocalDateTime fin);
     
-    @Query("SELECT AVG(TIMESTAMPDIFF(HOUR, p.dateDeclaration, p.dateResolution)) FROM Panne p WHERE p.statut = 'RESOLUE' AND p.dateResolution IS NOT NULL")
+    @Query("SELECT AVG(TIMESTAMPDIFF(HOUR, p.dateDeclaration, p.dateResolution)) FROM Panne p WHERE p.statut IN ('REPAREE', 'TESTEE') AND p.dateResolution IS NOT NULL")
     Optional<Double> calculateMTTR();
     
     @Query("SELECT COUNT(p) FROM Panne p WHERE p.statut IN ('DECLAREE', 'DIAGNOSTIQUEE', 'EN_REPARATION') AND TIMESTAMPDIFF(HOUR, p.dateDeclaration, CURRENT_TIMESTAMP) > 48")

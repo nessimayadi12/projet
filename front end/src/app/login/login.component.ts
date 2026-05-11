@@ -39,12 +39,15 @@ export class LoginComponent implements OnInit {
   getDefaultRoute(): string {
     const user = this.authService.getCurrentUser();
     if (user) {
+      if (this.authService.hasAnyRole([Role.INPUTER, Role.AUTHORIZER])) {
+        return '/taux';
+      }
       // ADMIN et MONETIQUE vont au dashboard
-      if (user.role === Role.ADMIN || user.role === Role.MONETIQUE) {
+      if (this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE])) {
         return '/dashboard';
       }
       // AGENCE va aux demandes
-      if (user.role === Role.AGENCE) {
+      if (this.authService.hasAnyRole([Role.AGENCE])) {
         return '/demandes';
       }
     }
@@ -64,8 +67,8 @@ export class LoginComponent implements OnInit {
       next: () => {
         const user = this.authService.getCurrentUser();
         // Si l'utilisateur essaie d'accéder au dashboard mais n'a pas la permission
-        if (this.returnUrl === '/dashboard' && 
-            user && user.role !== Role.ADMIN && user.role !== Role.MONETIQUE) {
+        if (this.returnUrl === '/dashboard' &&
+            user && !this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE])) {
           this.router.navigate([this.getDefaultRoute()]);
         } else {
           this.router.navigate([this.returnUrl]);

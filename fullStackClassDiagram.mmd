@@ -1,0 +1,418 @@
+classDiagram
+direction LR
+
+%% Diagramme de classes de conception - version full-stack
+%% Lecture: domaine metier -> securite/persistence -> application -> frontend
+%% Vue centrée sur les classes porteuses du domaine et les couches techniques majeures.
+
+namespace DomaineMetier {
+  class BaseEntity {
+    <<abstract>>
+    +Long id
+    +LocalDateTime createdDate
+    +LocalDateTime lastModifiedDate
+    +String createdBy
+    +String lastModifiedBy
+    +Long version
+  }
+
+  class TPE {
+    +TypeTPE typeTPE
+    +String numeroSerie
+    +String numeroTerminal
+    +StatutTPE statut
+    +String marque
+    +String modele
+    +LocalDate dateAcquisition
+    +LocalDate dateMiseEnService
+    +String mcc
+    +String numeroAffiliation
+    +String cleApi
+    +String commentaire
+  }
+
+  class Commercant {
+    +String raisonSociale
+    +String activite
+    +String numeroCompte
+    +String adresse
+    +String localite
+    +String codePostal
+    +String codeAgence
+    +String telephone
+    +String email
+    +StatutCommercant statut
+    +Double loyer
+    +String rneFilePath
+    +String emailNotification
+    +TypeTPE typeCommerce
+  }
+
+  class Demande {
+    +String reference
+    +TypeTPE typeDemande
+    +StatutDemande statut
+    +Urgence urgence
+    +String description
+    +String commentaireValidation
+    +String numeroTerminal
+    +String rneFilePath
+    +String urlSiteMarchand
+  }
+
+  class Affectation {
+    +LocalDate dateAffectation
+    +LocalDate dateMiseEnService
+    +LocalDate dateFin
+    +Boolean actif
+    +String bonLivraisonPath
+    +String contratPath
+    +String commentaire
+  }
+
+  class Panne {
+    +String reference
+    +StatutPanne statut
+    +String description
+    +LocalDateTime dateDeclaration
+    +LocalDateTime dateDiagnostic
+    +LocalDateTime dateReparation
+    +LocalDateTime dateResolution
+    +String diagnostic
+    +String actionCorrective
+    +Double coutReparation
+    +Boolean sousGarantie
+  }
+
+  class Taux {
+    +Double ancienTauxCommission
+    +Double nouveauTauxCommission
+    +Double ancienTauxCommissionInter
+    +Double nouveauTauxCommissionInter
+    +StatutTaux statut
+    +LocalDateTime dateSaisie
+    +LocalDateTime dateValidation
+    +String motifRejet
+    +String commentaire
+    +LocalDateTime dateApplication
+    +Boolean actif
+  }
+
+  class User {
+    +String username
+    +String password
+    +String nom
+    +String prenom
+    +String email
+    +String telephone
+    +String codeAgence
+    +Boolean actif
+    +LocalDateTime lastLogin
+    +Integer failedLoginAttempts
+    +Boolean accountLocked
+  }
+
+  class Role {
+    +Long id
+    +RoleType name
+    +String description
+  }
+
+  class Screen {
+    +String code
+    +String libelle
+    +String description
+    +String route
+    +String icon
+    +Integer ordre
+    +Long parentId
+    +Boolean actif
+  }
+
+  class ScreenRole {
+    +Long id
+    +Boolean canView
+    +Boolean canCreate
+    +Boolean canEdit
+    +Boolean canDelete
+    +Boolean canExport
+    +LocalDateTime createdAt
+    +LocalDateTime updatedAt
+  }
+
+  class HistoriqueStatut {
+    +Long id
+    +StatutTPE ancienStatut
+    +StatutTPE nouveauStatut
+    +LocalDateTime dateChangement
+    +String changePar
+    +String commentaire
+  }
+
+  class Commentaire {
+    +String contenu
+    +Boolean interne
+  }
+
+  class PieceJointe {
+    +String nomFichier
+    +String cheminFichier
+    +String typeMime
+    +Long tailleFichier
+    +String description
+  }
+
+  class PieceDetachee {
+    +String designation
+    +String reference
+    +Integer quantite
+    +Double prixUnitaire
+    +Double prixTotal
+  }
+
+  class TPEImportRecord {
+    +String nAffiliation
+    +Integer sourceRowNumber
+    +String sourceFileName
+    +String typeTPE
+    +String numeroSerie
+    +String numeroTerminal
+    +String raisonSociale
+    +String activite
+    +String mcc
+    +String numeroCompte
+    +String codeAgence
+    +String adresse
+    +String codePostal
+    +String telephone
+    +String email
+    +String privilegeSecteur
+    +String tauxCommission
+    +String tauxCommissionInter
+    +String loyer
+    +String nCompteIntern
+    +String groupe
+    +String numSeq
+    +Boolean active
+    +LocalDate valueDate
+    +LocalDate dateAffiliation
+    +String rawDataJson
+  }
+
+  class AuditLog {
+    +LocalDateTime dateAction
+    +String username
+    +String action
+    +String entityType
+    +String entityId
+    +String details
+    +String ipAddress
+    +String userAgent
+    +String statut
+  }
+}
+
+namespace EnumsMetier {
+  class TypeTPE <<enumeration>>
+  class StatutTPE <<enumeration>>
+  class StatutDemande <<enumeration>>
+  class Urgence <<enumeration>>
+  class StatutPanne <<enumeration>>
+  class StatutTaux <<enumeration>>
+  class StatutCommercant <<enumeration>>
+  class RoleType <<enumeration>>
+}
+
+namespace CoucheApplication {
+  class TPEService
+  class CommercantService
+  class DemandeService
+  class AffectationService
+  class PanneService
+  class TauxService
+  class AuthService
+  class DashboardService
+  class AuditService
+  class ScreenService
+  class TPEPostingService
+  class FileUploadService
+  class NotificationService
+  class RapportFichierBancaireService
+  class FichierBancaireService
+  class TPEExcelImportService
+
+  class TPEController
+  class CommercantController
+  class DemandeController
+  class AffectationController
+  class PanneController
+  class TauxController
+  class AuthController
+  class DashboardController
+  class ScreenController
+  class RoleController
+  class PowerBIController
+  class FileUploadController
+  class FichierBancaireController
+  class TPEPostingCompController
+  class TPEPostingController
+
+  class TPERepository
+  class CommercantRepository
+  class DemandeRepository
+  class AffectationRepository
+  class PanneRepository
+  class TauxRepository
+  class UserRepository
+  class RoleRepository
+  class ScreenRepository
+  class ScreenRoleRepository
+  class HistoriqueStatutRepository
+  class CommentaireRepository
+  class PieceJointeRepository
+  class PieceDetacheeRepository
+  class AuditLogRepository
+  class TPEImportRecordRepository
+  class TPEPostingCompRepository
+  class TPEPostingRepository
+  class PorteurRepository
+
+  class SecurityConfig
+  class JwtTokenProvider
+  class JwtAuthenticationFilter
+  class JwtAuthenticationEntryPoint
+  class CustomUserDetailsService
+  class UserPrincipal
+}
+
+namespace FrontendMetier {
+  class TPEModel <<interface>>
+  class CommercantModel <<interface>>
+  class DemandeTPEModel <<interface>>
+  class PanneModel <<interface>>
+  class TauxTPEModel <<interface>>
+  class UtilisateurModel <<interface>>
+  class ScreenModel <<interface>>
+  class DashboardModel <<interface>>
+  class PowerBIModel <<interface>>
+}
+
+namespace IntegrationComptable {
+  class TPEPosting
+  class TPEPostingComp
+  class EcritureComptableDTO
+  class TPEInfo
+  class PorteurInfo
+}
+
+BaseEntity <|-- TPE
+BaseEntity <|-- Commercant
+BaseEntity <|-- Demande
+BaseEntity <|-- Affectation
+BaseEntity <|-- Panne
+BaseEntity <|-- Taux
+BaseEntity <|-- User
+BaseEntity <|-- Screen
+BaseEntity <|-- Commentaire
+BaseEntity <|-- PieceJointe
+BaseEntity <|-- TPEImportRecord
+AuditLogRepository ..> AuditLog
+
+TPE "1" --> "0..1" Commercant : commercant
+Commercant "1" o-- "*" TPE : tpes
+Commercant "1" o-- "*" Demande : demandes
+Commercant "1" o-- "*" Taux : taux
+
+Demande "1" --> "1" Commercant : commercant
+Demande "1" --> "1" User : demandeur
+Demande "0..1" --> "1" User : valideur
+Demande "1" *-- "*" PieceJointe : piecesJointes
+Demande "1" *-- "*" Commentaire : commentaires
+Demande "0..1" --> "1" Affectation : affectation
+
+Affectation "1" --> "1" TPE : tpe
+Affectation "1" --> "1" Commercant : commercant
+Affectation "0..1" --> "1" Demande : demande
+Affectation "0..1" --> "1" User : affectePar
+
+Panne "1" --> "1" TPE : tpe
+Panne "0..1" --> "1" TPE : tpeRemplacement
+Panne "1" --> "1" User : declarant
+Panne "0..1" --> "1" User : technicien
+Panne "1" *-- "*" PieceDetachee : piecesUtilisees
+
+Taux "1" --> "1" Commercant : commercant
+Taux "1" --> "1" User : inputer
+Taux "0..1" --> "1" User : authorizer
+
+User "*" -- "*" Role : roles
+Screen "*" -- "*" Role : roles
+ScreenRole "1" --> "1" Screen
+ScreenRole "1" --> "1" Role
+
+HistoriqueStatut "1" --> "1" TPE : tpe
+Commentaire "1" --> "1" Demande : demande
+Commentaire "1" --> "1" User : auteur
+PieceJointe "1" --> "1" Demande : demande
+PieceDetachee "1" --> "1" Panne : panne
+
+TPEService --> TPERepository
+TPEService --> TPE
+CommercantService --> CommercantRepository
+DemandeService --> DemandeRepository
+AffectationService --> AffectationRepository
+PanneService --> PanneRepository
+TauxService --> TauxRepository
+AuthService --> CustomUserDetailsService
+AuthService --> JwtTokenProvider
+DashboardService --> TPERepository
+AuditService --> AuditLogRepository
+ScreenService --> ScreenRepository
+TPEPostingService --> TPEPostingRepository
+TPEPostingService --> TPEPostingCompRepository
+TPEExcelImportService --> TPEImportRecordRepository
+FileUploadService --> PieceJointeRepository
+NotificationService --> CommercantRepository
+RapportFichierBancaireService --> FichierBancaireService
+FichierBancaireService --> TPEPostingCompRepository
+
+TPEController --> TPEService
+CommercantController --> CommercantService
+DemandeController --> DemandeService
+AffectationController --> AffectationService
+PanneController --> PanneService
+TauxController --> TauxService
+AuthController --> AuthService
+DashboardController --> DashboardService
+ScreenController --> ScreenService
+RoleController --> RoleRepository
+PowerBIController --> DashboardService
+FileUploadController --> FileUploadService
+FichierBancaireController --> FichierBancaireService
+TPEPostingCompController --> TPEPostingService
+TPEPostingController --> TPEPostingService
+
+SecurityConfig --> JwtAuthenticationFilter
+JwtAuthenticationFilter --> JwtTokenProvider
+JwtAuthenticationFilter --> CustomUserDetailsService
+CustomUserDetailsService --> UserRepository
+UserPrincipal --> User
+
+TPEModel ..> CommercantModel : reference
+TPEModel ..> StatutTPE
+TPEModel ..> TypeTPE
+CommercantModel ..> TypeTPE
+DemandeTPEModel ..> StatutDemande
+DemandeTPEModel ..> Urgence
+PanneModel ..> StatutPanne
+TauxTPEModel ..> StatutTaux
+UtilisateurModel ..> RoleType
+ScreenModel ..> RoleType
+DashboardModel ..> TPEModel
+DashboardModel ..> CommercantModel
+PowerBIModel ..> DashboardModel
+
+TPEPosting --> TPEPostingComp
+TPEPostingService --> EcritureComptableDTO
+TPEPostingService --> TPEInfo
+TPEPostingService --> PorteurInfo

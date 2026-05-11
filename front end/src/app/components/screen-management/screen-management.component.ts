@@ -29,9 +29,7 @@ export class ScreenManagementComponent implements OnInit {
     'ROLE_AGENCE': 'Agence',
     'ROLE_INPUTER': 'Saisisseur',
     'ROLE_AUTHORIZER': 'Valideur',
-    'ROLE_TECHNICIEN': 'Technicien',
     'ROLE_COMMERCANT': 'Commerçant',
-    'ROLE_LOGISTIQUE': 'Logistique'
   };
 
   // Formulaire pour ajouter/modifier un screen
@@ -66,7 +64,7 @@ export class ScreenManagementComponent implements OnInit {
 
   ngOnInit(): void {
     const currentUser = this.authService.getCurrentUser();
-    this.isAdmin = currentUser?.role === Role.ADMIN;
+    this.isAdmin = this.authService.hasAnyRole([Role.ADMIN]);
 
     if (!this.isAdmin) {
       this.showNotification('Accès refusé - Vous devez être administrateur pour accéder à cette page', 'error');

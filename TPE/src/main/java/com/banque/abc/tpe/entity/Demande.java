@@ -43,6 +43,13 @@ public class Demande extends BaseEntity {
     @JoinColumn(name = "valideur_id")
     private User valideur;
 
+    @ManyToOne
+    @JoinColumn(name = "inputer_id")
+    private User inputer;
+
+    @Column(name = "date_saisie_taux")
+    private LocalDateTime dateSaisieTaux;
+
     @Column(name = "date_validation")
     private LocalDateTime dateValidation;
 

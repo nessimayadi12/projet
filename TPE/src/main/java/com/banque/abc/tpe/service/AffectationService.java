@@ -63,13 +63,16 @@ public class AffectationService {
             }
         }
         // Cas 2: Créer un nouveau TPE avec les infos de la demande
-        else if (demande.getNumeroTerminal() != null && demande.getSerieTpe() != null) {
+        else if (demande.getNumeroTerminal() != null) {
             // Vérifier si ce TPE existe déjà
             tpe = tpeRepository.findByNumeroTerminal(demande.getNumeroTerminal())
                     .orElseGet(() -> {
+                        String numeroSerie = demande.getSerieTpe() != null && !demande.getSerieTpe().isBlank()
+                                ? demande.getSerieTpe()
+                                : "AUTO-" + demande.getNumeroTerminal();
                         TPE nouveauTPE = TPE.builder()
                                 .numeroTerminal(demande.getNumeroTerminal())
-                                .numeroSerie(demande.getSerieTpe())
+                                .numeroSerie(numeroSerie)
                                 .marque(request.getMarque() != null ? request.getMarque() : "Generic")
                                 .modele(request.getModele() != null ? request.getModele() : "Standard")
                                 .typeTPE(demande.getTypeDemande())

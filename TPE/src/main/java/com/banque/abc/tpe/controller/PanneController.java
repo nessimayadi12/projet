@@ -27,7 +27,7 @@ public class PanneController {
      * Obtenir toutes les pannes
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<List<PanneResponse>> getAllPannes() {
         return ResponseEntity.ok(panneService.getAllPannesDTO());
     }
@@ -36,7 +36,7 @@ public class PanneController {
      * Obtenir une panne par ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<PanneResponse> getPanneById(@PathVariable Long id) {
         try {
             PanneResponse response = panneService.getPanneDTOById(id);
@@ -50,7 +50,7 @@ public class PanneController {
      * Obtenir les pannes par statut
      */
     @GetMapping("/statut/{statut}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<List<PanneResponse>> getPannesByStatut(@PathVariable StatutPanne statut) {
         return ResponseEntity.ok(panneService.getPannesDTOByStatut(statut));
     }
@@ -59,7 +59,7 @@ public class PanneController {
      * Obtenir les pannes d'un TPE
      */
     @GetMapping("/tpe/{tpeId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN', 'AGENCE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<List<Panne>> getPannesByTPE(@PathVariable Long tpeId) {
         return ResponseEntity.ok(panneService.getPannesByTPE(tpeId));
     }
@@ -68,7 +68,7 @@ public class PanneController {
      * Obtenir les pannes d'un technicien
      */
     @GetMapping("/technicien/{technicienId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<List<Panne>> getPannesByTechnicien(@PathVariable Long technicienId) {
         return ResponseEntity.ok(panneService.getPannesByTechnicien(technicienId));
     }
@@ -77,7 +77,7 @@ public class PanneController {
      * Créer une nouvelle panne (déclaration)
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<PanneResponse> createPanne(@RequestBody Panne panne) {
         Panne nouvellePanne = panneService.createPanne(panne);
         PanneResponse response = panneService.mapToResponse(nouvellePanne);
@@ -88,7 +88,7 @@ public class PanneController {
      * Mettre à jour une panne
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> updatePanne(@PathVariable Long id, @RequestBody Panne panneDetails) {
         try {
             Panne updatedPanne = panneService.updatePanne(id, panneDetails);
@@ -103,7 +103,7 @@ public class PanneController {
      * Changer le statut d'une panne
      */
     @PutMapping("/{id}/statut/{statut}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> changeStatut(@PathVariable Long id, @PathVariable StatutPanne statut) {
         try {
             Panne panne = panneService.changeStatut(id, statut);
@@ -133,7 +133,7 @@ public class PanneController {
      * Diagnostiquer une panne
      */
     @PostMapping("/{id}/diagnostiquer")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> diagnostiquer(@PathVariable Long id, @RequestBody Map<String, String> payload) {
         try {
             String diagnostic = payload.get("diagnostic");
@@ -149,7 +149,7 @@ public class PanneController {
      * Marquer une panne comme en réparation
      */
     @PostMapping("/{id}/en-reparation")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> marquerEnReparation(@PathVariable Long id) {
         try {
             Panne panne = panneService.marquerEnReparation(id);
@@ -164,7 +164,7 @@ public class PanneController {
      * Marquer une panne comme réparée
      */
     @PostMapping("/{id}/reparee")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> marquerReparee(@PathVariable Long id, @RequestBody Map<String, String> payload) {
         try {
             String solution = payload.get("solution");
@@ -180,7 +180,7 @@ public class PanneController {
      * Résoudre une panne (marquer comme testée et fonctionnelle)
      */
     @PostMapping("/{id}/resoudre")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> resoudrePanne(@PathVariable Long id, @RequestBody Map<String, String> payload) {
         try {
             String solution = payload.get("solution");
@@ -196,7 +196,7 @@ public class PanneController {
      * Tester une panne après réparation
      */
     @PostMapping("/{id}/tester")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIEN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> testerPanne(@PathVariable Long id, @RequestBody Map<String, Boolean> payload) {
         try {
             Boolean resultat = payload.get("resultat");

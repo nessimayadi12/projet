@@ -62,11 +62,11 @@ export class DemandeService {
     return this.http.put<void>(`${this.apiUrl}/${id}/statut/${statut}`, {});
   }
 
-  affecterTPE(demandeId: number, tpeId: number): Observable<DemandeTPE> {
-    return this.http.post<DemandeTPE>(`${environment.apiUrl}/affectations`, {
+  affecterTPE(demandeId: number, tpeId: number, commentaire: string = 'Affectation depuis workflow Demande'): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/affectations`, {
       demandeId,
       tpeId,
-      commentaire: 'Affectation depuis workflow Demande'
+      commentaire
     });
   }
 
@@ -97,10 +97,12 @@ export class DemandeService {
   }
 
   // Upload pièce jointe
-  uploadPieceJointe(id: number, file: File): Observable<any> {
+  uploadPieceJointe(id: number, file: File): Observable<string> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post(`${this.apiUrl}/${id}/piece-jointe`, formData);
+    return this.http.post(`${this.apiUrl}/${id}/piece-jointe`, formData, {
+      responseType: 'text'
+    });
   }
 
   // Récupérer les demandes par agence

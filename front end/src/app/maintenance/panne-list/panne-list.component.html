@@ -133,10 +133,25 @@
                               color="primary" (click)="assignerTechnicien(panne)">
                         <mat-icon>person_add</mat-icon>
                       </button>
-                      <button *ngIf="canResoudre() && panne.statut === 'EN_COURS'" 
+                      <button *ngIf="canResoudre() && panne.statut === 'DECLAREE'"
+                              type="button" mat-icon-button matTooltip="Diagnostiquer"
+                              color="primary" (click)="diagnostiquerPanne(panne)">
+                        <mat-icon>search</mat-icon>
+                      </button>
+                      <button *ngIf="canResoudre() && panne.statut === 'DIAGNOSTIQUEE'"
+                              type="button" mat-icon-button matTooltip="Demarrer la reparation"
+                              color="primary" (click)="demarrerReparation(panne)">
+                        <mat-icon>build</mat-icon>
+                      </button>
+                      <button *ngIf="canResoudre() && (panne.statut === 'EN_REPARATION' || panne.statut === 'REPAREE')" 
                               type="button" mat-icon-button matTooltip="Résoudre" 
                               color="accent" (click)="resoudrePanne(panne)">
                         <mat-icon>check_circle</mat-icon>
+                      </button>
+                      <button *ngIf="canResoudre() && (panne.statut === 'DIAGNOSTIQUEE' || panne.statut === 'EN_REPARATION')"
+                              type="button" mat-icon-button matTooltip="Irrecuperable"
+                              color="warn" (click)="marquerIrrecuperable(panne)">
+                        <mat-icon>block</mat-icon>
                       </button>
                     </td>
                   </tr>

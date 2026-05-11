@@ -4,6 +4,160 @@
       <div class="col-md-12">
         <div class="card">
           <div class="card-header card-header-primary">
+            <h4 class="card-title">Creation / Soumission de taux</h4>
+            <p class="card-category">Inputer cree, puis soumet pour validation</p>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info" *ngIf="!canCreate()">
+              <strong>Information:</strong> Seuls INPUTER ou ADMIN peuvent creer/soumettre.
+            </div>
+
+            <form *ngIf="canCreate()" (ngSubmit)="createTaux()" class="mb-3">
+              <div class="row">
+                <div class="col-md-3">
+                  <label>Commercant ID *</label>
+                  <input
+                    class="form-control"
+                    type="number"
+                    name="commercantId"
+                    [(ngModel)]="createModel.commercantId"
+                    required>
+                </div>
+                <div class="col-md-3">
+                  <label>Nouveau taux commission (%) *</label>
+                  <input
+                    class="form-control"
+                    type="number"
+                    step="0.01"
+                    name="nouveauTauxCommission"
+                    [(ngModel)]="createModel.nouveauTauxCommission"
+                    required>
+                </div>
+                <div class="col-md-3">
+                  <label>Nouveau taux inter (%) *</label>
+                  <input
+                    class="form-control"
+                    type="number"
+                    step="0.01"
+                    name="nouveauTauxCommissionInter"
+                    [(ngModel)]="createModel.nouveauTauxCommissionInter"
+                    required>
+                </div>
+                <div class="col-md-3">
+                  <label>Commentaire</label>
+                  <input
+                    class="form-control"
+                    type="text"
+                    name="commentaire"
+                    [(ngModel)]="createModel.commentaire">
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <button
+                  type="submit"
+                  class="btn btn-success"
+                  [disabled]="createLoading">
+                  <mat-icon>add</mat-icon>
+                  Creer (Brouillon)
+                </button>
+              </div>
+            </form>
+
+            <div *ngIf="createdTaux" class="alert alert-secondary">
+              <strong>Dernier taux cree:</strong>
+              ID {{ createdTaux.id }} - Statut {{ createdTaux.statut }}
+              <button
+                class="btn btn-primary btn-sm ml-2"
+                *ngIf="canCreate() && isBrouillon(createdTaux)"
+                [disabled]="submitLoading"
+                (click)="soumettreTaux(createdTaux)">
+                <mat-icon>send</mat-icon>
+                Soumettre
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">Taux par commercant</h4>
+            <p class="card-category">Rechercher et soumettre un brouillon</p>
+          </div>
+          <div class="card-body">
+            <div class="row align-items-end">
+              <div class="col-md-4">
+                <label>Commercant ID</label>
+                <input
+                  class="form-control"
+                  type="number"
+                  name="searchCommercantId"
+                  [(ngModel)]="searchCommercantId">
+              </div>
+              <div class="col-md-3">
+                <button
+                  class="btn btn-info"
+                  type="button"
+                  (click)="loadTauxByCommercant()"
+                  [disabled]="listLoading">
+                  <mat-icon>search</mat-icon>
+                  Charger
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="listLoading" class="text-center mt-3">
+              <mat-spinner></mat-spinner>
+            </div>
+
+            <div class="table-responsive" *ngIf="!listLoading">
+              <table class="table table-hover">
+                <thead class="text-primary">
+                  <tr>
+                    <th>ID</th>
+                    <th>N° Terminal</th>
+                    <th>Nouveau taux</th>
+                    <th>Nouveau taux inter</th>
+                    <th>Statut</th>
+                    <th class="text-right" *ngIf="canCreate()">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let taux of tauxByCommercant">
+                    <td>{{ taux.id }}</td>
+                    <td>{{ taux.numeroTerminal || '-' }}</td>
+                    <td>{{ taux.nouveauTauxCommission }}%</td>
+                    <td>{{ taux.nouveauTauxCommissionInter }}%</td>
+                    <td>
+                      <span class="badge badge-warning" *ngIf="taux.statut === 'BROUILLON'">BROUILLON</span>
+                      <span class="badge badge-info" *ngIf="taux.statut === 'EN_ATTENTE_VALIDATION'">EN ATTENTE</span>
+                      <span class="badge badge-success" *ngIf="taux.statut === 'VALIDE'">VALIDE</span>
+                      <span class="badge badge-danger" *ngIf="taux.statut === 'REJETE'">REJETE</span>
+                    </td>
+                    <td class="text-right" *ngIf="canCreate()">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        *ngIf="isBrouillon(taux)"
+                        (click)="soumettreTaux(taux)"
+                        [disabled]="submitLoading">
+                        <mat-icon>send</mat-icon>
+                        Soumettre
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="tauxByCommercant.length === 0">
+                    <td colspan="6" class="text-center">
+                      <em>Aucun taux trouve</em>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header card-header-primary">
             <h4 class="card-title">Gestion des Taux TPE - Validation</h4>
             <p class="card-category">Liste des taux en attente de validation (Authorizer)</p>
           </div>

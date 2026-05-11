@@ -1,0 +1,28 @@
+flowchart LR
+    U[Utilisateurs\nAgence - Monétique - Admin] --> FE[Frontend\nAngular]
+    FE -->|API REST + JWT| BE[Backend\nSpring Boot]
+    BE --> DB[(SQL Server)]
+
+    BE --> M1[TPE]
+    BE --> M2[Commercants]
+    BE --> M3[Demandes]
+    BE --> M4[Pannes]
+    BE --> M5[Taux\n4 yeux]
+    BE --> M6[Dashboards]
+
+    BE -.-> S1[Securite\nRBAC + Permissions]
+    BE -.-> S2[Audit\nTraçabilite]
+
+    classDef users fill:#E3F2FD,stroke:#1976D2,color:#0D47A1,stroke-width:2px;
+    classDef front fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,stroke-width:2px;
+    classDef back fill:#FFF3E0,stroke:#EF6C00,color:#E65100,stroke-width:2px;
+    classDef db fill:#F3E5F5,stroke:#8E24AA,color:#4A148C,stroke-width:2px;
+    classDef domain fill:#FFFDE7,stroke:#F9A825,color:#E65100;
+    classDef cross fill:#ECEFF1,stroke:#546E7A,color:#263238;
+
+    class U users;
+    class FE front;
+    class BE back;
+    class DB db;
+    class M1,M2,M3,M4,M5,M6 domain;
+    class S1,S2 cross;

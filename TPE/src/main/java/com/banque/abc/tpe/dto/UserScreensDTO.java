@@ -14,5 +14,6 @@ import java.util.List;
 public class UserScreensDTO {
     private String username;
     private String role;
+    private List<String> roles;
     private List<ScreenDTO> screens;
 }

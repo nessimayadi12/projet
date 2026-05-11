@@ -8,6 +8,7 @@ import { UserProfileComponent } from '../../user-profile/user-profile.component'
 import { TpeListComponent } from '../../tpe/tpe-list/tpe-list.component';
 import { TpeFormComponent } from '../../tpe/tpe-form/tpe-form.component';
 import { TpeImportRecordsComponent } from '../../tpe/tpe-import-records/tpe-import-records.component';
+import { GestionTauxComponent } from '../../tpe/gestion-taux/gestion-taux.component';
 import { CommercantListComponent } from '../../commercants/commercant-list/commercant-list.component';
 import { CommercantFormComponent } from '../../commercants/commercant-form/commercant-form.component';
 import { DemandeListComponent } from '../../demandes/demande-list/demande-list.component';
@@ -32,6 +33,9 @@ export const AdminLayoutRoutes: Routes = [
     { path: 'tpe/new', component: TpeFormComponent, canActivate: [AuthGuard], data: { screenCode: 'CREER_TPE' } },
     { path: 'tpe/:id/edit', component: TpeFormComponent, canActivate: [AuthGuard], data: { screenCode: 'MODIFIER_TPE' } },
     { path: 'tpe/:id', component: TpeFormComponent, canActivate: [AuthGuard], data: { screenCode: 'DETAIL_TPE' } },
+
+    // Routes Taux
+    { path: 'taux', component: GestionTauxComponent, canActivate: [AuthGuard], data: { screenCode: 'GESTION_TAUX' } },
     
     // Routes Commerçants
     { path: 'commercants', component: CommercantListComponent, canActivate: [AuthGuard], data: { screenCode: 'LISTE_COMMERCANTS' } },
@@ -50,7 +54,7 @@ export const AdminLayoutRoutes: Routes = [
     { path: 'pannes', component: PanneListComponent, canActivate: [AuthGuard], data: { screenCode: 'LISTE_PANNES' } },
     
     // Route Upload de fichier bancaire (utilise toujours le backend)
-    { path: 'file-upload', component: UploadFichierBancaireComponent },
+    { path: 'file-upload', component: UploadFichierBancaireComponent, canActivate: [AuthGuard], data: { screenCode: 'UPLOAD_FICHIER_BANCAIRE' } },
     
     // Route Administration
     { path: 'admin/screens', component: ScreenManagementComponent, canActivate: [AuthGuard], data: { screenCode: 'GESTION_PERMISSIONS' } }

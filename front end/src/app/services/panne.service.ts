@@ -40,8 +40,8 @@ export class PanneService {
     return this.http.put<Panne>(`${this.apiUrl}/${id}`, panne);
   }
 
-  changeStatut(id: number, statut: StatutPanne): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}/statut/${statut}`, {});
+  changeStatut(id: number, statut: StatutPanne): Observable<Panne> {
+    return this.http.put<Panne>(`${this.apiUrl}/${id}/statut/${statut}`, {});
   }
 
   assignerTechnicien(panneId: number, technicienId: number): Observable<Panne> {

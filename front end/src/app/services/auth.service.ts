@@ -46,22 +46,19 @@ export class AuthService {
           localStorage.setItem('token', response.token);
           
           // Le backend renvoie "roles" (pluriel) comme tableau
-          let roleValue = response.roles || response.role;
+          const roles = this.normalizeRoles(response.roles || response.role);
+          const primaryRole = this.resolvePrimaryRole(roles);
           
           // Si c'est un tableau, prendre le premier élément
-          if (Array.isArray(roleValue)) {
-            roleValue = roleValue[0];
-          }
           
           // Convertir le rôle du backend (ROLE_AGENCE) vers l'enum (AGENCE)
-          if (typeof roleValue === 'string' && roleValue.startsWith('ROLE_')) {
-            roleValue = roleValue.replace('ROLE_', '');
-          }
           
           const user: Utilisateur = {
+            id: response.id,
             username: response.username,
             email: response.email,
-            role: roleValue as Role,
+            role: primaryRole,
+            roles,
             nom: '',
             prenom: ''
           };
@@ -88,10 +85,38 @@ export class AuthService {
 
   hasRole(roles: Role[]): boolean {
     const user = this.currentUserValue;
-    return user ? roles.includes(user.role) : false;
+    if (!user) {
+      return false;
+    }
+
+    const userRoles = user.roles && user.roles.length ? user.roles : [user.role];
+    return roles.some(role => userRoles.includes(role));
   }
 
   hasAnyRole(roles: Role[]): boolean {
     return this.hasRole(roles);
+  }
+
+  private normalizeRoles(roleValue: any): Role[] {
+    const values = Array.isArray(roleValue) ? roleValue : [roleValue];
+    const roles = values
+      .filter(role => !!role)
+      .map(role => String(role).replace(/^ROLE_/, '') as Role)
+      .filter((role, index, allRoles) => Object.values(Role).includes(role) && allRoles.indexOf(role) === index);
+
+    return roles.length ? roles : [Role.AGENCE];
+  }
+
+  private resolvePrimaryRole(roles: Role[]): Role {
+    const priority = [
+      Role.ADMIN,
+      Role.AUTHORIZER,
+      Role.INPUTER,
+      Role.MONETIQUE,
+      Role.AGENCE,
+      Role.COMMERCANT
+    ];
+
+    return priority.find(role => roles.includes(role)) || roles[0] || Role.AGENCE;
   }
 }

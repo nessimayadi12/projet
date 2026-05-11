@@ -20,6 +20,27 @@
   border-radius: 12px;
 }
 
+.badge-info {
+  background-color: #2196f3;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 12px;
+}
+
+.badge-success {
+  background-color: #4caf50;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 12px;
+}
+
+.badge-danger {
+  background-color: #f44336;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 12px;
+}
+
 .ml-2 {
   margin-left: 8px;
 }

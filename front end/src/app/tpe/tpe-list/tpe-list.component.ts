@@ -221,7 +221,7 @@ export class TpeListComponent implements OnInit {
       case StatutTPE.DISPONIBLE: return 'badge-success';
       case StatutTPE.AFFECTE: return 'badge-primary';
       case StatutTPE.EN_PANNE: return 'badge-danger';
-      case StatutTPE.EN_MAINTENANCE: return 'badge-warning';
+      case StatutTPE.MAINTENANCE: return 'badge-warning';
       case StatutTPE.HORS_SERVICE: return 'badge-dark';
       case StatutTPE.RESERVE: return 'badge-info';
       default: return 'badge-secondary';

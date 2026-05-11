@@ -1,0 +1,71 @@
+flowchart TB
+    subgraph Presentation[Couche Presentation]
+        UI[Interface Web Angular\nComposants + Routing]
+        GUARD[AuthGuard + Permissions Ecran]
+        INTERCEPT[HTTP Interceptor JWT]
+    end
+
+    subgraph Application[Couche Applicative - Spring Boot]
+        API[REST Controllers]
+        SEC[Security Layer\nJWT + RBAC]
+        BIZ[Services Metier]
+        AUDIT[Audit + Notification]
+        FILES[Gestion Fichiers\nUpload/Download]
+    end
+
+    subgraph Domain[Domaines Metier]
+        TPEM[TPE]
+        COM[Commercants]
+        DEM[Demandes]
+        AFF[Affectations]
+        PAN[Pannes]
+        TAUX[Taux - Regle 4 yeux]
+        DASH[Dashboards]
+        SCR[Permissions Ecran]
+    end
+
+    subgraph Persistence[Couche Persistance]
+        REPO[JPA Repositories]
+        ORM[Hibernate / JPA]
+        DB[(SQL Server)]
+    end
+
+    UI --> GUARD
+    UI --> INTERCEPT
+    INTERCEPT --> API
+    GUARD --> API
+
+    API --> SEC
+    API --> BIZ
+    BIZ --> AUDIT
+    BIZ --> FILES
+
+    BIZ --> TPEM
+    BIZ --> COM
+    BIZ --> DEM
+    BIZ --> AFF
+    BIZ --> PAN
+    BIZ --> TAUX
+    BIZ --> DASH
+    BIZ --> SCR
+
+    TPEM --> REPO
+    COM --> REPO
+    DEM --> REPO
+    AFF --> REPO
+    PAN --> REPO
+    TAUX --> REPO
+    DASH --> REPO
+    SCR --> REPO
+
+    REPO --> ORM --> DB
+
+    classDef pres fill:#E3F2FD,stroke:#1E88E5,color:#0D47A1;
+    classDef app fill:#E8F5E9,stroke:#43A047,color:#1B5E20;
+    classDef dom fill:#FFF8E1,stroke:#F9A825,color:#E65100;
+    classDef per fill:#F3E5F5,stroke:#8E24AA,color:#4A148C;
+
+    class UI,GUARD,INTERCEPT pres;
+    class API,SEC,BIZ,AUDIT,FILES app;
+    class TPEM,COM,DEM,AFF,PAN,TAUX,DASH,SCR dom;
+    class REPO,ORM,DB per;

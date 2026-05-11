@@ -31,8 +31,8 @@ export class CommercantFormComponent implements OnInit {
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
-    this.isMonetique = currentUser?.role === Role.MONETIQUE || currentUser?.role === Role.ADMIN;
-    this.isAgence = currentUser?.role === Role.AGENCE;
+    this.isMonetique = this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
+    this.isAgence = this.authService.hasAnyRole([Role.AGENCE]);
 
     this.commercantForm = this.fb.group({
       // Type de TPE (obligatoire)

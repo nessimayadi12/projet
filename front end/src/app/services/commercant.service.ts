@@ -72,8 +72,12 @@ export class CommercantService {
   }
 
   // Changer le statut d'un commerçant
-  changeStatut(id: number, statut: StatutCommercant): Observable<Commercant> {
-    return this.http.put<Commercant>(`${this.apiUrl}/${id}/statut/${statut}`, {});
+  changeStatut(id: number, statut: StatutCommercant): Observable<string> {
+    const params = new HttpParams().set('statut', statut);
+    return this.http.patch(`${this.apiUrl}/${id}/statut`, null, {
+      params,
+      responseType: 'text'
+    });
   }
 
   // Upload fichier RNE

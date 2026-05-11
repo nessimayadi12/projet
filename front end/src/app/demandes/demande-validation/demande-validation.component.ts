@@ -46,6 +46,15 @@ export class DemandeValidationComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.prefillForm();
+
+    if (this.isInputerStep()) {
+      this.validationForm.get('approuver')?.setValue(true);
+      this.validationForm.get('approuver')?.disable();
+    } else {
+      this.validationForm.get('approuver')?.enable();
+    }
+
     // Ajuster les validateurs selon le type de demande
     if (this.demande.typeDemande === TypeDemande.ECOMMERCE) {
       // Pour E-commerce, seuls MCC et N° Terminal sont nécessaires
@@ -59,6 +68,28 @@ export class DemandeValidationComponent implements OnInit {
       this.validationForm.get('loyer')?.updateValueAndValidity();
       this.validationForm.get('valueDate')?.updateValueAndValidity();
     }
+  }
+
+  isInputerStep(): boolean {
+    return this.demande.statut === StatutDemande.NOUVELLE;
+  }
+
+  isAuthorizerStep(): boolean {
+    return this.demande.statut === StatutDemande.EN_COURS;
+  }
+
+  getDialogTitle(): string {
+    if (this.isInputerStep()) {
+      return `Saisie des taux (Monetique) - ${this.demande.reference}`;
+    }
+    if (this.isAuthorizerStep()) {
+      return `Validation finale (Authorizer) - ${this.demande.reference}`;
+    }
+    return `Validation de Demande - ${this.demande.reference}`;
+  }
+
+  getActionLabel(): string {
+    return this.isInputerStep() ? 'Soumettre' : 'Valider';
   }
 
   genererNumeroTerminal(): void {
@@ -135,8 +166,9 @@ export class DemandeValidationComponent implements OnInit {
     // Convertir la date au format ISO
     const validationData = {
       ...formData,
+      approuver: this.isInputerStep() ? true : formData.approuver,
       numeroTerminal: this.numeroTerminalGenere,
-      valueDate: formData.valueDate ? new Date(formData.valueDate).toISOString() : null
+      valueDate: this.formatValueDate(formData.valueDate)
     };
 
     this.demandeService.validerDemande(this.demande.id!, validationData).subscribe({
@@ -146,7 +178,8 @@ export class DemandeValidationComponent implements OnInit {
       },
       error: (err) => {
         console.error('Erreur validation:', err);
-        this.showNotification('Erreur lors de la validation', 'danger');
+        const message = err?.error?.message || 'Erreur lors de la validation';
+        this.showNotification(message, 'danger');
         this.loading = false;
       }
     });
@@ -211,5 +244,42 @@ export class DemandeValidationComponent implements OnInit {
   showNotification(message: string, type: string): void {
     // À remplacer par un vrai système de notifications (Material Snackbar)
     alert(message);
+  }
+
+  private prefillForm(): void {
+    this.validationForm.patchValue({
+      approuver: true,
+      commentaire: this.demande.commentaireValidation || '',
+      mcc: this.demande.mcc || '',
+      tauxCommission: this.demande.tauxCommission || '',
+      tauxCommissionInter: this.demande.tauxCommissionInter || '',
+      loyer: this.demande.loyer || '',
+      serieTpe: this.demande.serieTpe || '',
+      valueDate: this.demande.valueDate ? new Date(this.demande.valueDate) : new Date(),
+      numeroTerminal: this.demande.numeroTerminal || ''
+    });
+
+    if (this.demande.numeroTerminal) {
+      this.numeroTerminalGenere = this.demande.numeroTerminal;
+    }
+  }
+
+  private formatValueDate(value: unknown): string | null {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return value.toISOString().replace('Z', '').split('.')[0];
+    }
+
+    if (typeof value === 'string') {
+      if (value.includes('T')) {
+        return value.replace('Z', '').split('.')[0];
+      }
+      return `${value}T00:00:00`;
+    }
+
+    return null;
   }
 }

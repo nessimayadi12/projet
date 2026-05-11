@@ -23,9 +23,12 @@ public class DemandeResponse {
     private String commercantNom;
     private Long demandeurId;
     private String demandeurNom;
+    private Long inputerId;
+    private String inputerNom;
     private Long valideurId;
     private String valideurNom;
     private LocalDateTime dateValidation;
+    private LocalDateTime dateSaisieTaux;
     private LocalDateTime dateCloture;
     private String description;
     private String commentaireValidation;

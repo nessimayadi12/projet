@@ -5,11 +5,14 @@
 -- ============================================
 -- Insertion des rôles manquants
 -- ============================================
-IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE name = 'ROLE_LOGISTIQUE')
-    INSERT INTO dbo.roles (name, description) VALUES ('ROLE_LOGISTIQUE', 'Rôle pour la gestion logistique des TPE');
+DELETE FROM dbo.screen_roles
+WHERE role_id IN (SELECT id FROM dbo.roles WHERE name IN ('ROLE_TECHNICIEN', 'ROLE_LOGISTIQUE'));
 
-IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE name = 'ROLE_TECHNICIEN')
-    INSERT INTO dbo.roles (name, description) VALUES ('ROLE_TECHNICIEN', 'Rôle pour les techniciens de maintenance');
+DELETE FROM dbo.user_roles
+WHERE role_id IN (SELECT id FROM dbo.roles WHERE name IN ('ROLE_TECHNICIEN', 'ROLE_LOGISTIQUE'));
+
+DELETE FROM dbo.roles
+WHERE name IN ('ROLE_TECHNICIEN', 'ROLE_LOGISTIQUE');
 
 IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE name = 'ROLE_COMMERCANT')
     INSERT INTO dbo.roles (name, description) VALUES ('ROLE_COMMERCANT', 'Rôle pour les commerçants');
@@ -105,34 +108,6 @@ CROSS JOIN dbo.roles r
 WHERE r.name = 'ROLE_AGENCE'
 AND s.code IN ('COMMERCANT_LIST', 'COMMERCANT_CREATE', 'COMMERCANT_EDIT', 'COMMERCANT_VIEW', 
                'DEMANDE_LIST', 'DEMANDE_CREATE', 'DEMANDE_EDIT', 'DEMANDE_VIEW', 'PANNE_LIST', 'USER_PROFILE');
-
--- LOGISTIQUE : Gestion des TPE
-INSERT INTO dbo.screen_roles (screen_id, role_id, can_view, can_create, can_edit, can_delete, can_export, created_at)
-SELECT s.id, r.id, 
-    1,
-    CASE WHEN s.code IN ('TPE_CREATE') THEN 1 ELSE 0 END,
-    CASE WHEN s.code IN ('TPE_EDIT') THEN 1 ELSE 0 END,
-    0,
-    1,
-    SYSDATETIME()
-FROM dbo.screens s
-CROSS JOIN dbo.roles r
-WHERE r.name = 'ROLE_LOGISTIQUE'
-AND s.code IN ('TPE_LIST', 'TPE_CREATE', 'TPE_EDIT', 'TPE_VIEW', 'USER_PROFILE');
-
--- TECHNICIEN : Gestion des pannes
-INSERT INTO dbo.screen_roles (screen_id, role_id, can_view, can_create, can_edit, can_delete, can_export, created_at)
-SELECT s.id, r.id, 
-    1,
-    CASE WHEN s.code = 'PANNE_LIST' THEN 1 ELSE 0 END,
-    CASE WHEN s.code = 'PANNE_LIST' THEN 1 ELSE 0 END,
-    0,
-    1,
-    SYSDATETIME()
-FROM dbo.screens s
-CROSS JOIN dbo.roles r
-WHERE r.name = 'ROLE_TECHNICIEN'
-AND s.code IN ('TPE_LIST', 'TPE_VIEW', 'PANNE_LIST', 'USER_PROFILE');
 
 -- INPUTER : Saisie des demandes
 INSERT INTO dbo.screen_roles (screen_id, role_id, can_view, can_create, can_edit, can_delete, can_export, created_at)

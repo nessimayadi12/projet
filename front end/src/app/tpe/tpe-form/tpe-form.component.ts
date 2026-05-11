@@ -79,8 +79,8 @@ export class TpeFormComponent implements OnInit {
     // V\u00e9rifier le r\u00f4le de l'utilisateur
     const currentUser = this.authService.currentUserValue;
     if (currentUser) {
-      this.isMonetique = currentUser.role === Role.MONETIQUE || currentUser.role === Role.ADMIN;
-      this.isAgence = currentUser.role === Role.AGENCE;
+      this.isMonetique = this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
+      this.isAgence = this.authService.hasAnyRole([Role.AGENCE]);
     }
 
     // Charger la liste des commer\u00e7ants

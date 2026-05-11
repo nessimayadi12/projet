@@ -17,7 +17,6 @@ import com.banque.abc.tpe.repository.UserRepository;
 import com.banque.abc.tpe.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,15 +38,15 @@ public class TauxService {
 
     @Transactional
     public TauxResponse createTaux(TauxRequest request) {
-        // Vérifier que l'utilisateur a le rôle INPUTER
+        // Vérifier que l'utilisateur a le rôle INPUTER ou MONETIQUE
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
-        
-        boolean isInputer = userPrincipal.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals(RoleType.ROLE_INPUTER.name()));
-        
-        if (!isInputer) {
-            throw new UnauthorizedException("Seuls les Inputers peuvent saisir des taux");
+
+        boolean canInput = hasAnyAuthority(userPrincipal,
+            RoleType.ROLE_INPUTER, RoleType.ROLE_ADMIN);
+
+        if (!canInput) {
+            throw new UnauthorizedException("Seuls les Inputer peuvent saisir des taux");
         }
 
         Commercant commercant = commercantRepository.findById(request.getCommercantId())
@@ -96,6 +95,13 @@ public class TauxService {
         // Vérifier que l'utilisateur est bien l'inputer
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
+
+        boolean canInput = hasAnyAuthority(userPrincipal,
+                RoleType.ROLE_INPUTER, RoleType.ROLE_ADMIN);
+
+        if (!canInput) {
+            throw new UnauthorizedException("Seuls les Inputer peuvent soumettre des taux");
+        }
         
         if (!taux.getInputer().getId().equals(userPrincipal.getId())) {
             throw new UnauthorizedException("Vous ne pouvez soumettre que vos propres saisies");
@@ -119,15 +125,15 @@ public class TauxService {
             throw new BusinessException("Ce taux ne peut pas être validé");
         }
 
-        // Vérifier que l'utilisateur a le rôle AUTHORIZER
+        // Vérifier que l'utilisateur a le rôle AUTHORIZER ou MONETIQUE
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
-        
-        boolean isAuthorizer = userPrincipal.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals(RoleType.ROLE_AUTHORIZER.name()));
-        
-        if (!isAuthorizer) {
-            throw new UnauthorizedException("Seuls les Authorizers peuvent valider des taux");
+
+        boolean canAuthorize = hasAnyAuthority(userPrincipal,
+            RoleType.ROLE_AUTHORIZER, RoleType.ROLE_ADMIN);
+
+        if (!canAuthorize) {
+            throw new UnauthorizedException("Seuls les Authorizer peuvent valider des taux");
         }
 
         // RÈGLE MÉTIER CRITIQUE: Inputer ≠ Authorizer
@@ -141,7 +147,7 @@ public class TauxService {
         taux.setAuthorizer(authorizer);
         taux.setDateValidation(LocalDateTime.now());
 
-        if (request.getApprouver()) {
+        if (Boolean.TRUE.equals(request.getApprouver())) {
             taux.setStatut(StatutTaux.VALIDE);
             taux.setActif(true);
             taux.setDateApplication(LocalDateTime.now());
@@ -160,6 +166,9 @@ public class TauxService {
                             taux.getNouveauTauxCommission(), taux.getNouveauTauxCommissionInter()),
                     "SUCCESS");
         } else {
+            if (request.getMotifRejet() == null || request.getMotifRejet().trim().isEmpty()) {
+                throw new BusinessException("Le motif de rejet est obligatoire");
+            }
             taux.setStatut(StatutTaux.REJETE);
             taux.setMotifRejet(request.getMotifRejet());
 
@@ -196,12 +205,26 @@ public class TauxService {
         TauxResponse response = modelMapper.map(taux, TauxResponse.class);
         response.setCommercantId(taux.getCommercant().getId());
         response.setCommercantNom(taux.getCommercant().getRaisonSociale());
+        response.setInputerId(taux.getInputer().getId());
         response.setInputerNom(taux.getInputer().getUsername());
         
         if (taux.getAuthorizer() != null) {
+            response.setAuthorizerId(taux.getAuthorizer().getId());
             response.setAuthorizerNom(taux.getAuthorizer().getUsername());
         }
         
         return response;
+    }
+
+    private boolean hasAnyAuthority(UserPrincipal userPrincipal, RoleType... roles) {
+        return userPrincipal.getAuthorities().stream()
+                .anyMatch(auth -> {
+                    for (RoleType role : roles) {
+                        if (auth.getAuthority().equals(role.name())) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
     }
 }

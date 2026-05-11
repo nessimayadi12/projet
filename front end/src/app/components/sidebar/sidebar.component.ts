@@ -1,25 +1,30 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { Role } from '../../models/utilisateur.model';
+import { ScreenService } from '../../services/screen.service';
 
 declare const $: any;
+
 declare interface RouteInfo {
     path: string;
     title: string;
     icon: string;
     class: string;
     roles?: Role[];
+    screenCode?: string;
 }
+
 export const ROUTES: RouteInfo[] = [
-    { path: '/dashboard', title: 'Tableau de Bord',  icon: 'dashboard', class: '', roles: [Role.ADMIN, Role.MONETIQUE] },
-    { path: '/tpe', title: 'Gestion TPE',  icon:'devices', class: '' },
-  { path: '/tpe/imports', title: 'Lignes importées',  icon:'table_view', class: '', roles: [Role.ADMIN, Role.MONETIQUE] },
-    { path: '/commercants', title: 'Commerçants',  icon:'store', class: '' },
-    { path: '/demandes', title: 'Demandes TPE',  icon:'assignment', class: '' },
-    { path: '/pannes', title: 'Maintenance',  icon:'build', class: '' },
-    { path: '/file-upload', title: 'Upload Transactions',  icon:'cloud_upload', class: '', roles: [Role.ADMIN, Role.MONETIQUE] },
-    { path: '/admin/screens', title: 'Gestion Permissions',  icon:'admin_panel_settings', class: '', roles: [Role.ADMIN] },
-    { path: '/user-profile', title: 'Mon Profil',  icon:'person', class: '' }
+    { path: '/dashboard', title: 'Tableau de Bord', icon: 'dashboard', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'DASHBOARD' },
+    { path: '/tpe', title: 'Gestion TPE', icon: 'devices', class: '', screenCode: 'LISTE_TPE' },
+    { path: '/taux', title: 'Gestion des Taux', icon: 'percent', class: '', roles: [Role.ADMIN, Role.INPUTER, Role.AUTHORIZER], screenCode: 'GESTION_TAUX' },
+    { path: '/tpe/imports', title: 'Lignes importees', icon: 'table_view', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'LISTE_TPE' },
+    { path: '/commercants', title: 'Commercants', icon: 'store', class: '', screenCode: 'LISTE_COMMERCANTS' },
+    { path: '/demandes', title: 'Demandes TPE', icon: 'assignment', class: '', screenCode: 'LISTE_DEMANDES' },
+    { path: '/pannes', title: 'Maintenance', icon: 'build', class: '', screenCode: 'LISTE_PANNES' },
+    { path: '/file-upload', title: 'Upload Transactions', icon: 'cloud_upload', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'UPLOAD_FICHIER_BANCAIRE' },
+    { path: '/admin/screens', title: 'Gestion Permissions', icon: 'admin_panel_settings', class: '', roles: [Role.ADMIN], screenCode: 'GESTION_PERMISSIONS' },
+    { path: '/user-profile', title: 'Mon Profil', icon: 'person', class: '', screenCode: 'PROFIL_UTILISATEUR' }
 ];
 
 @Component({
@@ -28,22 +33,41 @@ export const ROUTES: RouteInfo[] = [
   styleUrls: ['./sidebar.component.css']
 })
 export class SidebarComponent implements OnInit {
-  menuItems: any[];
+  menuItems: RouteInfo[] = [];
 
-  constructor(private authService: AuthService) { }
+  constructor(
+    private authService: AuthService,
+    private screenService: ScreenService
+  ) { }
 
-  ngOnInit() {
-    this.menuItems = ROUTES.filter(menuItem => {
+  ngOnInit(): void {
+    this.menuItems = this.filterByRoles(ROUTES);
+
+    this.screenService.getMyScreens().subscribe({
+      next: (userScreens) => {
+        const allowedScreens = new Set(userScreens.screens.map(screen => screen.code));
+        this.menuItems = this.filterByRoles(ROUTES)
+          .filter(menuItem => !menuItem.screenCode || allowedScreens.has(menuItem.screenCode));
+      },
+      error: () => {
+        this.menuItems = this.filterByRoles(ROUTES);
+      }
+    });
+  }
+
+  isMobileMenu(): boolean {
+      if ($(window).width() > 991) {
+          return false;
+      }
+      return true;
+  }
+
+  private filterByRoles(routes: RouteInfo[]): RouteInfo[] {
+    return routes.filter(menuItem => {
       if (menuItem.roles && menuItem.roles.length > 0) {
         return this.authService.hasAnyRole(menuItem.roles);
       }
       return true;
     });
   }
-  isMobileMenu() {
-      if ($(window).width() > 991) {
-          return false;
-      }
-      return true;
-  };
 }

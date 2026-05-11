@@ -107,6 +107,15 @@ GO
 -- ============================================
 
 -- ADMIN : Tous les droits sur tous les écrans
+DELETE FROM screen_roles
+WHERE role_id IN (SELECT id FROM roles WHERE name IN ('ROLE_TECHNICIEN', 'ROLE_LOGISTIQUE'));
+
+DELETE FROM user_roles
+WHERE role_id IN (SELECT id FROM roles WHERE name IN ('ROLE_TECHNICIEN', 'ROLE_LOGISTIQUE'));
+
+DELETE FROM roles
+WHERE name IN ('ROLE_TECHNICIEN', 'ROLE_LOGISTIQUE');
+
 INSERT INTO screen_roles (screen_id, role_id, can_view, can_create, can_edit, can_delete, can_export)
 SELECT s.id, r.id, 1, 1, 1, 1, 1
 FROM screens s
@@ -140,34 +149,6 @@ FROM screens s
 CROSS JOIN roles r
 WHERE r.name = 'ROLE_AGENCE'
 AND s.code IN ('LISTE_COMMERCANTS', 'DETAIL_COMMERCANT', 'LISTE_DEMANDES', 'DETAIL_DEMANDE', 'LISTE_PANNES', 'PROFIL_UTILISATEUR')
-AND NOT EXISTS (SELECT 1 FROM screen_roles sr WHERE sr.screen_id = s.id AND sr.role_id = r.id);
-
--- LOGISTIQUE : Gestion des TPE
-INSERT INTO screen_roles (screen_id, role_id, can_view, can_create, can_edit, can_delete, can_export)
-SELECT s.id, r.id, 
-    1,
-    CASE WHEN s.code IN ('CREER_TPE') THEN 1 ELSE 0 END,
-    CASE WHEN s.code IN ('MODIFIER_TPE') THEN 1 ELSE 0 END,
-    0,
-    1
-FROM screens s
-CROSS JOIN roles r
-WHERE r.name = 'ROLE_LOGISTIQUE'
-AND s.code IN ('LISTE_TPE', 'CREER_TPE', 'MODIFIER_TPE', 'DETAIL_TPE', 'PROFIL_UTILISATEUR')
-AND NOT EXISTS (SELECT 1 FROM screen_roles sr WHERE sr.screen_id = s.id AND sr.role_id = r.id);
-
--- TECHNICIEN : Gestion des pannes
-INSERT INTO screen_roles (screen_id, role_id, can_view, can_create, can_edit, can_delete, can_export)
-SELECT s.id, r.id, 
-    1,
-    CASE WHEN s.code = 'LISTE_PANNES' THEN 1 ELSE 0 END,
-    CASE WHEN s.code = 'LISTE_PANNES' THEN 1 ELSE 0 END,
-    0,
-    1
-FROM screens s
-CROSS JOIN roles r
-WHERE r.name = 'ROLE_TECHNICIEN'
-AND s.code IN ('LISTE_TPE', 'DETAIL_TPE', 'LISTE_PANNES', 'PROFIL_UTILISATEUR')
 AND NOT EXISTS (SELECT 1 FROM screen_roles sr WHERE sr.screen_id = s.id AND sr.role_id = r.id);
 
 -- INPUTER : Saisie des demandes

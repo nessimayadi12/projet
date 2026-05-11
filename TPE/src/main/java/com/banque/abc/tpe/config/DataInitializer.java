@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashSet;
@@ -24,12 +25,16 @@ import java.util.Set;
 public class DataInitializer {
 
     @Bean
-    public CommandLineRunner initData(RoleRepository roleRepository, 
+    public CommandLineRunner initData(RoleRepository roleRepository,
                                       UserRepository userRepository,
-                                                                          ScreenRepository screenRepository,
-                                                                          ScreenRoleRepository screenRoleRepository,
+                                      ScreenRepository screenRepository,
+                                      ScreenRoleRepository screenRoleRepository,
+                                      JdbcTemplate jdbcTemplate,
                                       PasswordEncoder passwordEncoder) {
         return args -> {
+            removeDeprecatedRoles(jdbcTemplate);
+            backfillBaseEntityColumns(jdbcTemplate);
+
             // Créer les rôles s'ils n'existent pas
             createRoleIfNotExists(roleRepository, RoleType.ROLE_ADMIN, "Administrateur système");
             createRoleIfNotExists(roleRepository, RoleType.ROLE_MONETIQUE, "Service Monétique");
@@ -112,10 +117,13 @@ public class DataInitializer {
 
             // Créer un Inputer
             if (!userRepository.existsByUsername("inputer")) {
+                Role monetiqueRole = roleRepository.findByName(RoleType.ROLE_MONETIQUE)
+                        .orElseThrow(() -> new RuntimeException("Rôle MONETIQUE non trouvé"));
                 Role inputerRole = roleRepository.findByName(RoleType.ROLE_INPUTER)
                         .orElseThrow(() -> new RuntimeException("Rôle INPUTER non trouvé"));
 
                 Set<Role> roles = new HashSet<>();
+                roles.add(monetiqueRole);
                 roles.add(inputerRole);
 
                 User inputer = User.builder()
@@ -133,13 +141,18 @@ public class DataInitializer {
                 userRepository.save(inputer);
                 System.out.println("Utilisateur inputer créé: username=inputer, password=Inputer@123");
             }
+            ensureUserHasRoles(jdbcTemplate, "inputer",
+                    RoleType.ROLE_MONETIQUE, RoleType.ROLE_INPUTER);
 
             // Créer un Authorizer
             if (!userRepository.existsByUsername("authorizer")) {
+                Role monetiqueRole = roleRepository.findByName(RoleType.ROLE_MONETIQUE)
+                        .orElseThrow(() -> new RuntimeException("Rôle MONETIQUE non trouvé"));
                 Role authorizerRole = roleRepository.findByName(RoleType.ROLE_AUTHORIZER)
                         .orElseThrow(() -> new RuntimeException("Rôle AUTHORIZER non trouvé"));
 
                 Set<Role> roles = new HashSet<>();
+                roles.add(monetiqueRole);
                 roles.add(authorizerRole);
 
                 User authorizer = User.builder()
@@ -157,12 +170,62 @@ public class DataInitializer {
                 userRepository.save(authorizer);
                 System.out.println("Utilisateur authorizer créé: username=authorizer, password=Authorizer@123");
             }
+            ensureUserHasRoles(jdbcTemplate, "authorizer",
+                    RoleType.ROLE_MONETIQUE, RoleType.ROLE_AUTHORIZER);
+            ensureMonetiqueForSubRoleUsers(jdbcTemplate);
 
                         // Créer les écrans utilisés par le frontend
                         seedScreensAndPermissions(roleRepository, screenRepository, screenRoleRepository);
 
             System.out.println("Initialisation des données terminée !");
         };
+    }
+
+    private void removeDeprecatedRoles(JdbcTemplate jdbcTemplate) {
+        int screenRolesDeleted = jdbcTemplate.update(
+                "DELETE FROM screen_roles WHERE role_id IN (SELECT id FROM roles WHERE name IN (?, ?))",
+                "ROLE_TECHNICIEN",
+                "ROLE_LOGISTIQUE"
+        );
+        int userRolesDeleted = jdbcTemplate.update(
+                "DELETE FROM user_roles WHERE role_id IN (SELECT id FROM roles WHERE name IN (?, ?))",
+                "ROLE_TECHNICIEN",
+                "ROLE_LOGISTIQUE"
+        );
+        int rolesDeleted = jdbcTemplate.update(
+                "DELETE FROM roles WHERE name IN (?, ?)",
+                "ROLE_TECHNICIEN",
+                "ROLE_LOGISTIQUE"
+        );
+
+        if (screenRolesDeleted + userRolesDeleted + rolesDeleted > 0) {
+            System.out.println("Roles obsoletes supprimes: TECHNICIEN, LOGISTIQUE");
+        }
+    }
+
+    private void backfillBaseEntityColumns(JdbcTemplate jdbcTemplate) {
+        List<String> baseEntityTables = List.of(
+                "users",
+                "commercants",
+                "demandes",
+                "tpes",
+                "affectations",
+                "pannes",
+                "commentaires",
+                "pieces_jointes",
+                "taux",
+                "screens",
+                "tpe_import_records",
+                "TPE_POSTING_comp"
+        );
+
+        for (String table : baseEntityTables) {
+            jdbcTemplate.update("UPDATE " + table + " SET version = 0 WHERE version IS NULL");
+            jdbcTemplate.update("UPDATE " + table
+                    + " SET created_date = COALESCE(created_date, CURRENT_TIMESTAMP), "
+                    + "last_modified_date = COALESCE(last_modified_date, CURRENT_TIMESTAMP) "
+                    + "WHERE created_date IS NULL OR last_modified_date IS NULL");
+        }
     }
 
     private void createRoleIfNotExists(RoleRepository roleRepository, RoleType roleType, String description) {
@@ -173,6 +236,49 @@ public class DataInitializer {
                     .build();
             roleRepository.save(role);
             System.out.println("Rôle créé: " + roleType);
+        }
+    }
+
+    private void ensureUserHasRoles(JdbcTemplate jdbcTemplate,
+                                    String username,
+                                    RoleType... requiredRoles) {
+        for (RoleType requiredRole : requiredRoles) {
+            int inserted = jdbcTemplate.update(
+                    "INSERT INTO user_roles (user_id, role_id) "
+                            + "SELECT u.id, r.id FROM users u "
+                            + "JOIN roles r ON r.name = ? "
+                            + "WHERE u.username = ? "
+                            + "AND NOT EXISTS ("
+                            + "SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role_id = r.id"
+                            + ")",
+                    requiredRole.name(),
+                    username
+            );
+
+            if (inserted > 0) {
+                System.out.println("Role " + requiredRole + " synchronise pour " + username);
+            }
+        }
+    }
+
+    private void ensureMonetiqueForSubRoleUsers(JdbcTemplate jdbcTemplate) {
+        int inserted = jdbcTemplate.update(
+                "INSERT INTO user_roles (user_id, role_id) "
+                        + "SELECT DISTINCT u.id, monetique.id FROM users u "
+                        + "JOIN user_roles ur_sub ON ur_sub.user_id = u.id "
+                        + "JOIN roles sub_role ON sub_role.id = ur_sub.role_id "
+                        + "JOIN roles monetique ON monetique.name = ? "
+                        + "WHERE sub_role.name IN (?, ?) "
+                        + "AND NOT EXISTS ("
+                        + "SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role_id = monetique.id"
+                        + ")",
+                RoleType.ROLE_MONETIQUE.name(),
+                RoleType.ROLE_INPUTER.name(),
+                RoleType.ROLE_AUTHORIZER.name()
+        );
+
+        if (inserted > 0) {
+            System.out.println("Role MONETIQUE ajoute pour " + inserted + " utilisateur(s) inputer/authorizer");
         }
     }
 
@@ -202,6 +308,8 @@ public class DataInitializer {
                 createScreenIfNotExists(screenRepository, "MODIFIER_TPE", "Modifier TPE", "/tpe/:id/edit", "edit", 12),
                 createScreenIfNotExists(screenRepository, "DETAIL_TPE", "Détail TPE", "/tpe/:id", "visibility", 13),
 
+                createScreenIfNotExists(screenRepository, "GESTION_TAUX", "Gestion Taux", "/taux", "percent", 14),
+
                 createScreenIfNotExists(screenRepository, "LISTE_COMMERCANTS", "Liste Commerçants", "/commercants", "store", 20),
                 createScreenIfNotExists(screenRepository, "CREER_COMMERCANT", "Créer Commerçant", "/commercants/new", "add_business", 21),
                 createScreenIfNotExists(screenRepository, "MODIFIER_COMMERCANT", "Modifier Commerçant", "/commercants/:id/edit", "edit", 22),
@@ -214,20 +322,27 @@ public class DataInitializer {
                 createScreenIfNotExists(screenRepository, "DETAIL_DEMANDE", "Détail Demande", "/demandes/:id", "visibility", 34),
 
                 createScreenIfNotExists(screenRepository, "LISTE_PANNES", "Liste Pannes", "/pannes", "build", 40),
+                createScreenIfNotExists(screenRepository, "UPLOAD_FICHIER_BANCAIRE", "Upload Transactions", "/file-upload", "cloud_upload", 45),
                 createScreenIfNotExists(screenRepository, "GESTION_PERMISSIONS", "Gestion Permissions", "/admin/screens", "security", 50)
         );
 
         for (Screen screen : screens) {
             // ADMIN: accès complet
-            upsertScreenRole(screenRoleRepository, screen, admin, true, true, true, true, true);
+            upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
+                    screen, admin, true, true, true, true, true);
 
             // MONETIQUE: accès large opérationnel
-            boolean monetiqueCanView = true;
-            boolean monetiqueCanCreate = !screen.getCode().startsWith("DASHBOARD") && !"PROFIL_UTILISATEUR".equals(screen.getCode());
+            boolean isPermissionAdminScreen = "GESTION_PERMISSIONS".equals(screen.getCode());
+            boolean monetiqueCanView = !isPermissionAdminScreen;
+            boolean monetiqueCanCreate = monetiqueCanView
+                    && !screen.getCode().startsWith("DASHBOARD")
+                    && !"PROFIL_UTILISATEUR".equals(screen.getCode());
             boolean monetiqueCanEdit = monetiqueCanCreate;
             boolean monetiqueCanDelete = screen.getCode().startsWith("MODIFIER_");
-            boolean monetiqueCanExport = screen.getCode().startsWith("LISTE_") || screen.getCode().startsWith("DASHBOARD");
-            upsertScreenRole(screenRoleRepository, screen, monetique,
+            boolean monetiqueCanExport = monetiqueCanView
+                    && (screen.getCode().startsWith("LISTE_") || screen.getCode().startsWith("DASHBOARD"));
+            upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
+                    screen, monetique,
                     monetiqueCanView, monetiqueCanCreate, monetiqueCanEdit, monetiqueCanDelete, monetiqueCanExport);
 
             // AGENCE: accès principalement demandes/commerçants/tpe consultation
@@ -240,13 +355,16 @@ public class DataInitializer {
             boolean agenceCanEdit = "MODIFIER_DEMANDE".equals(screen.getCode());
             boolean agenceCanDelete = false;
             boolean agenceCanExport = "LISTE_DEMANDES".equals(screen.getCode()) || "LISTE_TPE".equals(screen.getCode()) || "LISTE_COMMERCANTS".equals(screen.getCode());
-            upsertScreenRole(screenRoleRepository, screen, agence,
+            upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
+                    screen, agence,
                     agenceCanView, agenceCanCreate, agenceCanEdit, agenceCanDelete, agenceCanExport);
 
-            // INPUTER / AUTHORIZER: au minimum profil utilisateur
-            boolean minimalView = "PROFIL_UTILISATEUR".equals(screen.getCode());
-            upsertScreenRole(screenRoleRepository, screen, inputer, minimalView, false, false, false, false);
-            upsertScreenRole(screenRoleRepository, screen, authorizer, minimalView, false, false, false, false);
+                        // INPUTER / AUTHORIZER: profil + gestion des taux
+                        boolean tauxView = "PROFIL_UTILISATEUR".equals(screen.getCode()) || "GESTION_TAUX".equals(screen.getCode());
+                        upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
+                                screen, inputer, tauxView, false, false, false, false);
+                        upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
+                                screen, authorizer, tauxView, false, false, false, false);
         }
     }
 
@@ -272,20 +390,26 @@ public class DataInitializer {
         });
     }
 
-    private void upsertScreenRole(ScreenRoleRepository screenRoleRepository,
-                                  Screen screen,
-                                  Role role,
+        private void upsertScreenRole(ScreenRoleRepository screenRoleRepository,
+                                                                  ScreenRepository screenRepository,
+                                                                  RoleRepository roleRepository,
+                                                                  Screen screen,
+                                                                  Role role,
                                   boolean canView,
                                   boolean canCreate,
                                   boolean canEdit,
                                   boolean canDelete,
                                   boolean canExport) {
+                Screen screenRef = screenRepository.getReferenceById(screen.getId());
+                Role roleRef = roleRepository.getReferenceById(role.getId());
         ScreenRole screenRole = screenRoleRepository.findByScreenIdAndRoleId(screen.getId(), role.getId())
                 .orElseGet(() -> ScreenRole.builder()
-                        .screen(screen)
-                        .role(role)
+                                                .screen(screenRef)
+                                                .role(roleRef)
                         .build());
 
+                screenRole.setScreen(screenRef);
+                screenRole.setRole(roleRef);
         screenRole.setCanView(canView);
         screenRole.setCanCreate(canCreate);
         screenRole.setCanEdit(canEdit);

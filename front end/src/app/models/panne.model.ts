@@ -4,7 +4,7 @@ export enum StatutPanne {
   EN_REPARATION = 'EN_REPARATION',
   REPAREE = 'REPAREE',
   TESTEE = 'TESTEE',
-  CLOTUREE = 'CLOTUREE'
+  IRRECUPERABLE = 'IRRECUPERABLE'
 }
 
 export enum TypePanne {

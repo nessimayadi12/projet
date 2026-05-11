@@ -1,78 +1,87 @@
 <h2 mat-dialog-title>Affectation TPE</h2>
 
-<mat-dialog-content>
-  <div class="demande-info">
-    <h4>Demande: {{ demande.reference }}</h4>
-    <p><strong>Commerçant:</strong> {{ demande.commercantNom }}</p>
-    <p><strong>Type:</strong> {{ demande.typeDemande }}</p>
-    <p><strong>Urgence:</strong> <span class="badge" [class.badge-critical]="demande.urgence === 'CRITIQUE'">{{ demande.urgence }}</span></p>
-  </div>
-
-  <form [formGroup]="affectationForm">
-    
-    <!-- Sélection TPE -->
-    <mat-form-field class="full-width">
-      <mat-label>Sélectionner un TPE disponible</mat-label>
-      <mat-select formControlName="tpeId" (selectionChange)="onTPESelectionChange($event.value)">
-        <mat-option *ngFor="let tpe of tpesDisponibles" [value]="tpe.id">
-          <div class="tpe-option">
-            <div class="tpe-option-main">{{ getTPELabel(tpe) }}</div>
-            <div class="tpe-option-info">{{ getTPEInfo(tpe) }}</div>
-          </div>
-        </mat-option>
-      </mat-select>
-      <mat-error *ngIf="affectationForm.get('tpeId')?.hasError('required')">
-        Sélection obligatoire
-      </mat-error>
-    </mat-form-field>
-
-    <div *ngIf="tpesDisponibles.length === 0 && !loading" class="alert alert-warning">
-      <mat-icon>warning</mat-icon>
-      Aucun TPE disponible pour cette demande
+<ng-container *ngIf="demande as demandeData; else loadingDemande">
+  <mat-dialog-content>
+    <div class="demande-info">
+      <h4>Demande: {{ demandeData.reference }}</h4>
+      <p><strong>Commercant:</strong> {{ demandeData.commercantNom }}</p>
+      <p><strong>Type:</strong> {{ demandeData.typeDemande }}</p>
+      <p>
+        <strong>Urgence:</strong>
+        <span class="badge" [class.badge-critical]="demandeData.urgence === 'CRITIQUE'">
+          {{ demandeData.urgence }}
+        </span>
+      </p>
     </div>
 
-    <!-- Date Affectation -->
-    <mat-form-field class="full-width">
-      <mat-label>Date d'affectation</mat-label>
-      <input matInput [matDatepicker]="picker" formControlName="dateAffectation">
-      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-      <mat-datepicker #picker></mat-datepicker>
-    </mat-form-field>
+    <form [formGroup]="affectationForm">
+      <mat-form-field class="full-width">
+        <mat-label>Selectionner un TPE disponible</mat-label>
+        <mat-select formControlName="tpeId" (selectionChange)="onTPESelectionChange($event.value)">
+          <mat-option *ngFor="let tpe of tpesDisponibles" [value]="tpe.id">
+            <div class="tpe-option">
+              <div class="tpe-option-main">{{ getTPELabel(tpe) }}</div>
+              <div class="tpe-option-info">{{ getTPEInfo(tpe) }}</div>
+            </div>
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="affectationForm.get('tpeId')?.hasError('required')">
+          Selection obligatoire
+        </mat-error>
+      </mat-form-field>
 
-    <!-- Commentaire -->
-    <mat-form-field class="full-width">
-      <mat-label>Commentaire (optionnel)</mat-label>
-      <textarea matInput formControlName="commentaire" rows="3"></textarea>
-    </mat-form-field>
+      <div *ngIf="tpesDisponibles.length === 0 && !loading" class="alert alert-warning">
+        <mat-icon>warning</mat-icon>
+        Aucun TPE disponible pour cette demande
+      </div>
 
-    <!-- Options de génération -->
-    <div class="generation-options">
-      <h4>Documents à générer</h4>
-      <mat-checkbox formControlName="genererContrat">
-        Générer le Contrat Commercial
-      </mat-checkbox>
-      <mat-checkbox formControlName="genererBonLivraison">
-        Générer le Bon de Livraison
-      </mat-checkbox>
-    </div>
+      <mat-form-field class="full-width">
+        <mat-label>Date d'affectation</mat-label>
+        <input matInput [matDatepicker]="picker" formControlName="dateAffectation">
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker #picker></mat-datepicker>
+      </mat-form-field>
 
-    <!-- Loading indicator -->
-    <div *ngIf="loading || generatingPDF" class="text-center loading-section">
+      <mat-form-field class="full-width">
+        <mat-label>Commentaire (optionnel)</mat-label>
+        <textarea matInput formControlName="commentaire" rows="3"></textarea>
+      </mat-form-field>
+
+      <div class="generation-options">
+        <h4>Documents a generer</h4>
+        <mat-checkbox formControlName="genererContrat">
+          Generer le Contrat Commercial
+        </mat-checkbox>
+        <mat-checkbox formControlName="genererBonLivraison">
+          Generer le Bon de Livraison
+        </mat-checkbox>
+      </div>
+
+      <div *ngIf="loading || generatingPDF" class="text-center loading-section">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p *ngIf="loading && !generatingPDF">Affectation en cours...</p>
+        <p *ngIf="generatingPDF">Generation des documents PDF...</p>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="annuler()" [disabled]="loading">
+      Annuler
+    </button>
+    <button mat-raised-button color="primary" (click)="affecterTPE()"
+            [disabled]="affectationForm.invalid || loading || tpesDisponibles.length === 0">
+      <mat-icon>assignment</mat-icon>
+      Affecter
+    </button>
+  </mat-dialog-actions>
+</ng-container>
+
+<ng-template #loadingDemande>
+  <mat-dialog-content>
+    <div class="text-center loading-section">
       <mat-spinner diameter="40"></mat-spinner>
-      <p *ngIf="loading && !generatingPDF">Affectation en cours...</p>
-      <p *ngIf="generatingPDF">Génération des documents PDF...</p>
+      <p>Chargement de la demande...</p>
     </div>
-
-  </form>
-</mat-dialog-content>
-
-<mat-dialog-actions align="end">
-  <button mat-button (click)="annuler()" [disabled]="loading">
-    Annuler
-  </button>
-  <button mat-raised-button color="primary" (click)="affecterTPE()" 
-          [disabled]="affectationForm.invalid || loading || tpesDisponibles.length === 0">
-    <mat-icon>assignment</mat-icon>
-    Affecter
-  </button>
-</mat-dialog-actions>
+  </mat-dialog-content>
+</ng-template>

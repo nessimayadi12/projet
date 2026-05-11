@@ -37,6 +37,7 @@ export interface ScreenRole {
 export interface UserScreens {
   username: string;
   role: string;
+  roles?: string[];
   screens: Screen[];
 }
 

@@ -1,5 +1,5 @@
 <div class="dialog-container">
-  <h2 mat-dialog-title>Validation de Demande - {{ demande.reference }}</h2>
+  <h2 mat-dialog-title>{{ getDialogTitle() }}</h2>
 
   <mat-dialog-content>
     <form [formGroup]="validationForm">
@@ -73,7 +73,8 @@
       <!-- Formulaire de validation Monétique -->
       <div class="validation-form card">
         <div class="card-header bg-primary text-white">
-          <h4>Validation Monétique</h4>
+          <h4 *ngIf="isInputerStep()">Saisie des taux (Monétique)</h4>
+          <h4 *ngIf="!isInputerStep()">Validation Monétique</h4>
         </div>
         <div class="card-body">
           <!-- MCC (obligatoire pour tous) -->
@@ -175,8 +176,8 @@
             </div>
           </div>
 
-          <!-- Approuver / Rejeter -->
-          <div class="row">
+          <!-- Approuver / Rejeter (Authorizer uniquement) -->
+          <div class="row" *ngIf="isAuthorizerStep()">
             <div class="col-md-12">
               <mat-radio-group formControlName="approuver">
                 <mat-radio-button [value]="true" color="primary">Approuver</mat-radio-button>
@@ -194,7 +195,7 @@
     <button mat-raised-button color="primary" (click)="onSubmit()" 
             [disabled]="loading || validationForm.invalid || !numeroTerminalGenere">
       <mat-spinner *ngIf="loading" diameter="20" class="mr-2"></mat-spinner>
-      Valider
+      {{ getActionLabel() }}
     </button>
   </mat-dialog-actions>
 </div>

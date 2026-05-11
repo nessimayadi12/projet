@@ -65,7 +65,7 @@ public class AuthService {
             auditService.logAction("LOGIN", "User", user.getId().toString(),
                     "Connexion réussie pour " + user.getUsername(), "SUCCESS");
 
-            return new LoginResponse(jwt, user.getUsername(), user.getEmail(), roles);
+            return new LoginResponse(jwt, user.getId(), user.getUsername(), user.getEmail(), roles);
 
         } catch (Exception e) {
             auditService.logAction("LOGIN", "User", loginRequest.getUsername(),
@@ -104,10 +104,21 @@ public class AuthService {
             roles.add(userRole);
         } else {
             for (String roleName : registerRequest.getRoles()) {
-                Role role = roleRepository.findByName(RoleType.valueOf(roleName))
+                String normalizedRoleName = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
+                Role role = roleRepository.findByName(RoleType.valueOf(normalizedRoleName))
                         .orElseThrow(() -> new BusinessException("Rôle " + roleName + " non trouvé"));
                 roles.add(role);
             }
+        }
+
+        boolean hasMonetiqueSubRole = roles.stream()
+                .anyMatch(role -> role.getName() == RoleType.ROLE_INPUTER || role.getName() == RoleType.ROLE_AUTHORIZER);
+        boolean hasMonetiqueRole = roles.stream()
+                .anyMatch(role -> role.getName() == RoleType.ROLE_MONETIQUE);
+        if (hasMonetiqueSubRole && !hasMonetiqueRole) {
+            Role monetiqueRole = roleRepository.findByName(RoleType.ROLE_MONETIQUE)
+                    .orElseThrow(() -> new BusinessException("Role MONETIQUE non trouve"));
+            roles.add(monetiqueRole);
         }
 
         user.setRoles(roles);

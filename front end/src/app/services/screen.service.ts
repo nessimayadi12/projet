@@ -81,14 +81,14 @@ export class ScreenService {
   // Vérifier si l'utilisateur peut accéder à un screen
   canAccessScreen(screenCode: string): Observable<boolean> {
     return this.getMyPermissions(screenCode).pipe(
-      map(permissions => permissions.canView)
+      map(permissions => permissions.canView === true)
     );
   }
 
   // Vérifier une permission spécifique
   hasPermission(screenCode: string, permissionType: 'canView' | 'canCreate' | 'canEdit' | 'canDelete' | 'canExport'): Observable<boolean> {
     return this.getMyPermissions(screenCode).pipe(
-      map(permissions => permissions[permissionType] || false)
+      map(permissions => permissions[permissionType] === true)
     );
   }
 

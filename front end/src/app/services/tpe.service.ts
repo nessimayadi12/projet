@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -52,52 +52,50 @@ export class TpeService {
       .set('sort', 'id,desc');
 
     return this.http.get<any>(this.apiUrl, { params }).pipe(
-      map(response => {
-        if (Array.isArray(response)) {
-          return response as TPE[];
-        }
-        if (Array.isArray(response?.content)) {
-          return response.content as TPE[];
-        }
-        if (Array.isArray(response?.data?.content)) {
-          return response.data.content as TPE[];
-        }
-        if (Array.isArray(response?.data)) {
-          return response.data as TPE[];
-        }
-        return [];
-      })
+      map(response => this.extractTPEArray(response))
     );
   }
 
   // Récupérer un TPE par ID
   getTPEById(id: number): Observable<TPE> {
-    return this.http.get<TPE>(`${this.apiUrl}/${id}`);
+    return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
+      map(response => this.normalizeTPE(response))
+    );
   }
 
   // Récupérer un TPE par numéro de série
   getTPEByNumeroSerie(numeroSerie: string): Observable<TPE> {
-    return this.http.get<TPE>(`${this.apiUrl}/numero-serie/${numeroSerie}`);
+    return this.http.get<any>(`${this.apiUrl}/numero-serie/${numeroSerie}`).pipe(
+      map(response => this.normalizeTPE(response))
+    );
   }
 
   // Récupérer TPE par statut
   getTPEByStatut(statut: StatutTPE): Observable<TPE[]> {
-    return this.http.get<TPE[]>(`${this.apiUrl}/statut/${statut}`);
+    return this.http.get<any>(`${this.apiUrl}/statut/${statut}`).pipe(
+      map(response => this.extractTPEArray(response))
+    );
   }
 
   // Récupérer TPE par type
   getTPEByType(type: TypeTPE): Observable<TPE[]> {
-    return this.http.get<TPE[]>(`${this.apiUrl}/type/${type}`);
+    return this.http.get<any>(`${this.apiUrl}/type/${type}`).pipe(
+      map(response => this.extractTPEArray(response))
+    );
   }
 
   // Récupérer TPE disponibles
   getTPEDisponibles(): Observable<TPE[]> {
-    return this.http.get<TPE[]>(`${this.apiUrl}/disponibles`);
+    return this.http.get<any>(`${this.apiUrl}/disponibles`).pipe(
+      map(response => this.extractTPEArray(response))
+    );
   }
 
   // Récupérer TPE par commerçant
   getTPEByCommercant(commercantId: number): Observable<TPE[]> {
-    return this.http.get<TPE[]>(`${this.apiUrl}/commercant/${commercantId}`);
+    return this.http.get<any>(`${this.apiUrl}/commercant/${commercantId}`).pipe(
+      map(response => this.extractTPEArray(response))
+    );
   }
 
   // Recherche multicritère
@@ -108,12 +106,16 @@ export class TpeService {
         params = params.append(key, criteria[key]);
       }
     });
-    return this.http.get<TPE[]>(`${this.apiUrl}/search`, { params });
+    return this.http.get<any>(`${this.apiUrl}/search`, { params }).pipe(
+      map(response => this.extractTPEArray(response))
+    );
   }
 
   // Créer TPE (Physique ou E-commerce)
   createTPE(tpe: TPE): Observable<TPE> {
-    return this.http.post<TPE>(`${this.apiUrl}`, tpe);
+    return this.http.post<any>(`${this.apiUrl}`, tpe).pipe(
+      map(response => this.normalizeTPE(response))
+    );
   }
 
   // Créer TPE Physique (alias pour compatibilité)
@@ -128,12 +130,18 @@ export class TpeService {
 
   // Mettre à jour un TPE
   updateTPE(id: number, tpe: TPE): Observable<TPE> {
-    return this.http.put<TPE>(`${this.apiUrl}/${id}`, tpe);
+    return this.http.put<any>(`${this.apiUrl}/${id}`, tpe).pipe(
+      map(response => this.normalizeTPE(response))
+    );
   }
 
   // Changer le statut d'un TPE
-  changeStatut(id: number, statut: StatutTPE): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}/statut/${statut}`, {});
+  changeStatut(id: number, statut: StatutTPE): Observable<string> {
+    const params = new HttpParams().set('statut', statut);
+    return this.http.patch(`${this.apiUrl}/${id}/statut`, null, {
+      params,
+      responseType: 'text'
+    });
   }
 
   // Affecter un TPE à un commerçant
@@ -190,5 +198,31 @@ export class TpeService {
   // Alertes stock bas
   getAlertesStockBas(): Observable<any> {
     return this.http.get(`${this.apiUrl}/alertes/stock-bas`);
+  }
+
+  private extractTPEArray(response: any): TPE[] {
+    if (Array.isArray(response)) {
+      return response.map(tpe => this.normalizeTPE(tpe));
+    }
+    if (Array.isArray(response?.content)) {
+      return response.content.map((tpe: any) => this.normalizeTPE(tpe));
+    }
+    if (Array.isArray(response?.data?.content)) {
+      return response.data.content.map((tpe: any) => this.normalizeTPE(tpe));
+    }
+    if (Array.isArray(response?.data)) {
+      return response.data.map((tpe: any) => this.normalizeTPE(tpe));
+    }
+    return [];
+  }
+
+  private normalizeTPE(tpe: any): TPE {
+    if (!tpe) {
+      return tpe;
+    }
+    return {
+      ...tpe,
+      typeTpe: tpe.typeTpe || tpe.typeTPE
+    } as TPE;
   }
 }

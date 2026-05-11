@@ -4,9 +4,7 @@ export enum Role {
   AGENCE = 'AGENCE',
   INPUTER = 'INPUTER',
   AUTHORIZER = 'AUTHORIZER',
-  TECHNICIEN = 'TECHNICIEN',
-  COMMERCANT = 'COMMERCANT',
-  LOGISTIQUE = 'LOGISTIQUE'
+  COMMERCANT = 'COMMERCANT'
 }
 
 export interface Utilisateur {
@@ -16,6 +14,7 @@ export interface Utilisateur {
   nom: string;
   prenom: string;
   role: Role;
+  roles?: Role[];
   actif?: boolean;
   createdAt?: Date | string;
   updatedAt?: Date | string;
@@ -29,7 +28,9 @@ export interface LoginRequest {
 export interface AuthResponse {
   token: string;
   type: string;
+  id?: number;
   username: string;
   email: string;
-  role: Role;
+  role?: Role;
+  roles?: Role[];
 }

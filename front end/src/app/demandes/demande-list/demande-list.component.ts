@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { DemandeValidationComponent } from '../demande-validation/demande-validation.component';
 import { ExcelExportService } from '../../services/excel-export.service';
 import { Observable } from 'rxjs';
+import { Role } from '../../models/utilisateur.model';
 
 @Component({
   selector: 'app-demande-list',
@@ -21,6 +22,7 @@ export class DemandeListComponent implements OnInit {
   pagedDemandes: DemandeTPE[] = [];
   loading = false;
   currentUserRole: string = '';
+  currentUserId: number | null = null;
 
   // Permissions observables
   canCreateDemande$: Observable<boolean>;
@@ -63,6 +65,7 @@ export class DemandeListComponent implements OnInit {
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
+    this.currentUserId = currentUser?.id || null;
     
     // Initialiser les permissions
     this.canCreateDemande$ = this.screenService.hasPermission('CREER_DEMANDE', 'canCreate');
@@ -77,6 +80,36 @@ export class DemandeListComponent implements OnInit {
 
   navigateToNew(): void {
     this.router.navigateByUrl('/demandes/new');
+  }
+
+  navigateToEdit(demande: DemandeTPE): void {
+    if (!demande.id) {
+      return;
+    }
+    this.router.navigate(['/demandes', demande.id, 'edit']);
+  }
+
+  canEditAfterAffectation(demande: DemandeTPE): boolean {
+    if (demande.statut !== 'AFFECTEE') {
+      return true;
+    }
+    return this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
+  }
+
+  canSaisirDonneesMonetiques(demande: DemandeTPE): boolean {
+    return demande.statut === StatutDemande.NOUVELLE &&
+      this.authService.hasAnyRole([Role.INPUTER, Role.ADMIN]);
+  }
+
+  canValiderDonneesMonetiques(demande: DemandeTPE): boolean {
+    return demande.statut === StatutDemande.EN_COURS &&
+      this.authService.hasAnyRole([Role.AUTHORIZER, Role.ADMIN]) &&
+      !!this.currentUserId &&
+      (!demande.inputerId || demande.inputerId !== this.currentUserId);
+  }
+
+  canRejeterDonneesMonetiques(demande: DemandeTPE): boolean {
+    return this.canValiderDonneesMonetiques(demande);
   }
 
   loadDemandes(): void {

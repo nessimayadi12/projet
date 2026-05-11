@@ -17,8 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,34 +65,30 @@ public class ScreenService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + username));
 
-        List<ScreenDTO> screens = new ArrayList<>();
+        Map<String, ScreenDTO> screensByCode = new LinkedHashMap<>();
         
         // Récupérer les screens pour tous les rôles de l'utilisateur
         for (Role role : user.getRoles()) {
             List<Screen> roleScreens = screenRepository.findByRoleId(role.getId());
             for (Screen screen : roleScreens) {
-                ScreenDTO screenDTO = mapToDTO(screen);
                 
                 // Ajouter les permissions spécifiques pour ce rôle
                 ScreenRole screenRole = screenRoleRepository.findByScreenIdAndRoleId(screen.getId(), role.getId())
                         .orElse(null);
                 
-                if (screenRole != null) {
-                    screenDTO.setPermissions(ScreenPermissionsDTO.builder()
-                            .canView(screenRole.getCanView())
-                            .canCreate(screenRole.getCanCreate())
-                            .canEdit(screenRole.getCanEdit())
-                            .canDelete(screenRole.getCanDelete())
-                            .canExport(screenRole.getCanExport())
-                            .build());
+                if (screenRole == null) {
+                    continue;
                 }
                 
                 // Éviter les doublons
-                if (screens.stream().noneMatch(s -> s.getCode().equals(screenDTO.getCode()))) {
-                    screens.add(screenDTO);
-                }
+                ScreenDTO screenDTO = screensByCode.computeIfAbsent(screen.getCode(), code -> mapToDTO(screen));
+                screenDTO.setPermissions(mergePermissions(screenDTO.getPermissions(), screenRole));
             }
         }
+
+        List<ScreenDTO> screens = screensByCode.values().stream()
+                .filter(screen -> screen.getPermissions() != null && Boolean.TRUE.equals(screen.getPermissions().getCanView()))
+                .collect(Collectors.toList());
 
         // Trier par ordre
         screens.sort((s1, s2) -> {
@@ -100,26 +97,49 @@ public class ScreenService {
             return Integer.compare(order1, order2);
         });
 
+        List<String> roleNames = user.getRoles().stream()
+                .map(role -> role.getName().toString())
+                .sorted()
+                .collect(Collectors.toList());
+
         return UserScreensDTO.builder()
                 .username(user.getUsername())
-                .role(user.getRoles().stream().findFirst().get().getName().toString())
+                .role(roleNames.isEmpty() ? null : roleNames.get(0))
+                .roles(roleNames)
                 .screens(screens)
                 .build();
     }
 
+    private ScreenPermissionsDTO mergePermissions(ScreenPermissionsDTO current, ScreenRole screenRole) {
+        if (current == null) {
+            current = ScreenPermissionsDTO.builder()
+                    .canView(false)
+                    .canCreate(false)
+                    .canEdit(false)
+                    .canDelete(false)
+                    .canExport(false)
+                    .build();
+        }
+
+        current.setCanView(Boolean.TRUE.equals(current.getCanView()) || Boolean.TRUE.equals(screenRole.getCanView()));
+        current.setCanCreate(Boolean.TRUE.equals(current.getCanCreate()) || Boolean.TRUE.equals(screenRole.getCanCreate()));
+        current.setCanEdit(Boolean.TRUE.equals(current.getCanEdit()) || Boolean.TRUE.equals(screenRole.getCanEdit()));
+        current.setCanDelete(Boolean.TRUE.equals(current.getCanDelete()) || Boolean.TRUE.equals(screenRole.getCanDelete()));
+        current.setCanExport(Boolean.TRUE.equals(current.getCanExport()) || Boolean.TRUE.equals(screenRole.getCanExport()));
+
+        return current;
+    }
+
     @Transactional(readOnly = true)
     public ScreenPermissionsDTO getPermissionsForUserOnScreen(String username, String screenCode) {
-        System.out.println("DEBUG: getPermissionsForUserOnScreen - username: " + username + ", screenCode: " + screenCode);
         
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + username));
         
-        System.out.println("DEBUG: User found: " + user.getUsername() + ", roles count: " + user.getRoles().size());
 
         Screen screen = screenRepository.findByCode(screenCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Screen non trouvé: " + screenCode));
         
-        System.out.println("DEBUG: Screen found: " + screen.getCode() + ", id: " + screen.getId());
 
         ScreenPermissionsDTO permissions = ScreenPermissionsDTO.builder()
                 .canView(false)
@@ -131,25 +151,16 @@ public class ScreenService {
 
         // Vérifier les permissions pour tous les rôles de l'utilisateur
         for (Role role : user.getRoles()) {
-            System.out.println("DEBUG: Checking role: " + role.getName() + ", id: " + role.getId());
             
             ScreenRole screenRole = screenRoleRepository.findByScreenIdAndRoleId(screen.getId(), role.getId())
                     .orElse(null);
             
             if (screenRole != null) {
-                System.out.println("DEBUG: ScreenRole found - canView: " + screenRole.getCanView());
                 // Appliquer l'union des permissions (si un rôle permet, on permet)
-                permissions.setCanView(permissions.getCanView() || screenRole.getCanView());
-                permissions.setCanCreate(permissions.getCanCreate() || screenRole.getCanCreate());
-                permissions.setCanEdit(permissions.getCanEdit() || screenRole.getCanEdit());
-                permissions.setCanDelete(permissions.getCanDelete() || screenRole.getCanDelete());
-                permissions.setCanExport(permissions.getCanExport() || screenRole.getCanExport());
-            } else {
-                System.out.println("DEBUG: No ScreenRole found for screen " + screen.getId() + " and role " + role.getId());
+                permissions = mergePermissions(permissions, screenRole);
             }
         }
         
-        System.out.println("DEBUG: Final permissions - canView: " + permissions.getCanView());
         return permissions;
     }
 

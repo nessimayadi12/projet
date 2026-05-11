@@ -40,12 +40,18 @@ export interface DemandeTPE {
   agenceDemandeurNom?: string;
   monetiqueValideurId?: number;
   monetiqueValideurNom?: string;
+  valideurId?: number;
+  valideurNom?: string;
+  inputerId?: number;
+  inputerNom?: string;
   tpeAffecteId?: number;
   tpeAffecteNumeroSerie?: string;
   dateValidation?: Date | string;
+  dateSaisieTaux?: Date | string;
   dateAffectation?: Date | string;
   dateCloture?: Date | string;
   commentaires?: string;
+  commentaireValidation?: string;
   piecesJointes?: string[];
   createdDate?: Date | string; // Backend utilise createdDate
   lastModifiedDate?: Date | string; // Backend utilise lastModifiedDate

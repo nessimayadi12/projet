@@ -8,7 +8,7 @@ import { saveAs } from 'file-saver';
   providedIn: 'root'
 })
 export class PDFService {
-  private apiUrl = `${environment.apiUrl}/api/pdf`;
+  private apiUrl = `${environment.apiUrl}/pdf`;
 
   constructor(private http: HttpClient) { }
 

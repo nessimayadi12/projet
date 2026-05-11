@@ -20,7 +20,9 @@ public class TauxResponse {
     private Double ancienTauxCommissionInter;
     private Double nouveauTauxCommissionInter;
     private StatutTaux statut;
+    private Long inputerId;
     private String inputerNom;
+    private Long authorizerId;
     private String authorizerNom;
     private LocalDateTime dateSaisie;
     private LocalDateTime dateValidation;

@@ -8,6 +8,7 @@ import { PanneService } from '../../services/panne.service';
 import { AuthService } from '../../services/auth.service';
 import { TpeService } from '../../services/tpe.service';
 import { ExcelExportService } from '../../services/excel-export.service';
+import { Role } from '../../models/utilisateur.model';
 
 @Component({
   selector: 'app-panne-list',
@@ -68,7 +69,7 @@ export class PanneListComponent implements OnInit {
         this.tpes = data.filter(tpe => 
           tpe.statut === StatutTPE.AFFECTE || 
           tpe.statut === StatutTPE.EN_PANNE || 
-          tpe.statut === StatutTPE.EN_MAINTENANCE
+          tpe.statut === StatutTPE.MAINTENANCE
         );
         console.log('TPEs chargés:', this.tpes.length, this.tpes);
         if (this.tpes.length === 0) {
@@ -213,6 +214,35 @@ export class PanneListComponent implements OnInit {
     }
   }
 
+  diagnostiquerPanne(panne: Panne): void {
+    const diagnostic = prompt('Diagnostic de la panne:');
+    if (diagnostic) {
+      this.panneService.diagnostiquer(panne.id!, diagnostic).subscribe({
+        next: () => {
+          this.showNotification('Diagnostic enregistre avec succes', 'success');
+          this.loadPannes();
+        },
+        error: (error) => {
+          console.error('Erreur diagnostic panne', error);
+          this.showNotification('Erreur lors du diagnostic', 'error');
+        }
+      });
+    }
+  }
+
+  demarrerReparation(panne: Panne): void {
+    this.panneService.marquerEnReparation(panne.id!).subscribe({
+      next: () => {
+        this.showNotification('Panne marquee en reparation', 'success');
+        this.loadPannes();
+      },
+      error: (error) => {
+        console.error('Erreur passage en reparation', error);
+        this.showNotification('Erreur lors du changement de statut', 'error');
+      }
+    });
+  }
+
   resoudrePanne(panne: Panne): void {
     const solution = prompt('Description de la solution:');
     if (solution) {
@@ -229,12 +259,27 @@ export class PanneListComponent implements OnInit {
     }
   }
 
+  marquerIrrecuperable(panne: Panne): void {
+    if (confirm('Confirmer que ce TPE est irrecuperable ?')) {
+      this.panneService.changeStatut(panne.id!, StatutPanne.IRRECUPERABLE).subscribe({
+        next: () => {
+          this.showNotification('Panne marquee irrecuperable', 'success');
+          this.loadPannes();
+        },
+        error: (error) => {
+          console.error('Erreur statut irrecuperable', error);
+          this.showNotification('Erreur lors du changement de statut', 'error');
+        }
+      });
+    }
+  }
+
   canAssigner(): boolean {
-    return this.currentUserRole === 'ADMIN' || this.currentUserRole === 'MONETIQUE';
+    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
   }
 
   canResoudre(): boolean {
-    return this.currentUserRole === 'TECHNICIEN' || this.currentUserRole === 'ADMIN';
+    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
   }
 
   exportToExcel(): void {
@@ -404,7 +449,7 @@ export class PanneListComponent implements OnInit {
       'EN_REPARATION': 'primary',
       'REPAREE': 'success',
       'TESTEE': 'success',
-      'CLOTUREE': 'secondary'
+      'IRRECUPERABLE': 'secondary'
     };
     return classes[statut] || 'secondary';
   }
@@ -412,9 +457,11 @@ export class PanneListComponent implements OnInit {
   getStatutClass(statut: string): string {
     const classes: { [key: string]: string } = {
       'DECLAREE': 'badge-warning',
-      'EN_COURS': 'badge-primary',
-      'RESOLUE': 'badge-success',
-      'FERMEE': 'badge-secondary'
+      'DIAGNOSTIQUEE': 'badge-primary',
+      'EN_REPARATION': 'badge-primary',
+      'REPAREE': 'badge-success',
+      'TESTEE': 'badge-success',
+      'IRRECUPERABLE': 'badge-secondary'
     };
     return classes[statut] || 'badge-default';
   }

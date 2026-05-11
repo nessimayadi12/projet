@@ -51,7 +51,7 @@ public class TauxController {
     }
 
     @GetMapping("/en-attente")
-    @PreAuthorize("hasAnyRole('AUTHORIZER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AUTHORIZER', 'ADMIN')")
     public ResponseEntity<List<TauxResponse>> getTauxEnAttenteValidation() {
         List<TauxResponse> taux = tauxService.getTauxEnAttenteValidation();
         return ResponseEntity.ok(taux);

@@ -1,13 +1,14 @@
-import { Component, OnInit, Inject } from '@angular/core';
+import { Component, Inject, OnInit, Optional } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TPE } from '../../models/tpe.model';
-import { DemandeTPE } from '../../models/demande-tpe.model';
+import { ActivatedRoute, Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { TPE, TypeTPE } from '../../models/tpe.model';
+import { DemandeTPE, TypeDemande } from '../../models/demande-tpe.model';
 import { TpeService } from '../../services/tpe.service';
 import { DemandeService } from '../../services/demande.service';
 import { PDFService } from '../../services/pdf.service';
-import { TypeDemande } from '../../models/demande-tpe.model';
 
 @Component({
   selector: 'app-affectation-tpe',
@@ -19,7 +20,7 @@ export class AffectationTPEComponent implements OnInit {
   tpesDisponibles: TPE[] = [];
   loading = false;
   generatingPDF = false;
-  demande: DemandeTPE;
+  demande: DemandeTPE | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -27,35 +28,61 @@ export class AffectationTPEComponent implements OnInit {
     private demandeService: DemandeService,
     private pdfService: PDFService,
     private snackBar: MatSnackBar,
-    public dialogRef: MatDialogRef<AffectationTPEComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { demande: DemandeTPE }
+    private route: ActivatedRoute,
+    private router: Router,
+    @Optional() public dialogRef: MatDialogRef<AffectationTPEComponent>,
+    @Optional() @Inject(MAT_DIALOG_DATA) public data: { demande: DemandeTPE } | null
   ) {
-    this.demande = data.demande;
+    this.demande = data?.demande || null;
     this.affectationForm = this.fb.group({
       tpeId: ['', Validators.required],
       dateAffectation: [new Date(), Validators.required],
       commentaire: [''],
-      genererContrat: [true],
-      genererBonLivraison: [true]
+      genererContrat: [false],
+      genererBonLivraison: [false]
     });
   }
 
   ngOnInit(): void {
-    this.loadTPEsDisponibles();
+    if (this.demande) {
+      this.loadTPEsDisponibles();
+      return;
+    }
+
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    if (!id) {
+      this.showNotification('Demande introuvable', 'error');
+      this.navigateBack();
+      return;
+    }
+
+    this.loading = true;
+    this.demandeService.getDemandeById(id).subscribe({
+      next: (demande) => {
+        this.demande = demande;
+        this.loadTPEsDisponibles();
+      },
+      error: (error) => {
+        console.error('Erreur chargement demande', error);
+        this.showNotification('Erreur lors du chargement de la demande', 'error');
+        this.loading = false;
+        this.navigateBack();
+      }
+    });
   }
 
   loadTPEsDisponibles(): void {
+    if (!this.demande) {
+      return;
+    }
+
     this.loading = true;
+    const requiredType = this.getRequiredTpeType();
     this.tpeService.getTPEDisponibles().subscribe({
       next: (tpes) => {
-        // Filtrer les TPEs selon le type de demande
-        if (this.demande.typeDemande === TypeDemande.PHYSIQUE) {
-          this.tpesDisponibles = tpes.filter(tpe => tpe.statut === 'DISPONIBLE');
-        } else if (this.demande.typeDemande === TypeDemande.ECOMMERCE) {
-          this.tpesDisponibles = tpes.filter(tpe => 
-            tpe.statut === 'DISPONIBLE' && tpe.typeTpe === 'PHYSIQUE'
-          );
-        }
+        this.tpesDisponibles = tpes.filter(tpe =>
+          tpe.statut === 'DISPONIBLE' && tpe.typeTpe === requiredType
+        );
         this.loading = false;
       },
       error: (error) => {
@@ -67,15 +94,20 @@ export class AffectationTPEComponent implements OnInit {
   }
 
   onTPESelectionChange(tpeId: number): void {
-    const tpe = this.tpesDisponibles.find(t => t.id === tpeId);
+    const tpe = this.tpesDisponibles.find(item => item.id === tpeId);
     if (tpe) {
-      console.log('TPE sélectionné:', tpe);
+      this.affectationForm.patchValue({ tpeId: tpe.id });
     }
   }
 
   async affecterTPE(): Promise<void> {
+    if (!this.demande?.id) {
+      this.showNotification('Demande introuvable', 'error');
+      return;
+    }
+
     if (this.affectationForm.invalid) {
-      this.showNotification('Veuillez sélectionner un TPE', 'error');
+      this.showNotification('Veuillez selectionner un TPE', 'error');
       return;
     }
 
@@ -86,45 +118,88 @@ export class AffectationTPEComponent implements OnInit {
     try {
       this.loading = true;
 
-      // 1. Affecter le TPE à la demande
-      await this.demandeService.affecterTPE(this.demande.id!, tpeId).toPromise();
+      await firstValueFrom(this.demandeService.affecterTPE(
+        this.demande.id,
+        tpeId,
+        this.affectationForm.value.commentaire || 'Affectation depuis workflow Demande'
+      ));
 
-      // 2. Générer les documents PDF si demandés
       const documentsGeneres: string[] = [];
+      const documentsEchoues: string[] = [];
 
       if (genererContrat) {
         this.generatingPDF = true;
-        await this.pdfService.genererContrat(this.demande.commercantId, tpeId).toPromise();
-        documentsGeneres.push('Contrat');
+        try {
+          if (!this.demande.commercantId) {
+            throw new Error('Commercant non disponible pour la demande');
+          }
+          await firstValueFrom(this.pdfService.genererContrat(this.demande.commercantId, tpeId));
+          documentsGeneres.push('Contrat');
+        } catch (error) {
+          console.error('Erreur generation contrat', error);
+          documentsEchoues.push('Contrat');
+        }
       }
 
       if (genererBonLivraison) {
         this.generatingPDF = true;
-        await this.pdfService.genererBonLivraison(this.demande.id!, tpeId).toPromise();
-        documentsGeneres.push('Bon de Livraison');
+        try {
+          await firstValueFrom(this.pdfService.genererBonLivraison(this.demande.id, tpeId));
+          documentsGeneres.push('Bon de Livraison');
+        } catch (error) {
+          console.error('Erreur generation bon de livraison', error);
+          documentsEchoues.push('Bon de Livraison');
+        }
       }
 
       this.generatingPDF = false;
       this.loading = false;
 
-      let message = 'TPE affecté avec succès';
+      let message = 'TPE affecte avec succes';
       if (documentsGeneres.length > 0) {
-        message += `. Documents générés: ${documentsGeneres.join(', ')}`;
+        message += `. Documents generes: ${documentsGeneres.join(', ')}`;
+      }
+      if (documentsEchoues.length > 0) {
+        message += `. Documents non generes: ${documentsEchoues.join(', ')}`;
       }
 
       this.showNotification(message, 'success');
-      this.dialogRef.close({ success: true });
-
+      this.finish({ success: true });
     } catch (error) {
       console.error('Erreur affectation TPE', error);
-      this.showNotification('Erreur lors de l\'affectation', 'error');
+      this.showNotification('Erreur lors de l affectation', 'error');
       this.loading = false;
       this.generatingPDF = false;
     }
   }
 
   annuler(): void {
-    this.dialogRef.close({ success: false });
+    this.finish({ success: false });
+  }
+
+  getTPELabel(tpe: TPE): string {
+    return `${tpe.numeroSerie} - ${tpe.modele} (${tpe.marque})`;
+  }
+
+  getTPEInfo(tpe: TPE): string {
+    return `Statut: ${tpe.statut} | Type: ${tpe.typeTpe}`;
+  }
+
+  private getRequiredTpeType(): TypeTPE {
+    return this.demande?.typeDemande === TypeDemande.ECOMMERCE ? TypeTPE.ECOMMERCE : TypeTPE.PHYSIQUE;
+  }
+
+  private finish(result: { success: boolean }): void {
+    if (this.dialogRef) {
+      this.dialogRef.close(result);
+      return;
+    }
+
+    this.navigateBack();
+  }
+
+  private navigateBack(): void {
+    this.router.navigate(['/demandes']);
   }
 
   private showNotification(message: string, type: 'success' | 'error' | 'info'): void {
@@ -134,13 +209,5 @@ export class AffectationTPEComponent implements OnInit {
       verticalPosition: 'top',
       panelClass: [`snackbar-${type}`]
     });
-  }
-
-  getTPELabel(tpe: TPE): string {
-    return `${tpe.numeroSerie} - ${tpe.modele} (${tpe.marque})`;
-  }
-
-  getTPEInfo(tpe: TPE): string {
-    return `Statut: ${tpe.statut} | Type: ${tpe.typeTpe}`;
   }
 }

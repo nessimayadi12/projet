@@ -43,8 +43,16 @@ public class DemandeController {
         return ResponseEntity.ok(demandes);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
+    public ResponseEntity<DemandeResponse> updateDemande(@PathVariable Long id,
+                                                         @Valid @RequestBody DemandeRequest request) {
+        DemandeResponse response = demandeService.updateDemande(id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{id}/valider")
-    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('INPUTER', 'AUTHORIZER', 'ADMIN')")
     public ResponseEntity<DemandeResponse> validerDemande(@PathVariable Long id,
                                                            @Valid @RequestBody ValiderDemandeRequest request) {
         DemandeResponse response = demandeService.validerDemande(id, request);
@@ -52,7 +60,7 @@ public class DemandeController {
     }
 
     @PostMapping("/{id}/rejeter")
-    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('AUTHORIZER', 'ADMIN')")
     public ResponseEntity<DemandeResponse> rejeterDemande(@PathVariable Long id,
                                                            @RequestBody String commentaire) {
         DemandeResponse response = demandeService.rejeterDemande(id, commentaire);

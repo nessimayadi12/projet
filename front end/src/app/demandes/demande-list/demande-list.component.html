@@ -118,15 +118,29 @@
                         <mat-icon>print</mat-icon>
                       </button>
 
-                      <!-- Bouton Valider (avec permission Edit) -->
-                      <button *ngIf="(canEditDemande$ | async) && demande.statut === 'NOUVELLE'" 
-                              type="button" mat-icon-button matTooltip="Valider" 
+                      <!-- Bouton Modifier -->
+                      <button *ngIf="(canEditDemande$ | async) && (demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS' || (demande.statut === 'AFFECTEE' && canEditAfterAffectation(demande)))"
+                              type="button" mat-icon-button matTooltip="Modifier"
+                              color="primary" (click)="navigateToEdit(demande)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+
+                      <!-- Bouton Saisie Monétique (Inputer) -->
+                      <button *ngIf="(canEditDemande$ | async) && canSaisirDonneesMonetiques(demande)"
+                              type="button" mat-icon-button matTooltip="Saisir les donnees monetiques"
+                              color="accent" (click)="validerDemande(demande)">
+                        <mat-icon>edit_note</mat-icon>
+                      </button>
+
+                      <!-- Bouton Validation finale (Authorizer) -->
+                      <button *ngIf="(canEditDemande$ | async) && canValiderDonneesMonetiques(demande)"
+                              type="button" mat-icon-button matTooltip="Valider final"
                               color="accent" (click)="validerDemande(demande)">
                         <mat-icon>check_circle</mat-icon>
                       </button>
 
-                      <!-- Bouton Rejeter (avec permission Edit) -->
-                      <button *ngIf="(canEditDemande$ | async) && (demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS')" 
+                      <!-- Bouton Rejeter (Authorizer) -->
+                      <button *ngIf="(canEditDemande$ | async) && canRejeterDonneesMonetiques(demande)"
                               type="button" mat-icon-button matTooltip="Rejeter" 
                               color="warn" (click)="rejeterDemande(demande)">
                         <mat-icon>cancel</mat-icon>
