@@ -3,8 +3,6 @@ import { AuthService } from '../../services/auth.service';
 import { Role } from '../../models/utilisateur.model';
 import { ScreenService } from '../../services/screen.service';
 
-declare const $: any;
-
 declare interface RouteInfo {
     path: string;
     title: string;
@@ -23,8 +21,7 @@ export const ROUTES: RouteInfo[] = [
     { path: '/demandes', title: 'Demandes TPE', icon: 'assignment', class: '', screenCode: 'LISTE_DEMANDES' },
     { path: '/pannes', title: 'Maintenance', icon: 'build', class: '', screenCode: 'LISTE_PANNES' },
     { path: '/file-upload', title: 'Upload Transactions', icon: 'cloud_upload', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'UPLOAD_FICHIER_BANCAIRE' },
-    { path: '/admin/screens', title: 'Gestion Permissions', icon: 'admin_panel_settings', class: '', roles: [Role.ADMIN], screenCode: 'GESTION_PERMISSIONS' },
-    { path: '/user-profile', title: 'Mon Profil', icon: 'person', class: '', screenCode: 'PROFIL_UTILISATEUR' }
+    { path: '/admin/screens', title: 'Gestion Permissions', icon: 'admin_panel_settings', class: '', roles: [Role.ADMIN], screenCode: 'GESTION_PERMISSIONS' }
 ];
 
 @Component({
@@ -53,13 +50,6 @@ export class SidebarComponent implements OnInit {
         this.menuItems = this.filterByRoles(ROUTES);
       }
     });
-  }
-
-  isMobileMenu(): boolean {
-      if ($(window).width() > 991) {
-          return false;
-      }
-      return true;
   }
 
   private filterByRoles(routes: RouteInfo[]): RouteInfo[] {

@@ -1,4 +1,4 @@
-<div class="main-content">
+<div class="main-content tpe-main-content">
   <div class="container-fluid">
     <div class="row">
       <div class="col-md-12">
@@ -9,9 +9,9 @@
           </div>
           <div class="card-body">
             <!-- Filtres et recherche -->
-            <div class="row mb-3">
-              <div class="col-md-4">
-                <div class="form-group">
+            <div class="tpe-controls">
+              <div class="tpe-filters">
+                <div class="form-group tpe-filter-field tpe-search-field">
                   <label for="search">Rechercher</label>
                   <input 
                     type="text" 
@@ -21,9 +21,7 @@
                     (ngModelChange)="filterTPEs()"
                     placeholder="N° série, terminal, affiliation, marque, modèle, commerçant...">
                 </div>
-              </div>
-              <div class="col-md-3">
-                <div class="form-group">
+                <div class="form-group tpe-filter-field">
                   <label for="statut">Filtrer par statut</label>
                   <select 
                     class="form-control" 
@@ -37,37 +35,55 @@
                   </select>
                 </div>
               </div>
-              <div class="col-md-5 text-right">
+              <div class="tpe-action-panel">
                 <input
                   id="tpe-import-input"
                   type="file"
                   accept=".xlsx,.xls"
                   class="d-none"
                   (change)="onImportFileSelected($event)">
+                <input
+                  id="tpe-parc-import-input"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  class="d-none"
+                  (change)="onParcImportFileSelected($event)">
                 <button
-                  class="btn btn-warning mt-4 mr-2"
+                  class="btn tpe-toolbar-btn tpe-toolbar-btn-warning"
                   (click)="triggerImportFile()"
-                  [disabled]="importing">
-                  <i class="material-icons">upload_file</i> {{ importing ? 'Import en cours...' : 'Importer Excel' }}
+                  [disabled]="importing || parcImporting">
+                  <i class="material-icons">upload_file</i>
+                  <span>{{ importing ? 'Import en cours...' : 'Importer Excel' }}</span>
+                </button>
+                <button
+                  class="btn tpe-toolbar-btn tpe-toolbar-btn-muted"
+                  (click)="triggerParcImportFile()"
+                  [disabled]="importing || parcImporting"
+                  title="Mettre a jour les TPE et creer les manquants depuis le fichier parc">
+                  <i class="material-icons">sync_alt</i>
+                  <span>{{ parcImporting ? 'Mise a jour...' : 'MAJ parc TPE' }}</span>
                 </button>
                 <button 
-                  class="btn btn-success mt-4 mr-2" 
+                  class="btn tpe-toolbar-btn tpe-toolbar-btn-success"
                   (click)="exportToExcel()"
                   [disabled]="filteredTpes.length === 0"
                   *ngIf="(canExportTPE$ | async)">
-                  <i class="material-icons">get_app</i> Exporter Excel
+                  <i class="material-icons">get_app</i>
+                  <span>Exporter Excel</span>
                 </button>
                 <button
-                  class="btn btn-info mt-4 mr-2"
+                  class="btn tpe-toolbar-btn tpe-toolbar-btn-info"
                   (click)="viewImportRecords()"
                   *ngIf="(canExportTPE$ | async)">
-                  <i class="material-icons">table_view</i> Lignes importées
+                  <i class="material-icons">table_view</i>
+                  <span>Lignes importées</span>
                 </button>
                 <button 
-                  class="btn btn-primary mt-4" 
+                  class="btn tpe-toolbar-btn tpe-toolbar-btn-primary"
                   (click)="addNewTPE()"
                   *ngIf="(canCreateTPE$ | async)">
-                  <i class="material-icons">add</i> Nouveau TPE
+                  <i class="material-icons">add</i>
+                  <span>Nouveau TPE</span>
                 </button>
               </div>
             </div>
@@ -111,24 +127,27 @@
                     <td class="td-actions text-right">
                       <button 
                         type="button" 
-                        class="btn btn-info btn-sm"
+                        class="btn btn-sm tpe-icon-btn tpe-icon-btn-view"
                         (click)="viewDetails(tpe.id!)"
-                        title="Voir détails">
+                        title="Voir détails"
+                        aria-label="Voir détails">
                         <i class="material-icons">visibility</i>
                       </button>
                       <button 
                         type="button" 
-                        class="btn btn-success btn-sm"
+                        class="btn btn-sm tpe-icon-btn tpe-icon-btn-edit"
                         (click)="editTPE(tpe.id!)"
                         title="Modifier"
+                        aria-label="Modifier"
                         *ngIf="(canEditTPE$ | async)">
                         <i class="material-icons">edit</i>
                       </button>
                       <button 
                         type="button" 
-                        class="btn btn-danger btn-sm"
+                        class="btn btn-sm tpe-icon-btn tpe-icon-btn-delete"
                         (click)="deleteTPE(tpe.id!, tpe.numeroSerie)"
                         title="Supprimer"
+                        aria-label="Supprimer"
                         *ngIf="(canDeleteTPE$ | async)">
                         <i class="material-icons">delete</i>
                       </button>
@@ -141,21 +160,21 @@
               </table>
             </div>
 
-            <div *ngIf="!loading && !error && filteredTpes.length > 0" class="d-flex justify-content-between align-items-center mt-3">
-              <div>
+            <div *ngIf="!loading && !error && filteredTpes.length > 0" class="tpe-pagination">
+              <div class="tpe-pagination-info">
                 Affichage {{ (page - 1) * pageSize + 1 }} - {{ ((page - 1) * pageSize + pagedTpes.length) }} sur {{ filteredTpes.length }} TPE
               </div>
-              <div class="d-flex align-items-center">
+              <div class="tpe-pagination-controls">
                 <label class="mr-2 mb-0" for="tpe-page-size">Taille page</label>
-                <select id="tpe-page-size" class="form-control mr-3" style="width: 90px;" [value]="pageSize" (change)="onPageSizeChange($any($event.target).value)">
+                <select id="tpe-page-size" class="form-control tpe-page-size" [value]="pageSize" (change)="onPageSizeChange($any($event.target).value)">
                   <option *ngFor="let option of pageSizeOptions" [value]="option">{{ option }}</option>
                 </select>
 
-                <button class="btn btn-sm btn-outline-secondary mr-2" (click)="previousPage()" [disabled]="page === 1">
+                <button class="btn btn-sm tpe-page-btn" (click)="previousPage()" [disabled]="page === 1">
                   Précédent
                 </button>
-                <span class="mr-2">Page {{ page }} / {{ totalPages }}</span>
-                <button class="btn btn-sm btn-outline-secondary" (click)="nextPage()" [disabled]="page === totalPages">
+                <span class="tpe-page-indicator">Page {{ page }} / {{ totalPages }}</span>
+                <button class="btn btn-sm tpe-page-btn" (click)="nextPage()" [disabled]="page === totalPages">
                   Suivant
                 </button>
               </div>

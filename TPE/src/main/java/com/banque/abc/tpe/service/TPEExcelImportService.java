@@ -121,6 +121,7 @@ public class TPEExcelImportService {
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), "ROW_" + sourceRowNumber);
         Map<String, Object> rawData = new LinkedHashMap<>();
         rawData.put("TYPE_TPE", readString(row, headers, formatter, "TYPE_TPE"));
+        rawData.put("MARQUE", readString(row, headers, formatter, "MARQUE"));
         rawData.put("N_AFFILIATION", readString(row, headers, formatter, "N_AFFILIATION"));
         rawData.put("N_TERMINAL", readString(row, headers, formatter, "N_TERMINAL"));
         rawData.put("RAISON_SOCIALE", readString(row, headers, formatter, "RAISON_SOCIALE"));
@@ -147,7 +148,9 @@ public class TPEExcelImportService {
         rawData.put("VALUE_DATE", readString(row, headers, formatter, "VALUE_DATE"));
         rawData.put("DATE_AFFILIATION", readString(row, headers, formatter, "DATE_AFFILIATION"));
 
-        TPEImportRecord record = new TPEImportRecord();
+        TPEImportRecord record = tpeImportRecordRepository
+                .findLatestByNAffiliation(numeroAffiliation)
+                .orElseGet(TPEImportRecord::new);
         record.setNAffiliation(numeroAffiliation);
         record.setSourceRowNumber(sourceRowNumber);
         record.setSourceFileName(sourceFileName);
@@ -184,6 +187,7 @@ public class TPEExcelImportService {
 
     private void importRow(Row row, Map<String, Integer> headers, DataFormatter formatter, TPEImportResult result, String rawKey) {
         String typeValue = readString(row, headers, formatter, "TYPE_TPE");
+        String marque = readString(row, headers, formatter, "MARQUE");
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), rawKey);
         String numeroSerie = resolveNumeroSerie(row, headers, formatter);
         String numeroTerminal = normalizeTerminal(readString(row, headers, formatter, "N_TERMINAL"));
@@ -232,7 +236,7 @@ public class TPEExcelImportService {
         tpe.setNumeroTerminal(blankToNull(numeroTerminal));
         tpe.setNumeroAffiliation(blankToNull(numeroAffiliation != null ? numeroAffiliation : numeroSerie));
         tpe.setStatut(Boolean.TRUE.equals(active) ? StatutTPE.AFFECTE : StatutTPE.DISPONIBLE);
-        tpe.setMarque(firstNonBlank(tpe.getMarque(), typeValue));
+        tpe.setMarque(firstNonBlank(marque, tpe.getMarque(), typeValue));
         tpe.setModele(firstNonBlank(readString(row, headers, formatter, "CODE_TPE"), readString(row, headers, formatter, "SERIE_PUCE")));
         tpe.setDateAcquisition(valueDate);
         tpe.setDateMiseEnService(valueDate);

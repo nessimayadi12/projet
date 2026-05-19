@@ -99,3 +99,138 @@
 .mt-4 {
   margin-top: 20px;
 }
+
+.demande-details-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.demande-details-panel {
+  width: min(1100px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  color: #fff;
+  background: #00758f;
+}
+
+.details-header h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.details-header p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.details-loading {
+  display: flex;
+  justify-content: center;
+  padding: 42px;
+}
+
+.details-content {
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+.details-section {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e8e8e8;
+  padding-bottom: 14px;
+}
+
+.details-section:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.details-section h4 {
+  margin: 0 0 12px;
+  color: #00758f;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.detail-item {
+  min-width: 0;
+  padding: 10px 12px;
+  background: #f7f9fa;
+  border-radius: 4px;
+}
+
+.detail-wide {
+  grid-column: 1 / -1;
+}
+
+.detail-item span {
+  display: block;
+  margin-bottom: 4px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.detail-item strong {
+  display: block;
+  color: #1f2933;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  background: #f7f9fa;
+  border-radius: 4px;
+  color: #1f2933;
+}
+
+.empty-detail {
+  padding: 10px 12px;
+  color: #6b7280;
+  background: #f7f9fa;
+  border-radius: 4px;
+}
+
+.details-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  background: #f5f5f5;
+  border-top: 1px solid #e2e2e2;
+}

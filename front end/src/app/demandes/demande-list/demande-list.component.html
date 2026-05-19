@@ -108,7 +108,8 @@
                     <td>{{ (demande.createdDate || demande.createdAt) | date:'dd/MM/yyyy HH:mm' }}</td>
                     <td class="td-actions text-right">
                       <!-- Bouton Voir -->
-                      <button type="button" mat-icon-button matTooltip="Voir détails" color="primary">
+                      <button type="button" mat-icon-button matTooltip="Voir details" color="primary"
+                              (click)="afficherDetails(demande)">
                         <mat-icon>visibility</mat-icon>
                       </button>
 
@@ -202,6 +203,116 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="demande-details-backdrop" *ngIf="selectedDemande" (click)="fermerDetails()">
+  <div class="demande-details-panel" (click)="$event.stopPropagation()">
+    <div class="details-header">
+      <div>
+        <h3>Details de la demande</h3>
+        <p>{{ selectedDemande.reference || '-' }}</p>
+      </div>
+      <button type="button" mat-icon-button matTooltip="Fermer" (click)="fermerDetails()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div *ngIf="detailLoading" class="details-loading">
+      <mat-spinner diameter="36"></mat-spinner>
+    </div>
+
+    <div *ngIf="!detailLoading" class="details-content">
+      <div class="details-section">
+        <h4>Informations generales</h4>
+        <div class="details-grid">
+          <div class="detail-item"><span>Reference</span><strong>{{ selectedDemande.reference || '-' }}</strong></div>
+          <div class="detail-item"><span>Type</span><strong>{{ selectedDemande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}</strong></div>
+          <div class="detail-item"><span>Statut</span><strong>{{ getStatutLabel(selectedDemande.statut) }}</strong></div>
+          <div class="detail-item"><span>Urgence</span><strong>{{ selectedDemande.urgence || '-' }}</strong></div>
+          <div class="detail-item detail-wide"><span>Description</span><strong>{{ selectedDemande.description || '-' }}</strong></div>
+          <div class="detail-item"><span>Date creation</span><strong>{{ (selectedDemande.createdDate || selectedDemande.createdAt) | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item"><span>Derniere modification</span><strong>{{ (selectedDemande.lastModifiedDate || selectedDemande.updatedAt) | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="details-section">
+        <h4>Commercant</h4>
+        <div class="details-grid">
+          <div class="detail-item"><span>Nom commercant</span><strong>{{ selectedDemande.commercantNom || '-' }}</strong></div>
+          <div class="detail-item"><span>Raison sociale</span><strong>{{ selectedDemande.raisonSociale || '-' }}</strong></div>
+          <div class="detail-item"><span>Activite</span><strong>{{ selectedDemande.activite || '-' }}</strong></div>
+          <div class="detail-item"><span>N compte</span><strong>{{ selectedDemande.numeroCompte || '-' }}</strong></div>
+          <div class="detail-item"><span>Code agence</span><strong>{{ selectedDemande.codeAgence || '-' }}</strong></div>
+          <div class="detail-item"><span>Telephone</span><strong>{{ selectedDemande.telephone || '-' }}</strong></div>
+          <div class="detail-item"><span>Email notification</span><strong>{{ selectedDemande.emailNotification || '-' }}</strong></div>
+          <div class="detail-item"><span>Code postal</span><strong>{{ selectedDemande.codePostal || '-' }}</strong></div>
+          <div class="detail-item detail-wide"><span>Adresse</span><strong>{{ selectedDemande.adresse || '-' }}</strong></div>
+          <div class="detail-item"><span>Localite</span><strong>{{ selectedDemande.localite || '-' }}</strong></div>
+          <div class="detail-item"><span>Fichier RNE</span><strong>{{ selectedDemande.rneFilePath || selectedDemande.rneFile || '-' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="details-section">
+        <h4>Validation monetique</h4>
+        <div class="details-grid">
+          <div class="detail-item"><span>MCC</span><strong>{{ selectedDemande.mcc || '-' }}</strong></div>
+          <div class="detail-item"><span>Taux commission</span><strong>{{ selectedDemande.tauxCommission !== undefined && selectedDemande.tauxCommission !== null ? selectedDemande.tauxCommission + ' %' : '-' }}</strong></div>
+          <div class="detail-item"><span>Taux commission inter</span><strong>{{ selectedDemande.tauxCommissionInter !== undefined && selectedDemande.tauxCommissionInter !== null ? selectedDemande.tauxCommissionInter + ' %' : '-' }}</strong></div>
+          <div class="detail-item"><span>Loyer</span><strong>{{ selectedDemande.loyer !== undefined && selectedDemande.loyer !== null ? selectedDemande.loyer : '-' }}</strong></div>
+          <div class="detail-item"><span>Serie TPE</span><strong>{{ selectedDemande.serieTpe || '-' }}</strong></div>
+          <div class="detail-item"><span>N terminal</span><strong>{{ selectedDemande.numeroTerminal || '-' }}</strong></div>
+          <div class="detail-item"><span>Value date</span><strong>{{ selectedDemande.valueDate | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item"><span>Date saisie taux</span><strong>{{ selectedDemande.dateSaisieTaux | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item detail-wide"><span>Commentaire validation</span><strong>{{ selectedDemande.commentaireValidation || '-' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="details-section">
+        <h4>E-commerce</h4>
+        <div class="details-grid">
+          <div class="detail-item"><span>RIB</span><strong>{{ selectedDemande.rib || '-' }}</strong></div>
+          <div class="detail-item"><span>Webmaster</span><strong>{{ selectedDemande.webmaster || '-' }}</strong></div>
+          <div class="detail-item"><span>Contact technique</span><strong>{{ selectedDemande.contactTechnique || '-' }}</strong></div>
+          <div class="detail-item detail-wide"><span>URL site marchand</span><strong>{{ selectedDemande.urlSiteMarchand || '-' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="details-section">
+        <h4>Workflow</h4>
+        <div class="details-grid">
+          <div class="detail-item"><span>Demandeur</span><strong>{{ selectedDemande.demandeurNom || '-' }}</strong></div>
+          <div class="detail-item"><span>Inputer</span><strong>{{ selectedDemande.inputerNom || '-' }}</strong></div>
+          <div class="detail-item"><span>Valideur</span><strong>{{ selectedDemande.valideurNom || selectedDemande.monetiqueValideurNom || '-' }}</strong></div>
+          <div class="detail-item"><span>Date validation</span><strong>{{ selectedDemande.dateValidation | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item"><span>Date affectation</span><strong>{{ selectedDemande.dateAffectation | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item"><span>Date cloture</span><strong>{{ selectedDemande.dateCloture | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item"><span>TPE affecte</span><strong>{{ selectedDemande.tpeAffecteNumeroSerie || '-' }}</strong></div>
+          <div class="detail-item detail-wide"><span>Commentaires</span><strong>{{ selectedDemande.commentaires || '-' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="details-section">
+        <h4>Pieces jointes</h4>
+        <div class="attachment-list" *ngIf="selectedDemande.piecesJointes?.length; else noAttachments">
+          <div class="attachment-item" *ngFor="let piece of selectedDemande.piecesJointes">
+            <mat-icon>attach_file</mat-icon>
+            <span>{{ piece }}</span>
+          </div>
+        </div>
+        <ng-template #noAttachments>
+          <div class="empty-detail">Aucune piece jointe</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <div class="details-footer">
+      <button type="button" mat-raised-button (click)="imprimerDemande(selectedDemande)">
+        <mat-icon>print</mat-icon>
+        Imprimer
+      </button>
+      <button type="button" mat-raised-button color="primary" (click)="fermerDetails()">Fermer</button>
     </div>
   </div>
 </div>

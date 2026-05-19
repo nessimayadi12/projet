@@ -21,6 +21,8 @@ export class DemandeListComponent implements OnInit {
   demandesFiltrees: DemandeTPE[] = [];
   pagedDemandes: DemandeTPE[] = [];
   loading = false;
+  detailLoading = false;
+  selectedDemande: DemandeTPE | null = null;
   currentUserRole: string = '';
   currentUserId: number | null = null;
 
@@ -215,6 +217,35 @@ export class DemandeListComponent implements OnInit {
     this.router.navigate(['/demandes', demande.id, 'affecter']);
   }
 
+  afficherDetails(demande: DemandeTPE): void {
+    this.selectedDemande = demande;
+
+    if (!demande.id) {
+      return;
+    }
+
+    this.detailLoading = true;
+    this.demandeService.getDemandeById(demande.id).subscribe({
+      next: (detail) => {
+        this.selectedDemande = {
+          ...demande,
+          ...detail
+        };
+        this.detailLoading = false;
+      },
+      error: (error) => {
+        console.error('Erreur chargement detail demande', error);
+        this.detailLoading = false;
+        this.showNotification('Impossible de charger le detail de la demande', 'error');
+      }
+    });
+  }
+
+  fermerDetails(): void {
+    this.selectedDemande = null;
+    this.detailLoading = false;
+  }
+
   imprimerDemande(demande: DemandeTPE): void {
     // Ouvrir une nouvelle fenêtre pour l'impression
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -223,18 +254,30 @@ export class DemandeListComponent implements OnInit {
       return;
     }
 
-    const content = this.generatePrintContent(demande);
-    printWindow.document.write(content);
-    printWindow.document.close();
-    
-    // Attendre que le contenu soit chargé puis lancer l'impression
-    printWindow.onload = () => {
-      printWindow.print();
-      printWindow.onafterprint = () => printWindow.close();
-    };
+    this.writePrintLoading(printWindow);
+
+    if (!demande.id) {
+      this.writePrintContent(printWindow, demande);
+      return;
+    }
+
+    this.demandeService.getDemandeById(demande.id).subscribe({
+      next: (detail) => {
+        this.writePrintContent(printWindow, {
+          ...demande,
+          ...detail
+        });
+      },
+      error: (error) => {
+        console.error('Erreur chargement detail impression', error);
+        this.writePrintContent(printWindow, demande);
+        this.showNotification('Impression avec les informations deja chargees', 'info');
+      }
+    });
   }
 
   private generatePrintContent(demande: DemandeTPE): string {
+    return this.generateFullPrintContent(demande);
     return `
       <!DOCTYPE html>
       <html>
@@ -409,6 +452,199 @@ export class DemandeListComponent implements OnInit {
       </body>
       </html>
     `;
+  }
+
+  private generateFullPrintContent(demande: DemandeTPE): string {
+    const piecesJointes = demande.piecesJointes?.length
+      ? demande.piecesJointes
+          .map(piece => `<div class="attachment-item">${this.escapeHtml(piece)}</div>`)
+          .join('')
+      : '<div class="empty-value">Aucune piece jointe</div>';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Demande TPE - ${this.escapeHtml(demande.reference || '')}</title>
+        <style>
+          @media print { @page { margin: 2cm; } }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; font-size: 13px; }
+          .header { text-align: center; border-bottom: 3px solid #00695c; padding-bottom: 20px; margin-bottom: 30px; }
+          .header h1 { color: #00695c; margin: 0; }
+          .header h2 { margin: 8px 0; }
+          .section { margin-bottom: 25px; page-break-inside: avoid; }
+          .section-title { background-color: #00695c; color: white; padding: 8px 15px; font-size: 16px; font-weight: bold; margin-bottom: 15px; }
+          .info-row { display: flex; gap: 16px; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .info-label { flex: 0 0 220px; font-weight: bold; color: #555; }
+          .info-value { flex: 1; overflow-wrap: anywhere; }
+          .badge { display: inline-block; padding: 5px 10px; border-radius: 3px; font-weight: bold; color: white; }
+          .badge-info { background-color: #17a2b8; }
+          .badge-warning { background-color: #ffc107; color: #333; }
+          .badge-primary { background-color: #007bff; }
+          .badge-success { background-color: #28a745; }
+          .badge-secondary { background-color: #757575; }
+          .badge-danger { background-color: #dc3545; }
+          .badge-default { background-color: #607d8b; }
+          .attachment-item, .empty-value { padding: 8px 0; border-bottom: 1px solid #eee; }
+          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>BANK ABC</h1>
+          <h2>Demande TPE</h2>
+          <p><strong>Reference:</strong> ${this.escapeHtml(demande.reference || '-')}</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Informations generales</div>
+          ${this.generatePrintRows([
+            ['ID demande', demande.id],
+            ['Reference', demande.reference],
+            ['Type de demande', demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce'],
+            ['Statut', `<span class="badge ${this.getStatutClass(demande.statut)}">${this.escapeHtml(this.getStatutLabel(demande.statut))}</span>`],
+            ['Urgence', demande.urgence],
+            ['Description', demande.description],
+            ['Date creation', this.formatPrintDate(demande.createdDate || demande.createdAt)],
+            ['Derniere modification', this.formatPrintDate(demande.lastModifiedDate || demande.updatedAt)]
+          ])}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Informations commercant</div>
+          ${this.generatePrintRows([
+            ['ID commercant', demande.commercantId],
+            ['Nom commercant', demande.commercantNom],
+            ['Raison sociale', demande.raisonSociale],
+            ['Activite', demande.activite],
+            ['Numero compte', demande.numeroCompte],
+            ['Code agence', demande.codeAgence],
+            ['Adresse', demande.adresse],
+            ['Localite', demande.localite],
+            ['Code postal', demande.codePostal],
+            ['Telephone', demande.telephone],
+            ['Email notification', demande.emailNotification],
+            ['Fichier RNE', demande.rneFilePath || demande.rneFile]
+          ])}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Validation monetique</div>
+          ${this.generatePrintRows([
+            ['MCC', demande.mcc],
+            ['Taux commission', this.formatPercent(demande.tauxCommission)],
+            ['Taux commission inter', this.formatPercent(demande.tauxCommissionInter)],
+            ['Loyer', demande.loyer],
+            ['Serie TPE', demande.serieTpe],
+            ['Numero terminal', demande.numeroTerminal],
+            ['Value date', this.formatPrintDate(demande.valueDate)],
+            ['Date saisie taux', this.formatPrintDate(demande.dateSaisieTaux)],
+            ['Commentaire validation', demande.commentaireValidation]
+          ])}
+        </div>
+
+        <div class="section">
+          <div class="section-title">E-commerce</div>
+          ${this.generatePrintRows([
+            ['RIB', demande.rib],
+            ['Webmaster', demande.webmaster],
+            ['Contact technique', demande.contactTechnique],
+            ['URL site marchand', demande.urlSiteMarchand]
+          ])}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Workflow</div>
+          ${this.generatePrintRows([
+            ['Demandeur', demande.demandeurNom],
+            ['Inputer', demande.inputerNom],
+            ['Valideur', demande.valideurNom || demande.monetiqueValideurNom],
+            ['Date validation', this.formatPrintDate(demande.dateValidation)],
+            ['Date affectation', this.formatPrintDate(demande.dateAffectation)],
+            ['Date cloture', this.formatPrintDate(demande.dateCloture)],
+            ['ID TPE affecte', demande.tpeAffecteId],
+            ['TPE affecte', demande.tpeAffecteNumeroSerie],
+            ['Commentaires', demande.commentaires]
+          ])}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Pieces jointes</div>
+          ${piecesJointes}
+        </div>
+
+        <div class="footer">
+          <p>Document genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')}</p>
+          <p>${new Date().getFullYear()} Bank ABC - Tous droits reserves</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private writePrintLoading(printWindow: Window): void {
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Preparation impression</title></head>
+      <body style="font-family: Arial, sans-serif; padding: 24px;">Preparation de l'impression...</body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  private writePrintContent(printWindow: Window, demande: DemandeTPE): void {
+    printWindow.document.open();
+    printWindow.document.write(this.generatePrintContent(demande));
+    printWindow.document.close();
+    printWindow.setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.onafterprint = () => printWindow.close();
+    }, 250);
+  }
+
+  private generatePrintRows(rows: Array<[string, any]>): string {
+    return rows
+      .map(([label, value]) => `
+        <div class="info-row">
+          <div class="info-label">${this.escapeHtml(label)}:</div>
+          <div class="info-value">${this.formatPrintValue(value)}</div>
+        </div>
+      `)
+      .join('');
+  }
+
+  private formatPrintValue(value: any): string {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    if (typeof value === 'string' && value.startsWith('<span')) {
+      return value;
+    }
+    return this.escapeHtml(String(value));
+  }
+
+  private formatPrintDate(value: Date | string | undefined): string {
+    if (!value) {
+      return '-';
+    }
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? '-' : date.toLocaleString('fr-FR');
+  }
+
+  private formatPercent(value: number | undefined): string {
+    return value === null || value === undefined ? '-' : `${value} %`;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   getStatutClass(statut: string): string {

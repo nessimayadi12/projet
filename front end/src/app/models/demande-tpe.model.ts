@@ -36,6 +36,8 @@ export interface DemandeTPE {
   urgence: Urgence;
   statut: StatutDemande;
   description?: string;
+  demandeurId?: number;
+  demandeurNom?: string;
   agenceDemandeurId?: number;
   agenceDemandeurNom?: string;
   monetiqueValideurId?: number;
@@ -68,6 +70,7 @@ export interface DemandeTPE {
   codeAgence?: string;
   telephone?: string;
   rneFile?: File | string;
+  rneFilePath?: string;
   emailNotification?: string;
   
   // Champs de validation Monetique (TPE Physique)

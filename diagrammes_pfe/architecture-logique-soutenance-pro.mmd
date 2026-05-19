@@ -1,0 +1,71 @@
+flowchart LR
+    %% =========================
+    %% Architecture logique - version soutenance pro
+    %% =========================
+
+    U[Utilisateurs metier\nAgence, Monetique, Admin]:::users
+
+    subgraph P[Couche Presentation]
+        FE[Application Web Angular\nUI + Routing + Guards]:::front
+    end
+
+    subgraph A[Couche Applicative]
+        API[API REST Spring Boot\nControllers + DTO]:::back
+        SEC[Securite\nJWT + RBAC + Permissions ecran]:::cross
+        BIZ[Services metier\nRegles de gestion + Workflows]:::back
+        AUD[Audit & Notifications\nLogs + Tracabilite]:::cross
+    end
+
+    subgraph D[Domaines metier]
+        TPE[TPE]:::domain
+        COM[Commercants]:::domain
+        DEM[Demandes]:::domain
+        AFF[Affectations]:::domain
+        PAN[Pannes]:::domain
+        TX[Taux\nControle 4 yeux]:::domain
+        DASH[Dashboards KPI]:::domain
+    end
+
+    subgraph S[Couche Persistance]
+        REPO[JPA Repositories]:::persist
+        ORM[Hibernate / JPA]:::persist
+        DB[(SQL Server)]:::db
+    end
+
+    U --> FE
+    FE -->|HTTPS + JSON| API
+    API --> SEC
+    API --> BIZ
+    BIZ --> AUD
+
+    BIZ --> TPE
+    BIZ --> COM
+    BIZ --> DEM
+    BIZ --> AFF
+    BIZ --> PAN
+    BIZ --> TX
+    BIZ --> DASH
+
+    TPE --> REPO
+    COM --> REPO
+    DEM --> REPO
+    AFF --> REPO
+    PAN --> REPO
+    TX --> REPO
+    DASH --> REPO
+
+    REPO --> ORM --> DB
+
+    %% Styles
+    classDef users fill:#EAF3FF,stroke:#1565C0,color:#0D47A1,stroke-width:2px;
+    classDef front fill:#E8F7EE,stroke:#2E7D32,color:#1B5E20,stroke-width:2px;
+    classDef back fill:#FFF3E0,stroke:#EF6C00,color:#E65100,stroke-width:2px;
+    classDef domain fill:#FFFDE7,stroke:#F9A825,color:#5D4037,stroke-width:1.5px;
+    classDef persist fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C,stroke-width:2px;
+    classDef db fill:#EDE7F6,stroke:#512DA8,color:#311B92,stroke-width:2.5px;
+    classDef cross fill:#ECEFF1,stroke:#455A64,color:#263238,stroke-width:1.5px;
+
+    style P fill:#F9FCFF,stroke:#90CAF9,stroke-width:1.5px
+    style A fill:#FFF8F1,stroke:#FFCC80,stroke-width:1.5px
+    style D fill:#FFFEF7,stroke:#FFE082,stroke-width:1.5px
+    style S fill:#FAF5FF,stroke:#CE93D8,stroke-width:1.5px

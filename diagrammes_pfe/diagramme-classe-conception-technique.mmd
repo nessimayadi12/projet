@@ -1,0 +1,104 @@
+classDiagram
+    direction LR
+
+    namespace Technique {
+        class Controller
+        class Service
+        class Repository
+        class SecurityConfig
+        class JwtAuthenticationFilter
+        class JwtTokenProvider
+        class CustomUserDetailsService
+        class UserPrincipal
+    }
+
+    namespace Application {
+        class DemandeController
+        class AffectationController
+        class TPEService
+        class DemandeService
+        class AffectationService
+        class PanneService
+        class TauxService
+        class CommercantService
+        class AuthService
+        class DashboardService
+        class ScreenService
+    }
+
+    namespace Persistance {
+        class DemandeRepository
+        class AffectationRepository
+        class TPERepository
+        class PanneRepository
+        class TauxRepository
+        class CommercantRepository
+        class UserRepository
+        class RoleRepository
+        class ScreenRepository
+        class ScreenRoleRepository
+        class PieceJointeRepository
+        class CommentaireRepository
+        class PieceDetacheeRepository
+        class HistoriqueStatutRepository
+        class AuditLogRepository
+    }
+
+    Controller <|-- DemandeController
+    Controller <|-- AffectationController
+
+    Service <|-- TPEService
+    Service <|-- DemandeService
+    Service <|-- AffectationService
+    Service <|-- PanneService
+    Service <|-- TauxService
+    Service <|-- CommercantService
+    Service <|-- AuthService
+    Service <|-- DashboardService
+    Service <|-- ScreenService
+
+    Repository <|-- DemandeRepository
+    Repository <|-- AffectationRepository
+    Repository <|-- TPERepository
+    Repository <|-- PanneRepository
+    Repository <|-- TauxRepository
+    Repository <|-- CommercantRepository
+    Repository <|-- UserRepository
+    Repository <|-- RoleRepository
+    Repository <|-- ScreenRepository
+    Repository <|-- ScreenRoleRepository
+    Repository <|-- PieceJointeRepository
+    Repository <|-- CommentaireRepository
+    Repository <|-- PieceDetacheeRepository
+    Repository <|-- HistoriqueStatutRepository
+    Repository <|-- AuditLogRepository
+
+    SecurityConfig --> JwtAuthenticationFilter
+    JwtAuthenticationFilter --> JwtTokenProvider
+    CustomUserDetailsService --> UserRepository
+    UserPrincipal --> UserRepository
+
+    DemandeController --> DemandeService
+    AffectationController --> AffectationService
+
+    DemandeService --> DemandeRepository
+    DemandeService --> CommercantRepository
+    DemandeService --> UserRepository
+    DemandeService --> AffectationService
+
+    AffectationService --> AffectationRepository
+    AffectationService --> TPERepository
+    AffectationService --> DemandeRepository
+    AffectationService --> CommercantRepository
+    AffectationService --> UserRepository
+
+    TPEService --> TPERepository
+    TPEService --> HistoriqueStatutRepository
+    PanneService --> PanneRepository
+    TauxService --> TauxRepository
+    CommercantService --> CommercantRepository
+    AuthService --> CustomUserDetailsService
+    DashboardService --> TPERepository
+    ScreenService --> ScreenRepository
+    ScreenService --> RoleRepository
+    ScreenService --> ScreenRoleRepository
