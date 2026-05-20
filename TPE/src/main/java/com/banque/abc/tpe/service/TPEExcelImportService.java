@@ -122,6 +122,7 @@ public class TPEExcelImportService {
         String tauxCommission = readAnyString(row, headers, formatter, "TAUX_COMMISSION", "TAUX_COMMISION");
         String tauxCommissionInter = readAnyString(row, headers, formatter, "TAUX_COMMISSION_INTER", "TAUX_COMMISION_INTER");
         String numeroTerminal = readNumeroTerminal(row, headers, formatter);
+        String codeAgence = resolveCodeAgence(readString(row, headers, formatter, "CODE_AGENCE"), numeroTerminal);
         boolean parcUpdate = "PARC_TPE_MAJ".equalsIgnoreCase(firstNonBlank(readString(row, headers, formatter, "IMPORT_MODE"), ""));
         Map<String, Object> rawData = new LinkedHashMap<>();
         rawData.put("IMPORT_MODE", readString(row, headers, formatter, "IMPORT_MODE"));
@@ -133,7 +134,7 @@ public class TPEExcelImportService {
         rawData.put("ACTIVITE", readString(row, headers, formatter, "ACTIVITE"));
         rawData.put("MCC", readString(row, headers, formatter, "MCC"));
         rawData.put("N_COMPTE", readString(row, headers, formatter, "N_COMPTE"));
-        rawData.put("CODE_AGENCE", readString(row, headers, formatter, "CODE_AGENCE"));
+        rawData.put("CODE_AGENCE", codeAgence);
         rawData.put("ADRESSE", readString(row, headers, formatter, "ADRESSE"));
         rawData.put("CODE_POSTAL", readString(row, headers, formatter, "CODE_POSTAL"));
         rawData.put("TELEPHONE", readString(row, headers, formatter, "TELEPHONE"));
@@ -170,7 +171,7 @@ public class TPEExcelImportService {
         record.setMcc(readString(row, headers, formatter, "MCC"));
         String recordNumeroCompte = readString(row, headers, formatter, "N_COMPTE");
         record.setNumeroCompte(parcUpdate ? recordNumeroCompte : firstNonBlank(recordNumeroCompte, numeroAffiliation));
-        record.setCodeAgence(firstNonBlank(readString(row, headers, formatter, "CODE_AGENCE"), "000"));
+        record.setCodeAgence(codeAgence);
         record.setAdresse(readString(row, headers, formatter, "ADRESSE"));
         record.setCodePostal(readString(row, headers, formatter, "CODE_POSTAL"));
         record.setTelephone(readString(row, headers, formatter, "TELEPHONE"));
@@ -203,7 +204,7 @@ public class TPEExcelImportService {
         String activite = readString(row, headers, formatter, "ACTIVITE");
         String mcc = readString(row, headers, formatter, "MCC");
         String numeroCompte = readString(row, headers, formatter, "N_COMPTE");
-        String codeAgence = readString(row, headers, formatter, "CODE_AGENCE");
+        String codeAgence = resolveCodeAgence(readString(row, headers, formatter, "CODE_AGENCE"), numeroTerminal);
         String adresse = readString(row, headers, formatter, "ADRESSE");
         String codePostal = readString(row, headers, formatter, "CODE_POSTAL");
         String telephone = readString(row, headers, formatter, "TELEPHONE");
@@ -237,7 +238,7 @@ public class TPEExcelImportService {
                 : firstNonBlank(normalizedNumeroCompte, numeroAffiliation, numeroSerie);
         String safeCodeAgence = firstNonBlank(codeAgence, "000");
 
-        Commercant commercant = findOrCreateCommercant(safeRaisonSociale, safeActivite, safeNumeroCompte, numeroAffiliation, adresse, codePostal, safeCodeAgence, telephone, email, loyer, typeValue, !parcUpdate);
+        Commercant commercant = findOrCreateCommercant(safeRaisonSociale, safeActivite, safeNumeroCompte, numeroAffiliation, numeroTerminal, adresse, codePostal, safeCodeAgence, telephone, email, loyer, typeValue, !parcUpdate);
 
         TPE tpe = findOrCreateTPE(numeroSerie, numeroTerminal);
         boolean isNew = tpe.getId() == null;
@@ -423,6 +424,7 @@ public class TPEExcelImportService {
                                               String activite,
                                               String numeroCompte,
                                               String numeroAffiliation,
+                                              String numeroTerminal,
                                               String adresse,
                                               String codePostal,
                                               String codeAgence,
@@ -466,8 +468,13 @@ public class TPEExcelImportService {
 
         commercant.setRaisonSociale(firstNonBlank(blankToNull(commercant.getRaisonSociale()), normalizedRaisonSociale));
         commercant.setActivite(firstNonBlank(blankToNull(commercant.getActivite()), blankToNull(activite), "INCONNUE"));
-        commercant.setNumeroCompte(firstNonBlank(blankToNull(commercant.getNumeroCompte()), normalizedNumeroCompte, creationNumeroCompte));
-        commercant.setCodeAgence(firstNonBlank(blankToNull(commercant.getCodeAgence()), normalizedCodeAgence));
+        String existingNumeroCompte = blankToNull(commercant.getNumeroCompte());
+        if (isTechnicalNumeroCompte(existingNumeroCompte, numeroTerminal, numeroAffiliation)) {
+            commercant.setNumeroCompte(firstNonBlank(normalizedNumeroCompte, creationNumeroCompte));
+        } else {
+            commercant.setNumeroCompte(firstNonBlank(existingNumeroCompte, normalizedNumeroCompte, creationNumeroCompte));
+        }
+        commercant.setCodeAgence(resolveStoredCodeAgence(commercant.getCodeAgence(), normalizedCodeAgence));
 
         if (blankToNull(commercant.getAdresse()) == null) {
             commercant.setAdresse(normalizedAdresse);
@@ -714,6 +721,47 @@ public class TPEExcelImportService {
         );
     }
 
+    private String resolveCodeAgence(String explicitCodeAgence, String numeroTerminal) {
+        return firstNonBlank(
+                explicitCodeAgence,
+                deriveCodeAgenceFromTerminal(numeroTerminal),
+                "000"
+        );
+    }
+
+    private String deriveCodeAgenceFromTerminal(String numeroTerminal) {
+        String terminal = normalizeTerminal(numeroTerminal);
+        if (terminal == null || !terminal.matches("\\d{5,}") || !isValidLuhn(terminal)) {
+            return null;
+        }
+
+        return terminal.substring(2, 5);
+    }
+
+    private boolean isValidLuhn(String value) {
+        int sum = 0;
+        boolean doubleDigit = false;
+
+        for (int index = value.length() - 1; index >= 0; index--) {
+            int digit = value.charAt(index) - '0';
+            if (digit < 0 || digit > 9) {
+                return false;
+            }
+
+            if (doubleDigit) {
+                digit *= 2;
+                if (digit > 9) {
+                    digit -= 9;
+                }
+            }
+
+            sum += digit;
+            doubleDigit = !doubleDigit;
+        }
+
+        return sum % 10 == 0;
+    }
+
     private Boolean readBoolean(Row row, Map<String, Integer> headers, DataFormatter formatter, String headerName) {
         String value = readString(row, headers, formatter, headerName);
         if (value == null) {
@@ -877,7 +925,15 @@ public class TPEExcelImportService {
     }
 
     private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = value
+                .replaceAll("[\\u0000\\u200B-\\u200D\\uFEFF]", "")
+                .replace('\u00A0', ' ')
+                .trim();
+        return cleaned.isBlank() ? null : cleaned;
     }
 
     private String normalizeNumeroCompte(String value) {
@@ -886,7 +942,7 @@ public class TPEExcelImportService {
             return null;
         }
 
-        String normalized = raw.replace(" ", "").replace(',', '.');
+        String normalized = raw.replaceAll("\\s+", "").replace(',', '.');
         try {
             BigDecimal bigDecimal = new BigDecimal(normalized);
             String plain = bigDecimal.toPlainString();
@@ -906,13 +962,40 @@ public class TPEExcelImportService {
         return "SANS_RIB_" + Integer.toUnsignedString(base.hashCode());
     }
 
+    private boolean isTechnicalNumeroCompte(String numeroCompte, String numeroTerminal, String numeroAffiliation) {
+        String normalizedCompte = canonicalizeKey(numeroCompte);
+        if (normalizedCompte == null) {
+            return true;
+        }
+
+        if (normalizedCompte.startsWith("SANSRIB")) {
+            return true;
+        }
+
+        return Objects.equals(normalizedCompte, canonicalizeKey(numeroTerminal))
+                || Objects.equals(normalizedCompte, canonicalizeKey(numeroAffiliation));
+    }
+
+    private String resolveStoredCodeAgence(String existingCodeAgence, String incomingCodeAgence) {
+        String existing = blankToNull(existingCodeAgence);
+        String incoming = firstNonBlank(incomingCodeAgence, "000");
+
+        if (existing == null) {
+            return incoming;
+        }
+        if ("000".equals(existing) && !"000".equals(incoming)) {
+            return incoming;
+        }
+        return existing;
+    }
+
     private String normalizeTerminal(String value) {
         String raw = blankToNull(value);
         if (raw == null) {
             return null;
         }
 
-        String normalized = raw.replace(" ", "").replace(',', '.');
+        String normalized = raw.replaceAll("\\s+", "").replace(',', '.');
         try {
             BigDecimal bigDecimal = new BigDecimal(normalized);
             String plain = bigDecimal.toPlainString();

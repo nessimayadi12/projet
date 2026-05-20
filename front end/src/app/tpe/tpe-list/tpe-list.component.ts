@@ -382,7 +382,7 @@ export class TpeListComponent implements OnInit {
       SERIE_PUCE: numeroSerieSim,
       N_AFFILIATION: importKey,
       ADRESSE: adresse,
-      CODE_AGENCE: '000',
+      CODE_AGENCE: '',
       TELEPHONE: '',
       EMAIL: '',
       OPERATEUR: operateur,
