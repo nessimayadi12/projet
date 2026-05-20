@@ -250,9 +250,7 @@ public class TPEExcelImportService {
         if (blankToNull(numeroSerie) != null || isNew) {
             tpe.setNumeroSerie(resolveSafeNumeroSerie(numeroSerie, numeroTerminal, numeroAffiliation, tpe.getId()));
         }
-        if (blankToNull(numeroTerminal) != null && isTerminalAvailableForTpe(numeroTerminal, tpe.getId())) {
-            tpe.setNumeroTerminal(blankToNull(numeroTerminal));
-        }
+        assignNumeroTerminal(tpe, numeroTerminal, numeroSerie, result);
         if (!parcUpdate && blankToNull(numeroAffiliation) != null) {
             tpe.setNumeroAffiliation(blankToNull(numeroAffiliation));
         }
@@ -541,10 +539,10 @@ public class TPEExcelImportService {
         return Objects.equals(canonicalizeKey(existingSerie), canonicalizeKey(incomingSerie));
     }
 
-    private boolean isTerminalAvailableForTpe(String numeroTerminal, Long currentTpeId) {
+    private void assignNumeroTerminal(TPE tpe, String numeroTerminal, String incomingNumeroSerie, TPEImportResult result) {
         String normalizedTerminal = blankToNull(numeroTerminal);
         if (normalizedTerminal == null) {
-            return false;
+            return;
         }
 
         Optional<TPE> existing = tpeRepository.findByNumeroTerminal(normalizedTerminal);
@@ -552,8 +550,41 @@ public class TPEExcelImportService {
             existing = findByCanonicalTerminal(normalizedTerminal);
         }
 
-        return existing.isEmpty()
-                || (currentTpeId != null && existing.get().getId().equals(currentTpeId));
+        if (existing.isEmpty() || (tpe.getId() != null && existing.get().getId().equals(tpe.getId()))) {
+            tpe.setNumeroTerminal(normalizedTerminal);
+            return;
+        }
+
+        TPE terminalOwner = existing.get();
+        if (canReleaseTerminalFromOwner(terminalOwner, incomingNumeroSerie)) {
+            terminalOwner.setNumeroTerminal(null);
+            tpeRepository.save(terminalOwner);
+            tpe.setNumeroTerminal(normalizedTerminal);
+            log.info("TID {} réaffecté à la série {}", normalizedTerminal, firstNonBlank(incomingNumeroSerie, tpe.getNumeroSerie()));
+            return;
+        }
+
+        result.getErrors().add("TID " + normalizedTerminal + " ignoré pour la série "
+                + firstNonBlank(incomingNumeroSerie, tpe.getNumeroSerie())
+                + " car il est déjà utilisé par la série " + terminalOwner.getNumeroSerie());
+    }
+
+    private boolean canReleaseTerminalFromOwner(TPE terminalOwner, String incomingNumeroSerie) {
+        String ownerSerie = blankToNull(terminalOwner.getNumeroSerie());
+        if (ownerSerie == null || !ownerSerie.startsWith("SERIE-")) {
+            return false;
+        }
+
+        if (terminalOwner.getCommercant() != null) {
+            return false;
+        }
+
+        if (terminalOwner.getId() != null && affectationRepository.findActiveByTpeId(terminalOwner.getId()).isPresent()) {
+            return false;
+        }
+
+        String incomingSerie = canonicalizeKey(incomingNumeroSerie);
+        return incomingSerie == null || !Objects.equals(canonicalizeKey(ownerSerie), incomingSerie);
     }
 
     private String resolveSafeNumeroSerie(String numeroSerie,
