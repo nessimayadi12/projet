@@ -126,25 +126,25 @@ export class TpeFormComponent implements OnInit {
           dateAcquisition: this.formatDateForInput(tpe.dateAcquisition),
           dateMiseEnService: this.formatDateForInput(tpe.dateMiseEnService),
           commercantActuelId: tpe.commercantActuelId,
-          raisonSociale: tpe.raisonSociale,
-          activite: tpe.activite,
-          mcc: tpe.mcc,
-          tauxCommission: tpe.tauxCommission,
-          tauxCommissionInter: tpe.tauxCommissionInter,
-          numeroCompte: tpe.numeroCompte,
-          codeAgence: tpe.codeAgence,
-          serieTpe: tpe.serieTpe,
+          raisonSociale: tpe.raisonSociale || tpe.commercantActuelNom || '',
+          activite: tpe.activite || '',
+          mcc: tpe.mcc || '',
+          tauxCommission: this.numberOrZero(tpe.tauxCommission),
+          tauxCommissionInter: this.numberOrZero(tpe.tauxCommissionInter),
+          numeroCompte: tpe.numeroCompte || tpe.rib || '',
+          codeAgence: tpe.codeAgence || '',
+          serieTpe: tpe.serieTpe || tpe.numeroSerie,
           valueDate: this.formatDateForInput(tpe.valueDate),
-          numeroTerminal: tpe.numeroTerminal,
-          urlSiteMarchand: tpe.urlSiteMarchand,
-          webhookUrl: tpe.webhookUrl,
-          cleApi: tpe.cleApi,
-          numeroAffiliation: tpe.numeroAffiliation,
-          typeCommerce: tpe.typeCommerce,
-          cartesAcceptees: tpe.cartesAcceptees,
-          modeTest: tpe.modeTest,
-          loyer: tpe.loyer,
-          commentaire: tpe.commentaire
+          numeroTerminal: tpe.numeroTerminal || '',
+          urlSiteMarchand: tpe.urlSiteMarchand || '',
+          webhookUrl: tpe.webhookUrl || '',
+          cleApi: tpe.cleApi || '',
+          numeroAffiliation: tpe.numeroAffiliation || '',
+          typeCommerce: tpe.typeCommerce || '',
+          cartesAcceptees: tpe.cartesAcceptees || tpe.typeCartesAcceptees || '',
+          modeTest: !!tpe.modeTest,
+          loyer: this.numberOrZero(tpe.loyer),
+          commentaire: tpe.commentaire || ''
         });
         this.loading = false;
       },
@@ -203,6 +203,15 @@ export class TpeFormComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
+  numberOrZero(value: number | string | null | undefined): number {
+    if (value === undefined || value === null || value === '') {
+      return 0;
+    }
+
+    const numericValue = Number(value);
+    return Number.isNaN(numericValue) ? 0 : numericValue;
+  }
+
   onSubmit(): void {
     if (this.tpeForm.invalid) {
       Object.keys(this.tpeForm.controls).forEach(key => {
@@ -222,10 +231,26 @@ export class TpeFormComponent implements OnInit {
       marque: formValue.marque,
       modele: formValue.modele,
       dateAcquisition: formValue.dateAcquisition,
+      dateMiseEnService: formValue.dateMiseEnService,
       mcc: formValue.mcc,
       numeroAffiliation: formValue.numeroAffiliation,
+      numeroTerminal: formValue.numeroTerminal,
+      raisonSociale: formValue.raisonSociale,
+      activite: formValue.activite,
+      tauxCommission: formValue.tauxCommission,
+      tauxCommissionInter: formValue.tauxCommissionInter,
+      numeroCompte: formValue.numeroCompte,
       rib: formValue.numeroCompte,
       codeAgence: formValue.codeAgence,
+      serieTpe: formValue.serieTpe,
+      valueDate: formValue.valueDate,
+      loyer: formValue.loyer,
+      urlSiteMarchand: formValue.urlSiteMarchand,
+      webhookUrl: formValue.webhookUrl,
+      cleApi: formValue.cleApi,
+      typeCommerce: formValue.typeCommerce,
+      cartesAcceptees: formValue.cartesAcceptees,
+      modeTest: formValue.modeTest,
       commentaire: formValue.commentaire
     };
 

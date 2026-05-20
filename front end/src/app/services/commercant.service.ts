@@ -22,16 +22,16 @@ export class CommercantService {
     return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(response => {
         if (Array.isArray(response)) {
-          return response as Commercant[];
+          return response.map(commercant => this.normalizeCommercant(commercant));
         }
         if (Array.isArray(response?.content)) {
-          return response.content as Commercant[];
+          return response.content.map((commercant: any) => this.normalizeCommercant(commercant));
         }
         if (Array.isArray(response?.data?.content)) {
-          return response.data.content as Commercant[];
+          return response.data.content.map((commercant: any) => this.normalizeCommercant(commercant));
         }
         if (Array.isArray(response?.data)) {
-          return response.data as Commercant[];
+          return response.data.map((commercant: any) => this.normalizeCommercant(commercant));
         }
         return [];
       })
@@ -39,7 +39,9 @@ export class CommercantService {
   }
 
   getCommercantById(id: number): Observable<Commercant> {
-    return this.http.get<Commercant>(`${this.apiUrl}/${id}`);
+    return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
+      map(response => this.normalizeCommercant(response))
+    );
   }
 
   getCommercantBySiret(siret: string): Observable<Commercant> {
@@ -55,11 +57,15 @@ export class CommercantService {
   }
 
   createCommercant(commercant: Commercant): Observable<Commercant> {
-    return this.http.post<Commercant>(this.apiUrl, commercant);
+    return this.http.post<any>(this.apiUrl, commercant).pipe(
+      map(response => this.normalizeCommercant(response))
+    );
   }
 
   updateCommercant(id: number, commercant: Commercant): Observable<Commercant> {
-    return this.http.put<Commercant>(`${this.apiUrl}/${id}`, commercant);
+    return this.http.put<any>(`${this.apiUrl}/${id}`, commercant).pipe(
+      map(response => this.normalizeCommercant(response))
+    );
   }
 
   deleteCommercant(id: number): Observable<void> {
@@ -102,5 +108,16 @@ export class CommercantService {
   // Export Excel
   exportCommercants(): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/export`, { responseType: 'blob' });
+  }
+
+  private normalizeCommercant(commercant: any): Commercant {
+    if (!commercant) {
+      return commercant;
+    }
+
+    return {
+      ...commercant,
+      nombreTpes: commercant.nombreTpes ?? commercant.nombreTPEs ?? 0
+    } as Commercant;
   }
 }

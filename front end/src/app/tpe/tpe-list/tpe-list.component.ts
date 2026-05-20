@@ -317,6 +317,7 @@ export class TpeListComponent implements OnInit {
     const outputWorkbook = XLSX.utils.book_new();
     const outputWorksheet = XLSX.utils.json_to_sheet(convertedRows, {
       header: [
+        'IMPORT_MODE',
         'TYPE_TPE',
         'MARQUE',
         'NUMERO_SERIE',
@@ -332,6 +333,7 @@ export class TpeListComponent implements OnInit {
         'CODE_AGENCE',
         'TELEPHONE',
         'EMAIL',
+        'OPERATEUR',
         'ACTIVITE',
         'MCC',
         'N_COMPTE',
@@ -367,6 +369,7 @@ export class TpeListComponent implements OnInit {
     const active = this.isParcRowActive(parcRow.statut);
 
     return {
+      IMPORT_MODE: 'PARC_TPE_MAJ',
       TYPE_TPE: 'PHYSIQUE',
       MARQUE: this.resolveMarqueFromModele(modele),
       NUMERO_SERIE: numeroSerie,
@@ -382,7 +385,8 @@ export class TpeListComponent implements OnInit {
       CODE_AGENCE: '000',
       TELEPHONE: '',
       EMAIL: '',
-      ACTIVITE: operateur,
+      OPERATEUR: operateur,
+      ACTIVITE: '',
       MCC: '',
       N_COMPTE: terminal || numeroSerie,
       LOYER: '',

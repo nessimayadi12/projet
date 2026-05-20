@@ -93,7 +93,10 @@ public class TPEController {
     @PostMapping("/generer-tid")
     @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<String> genererTID(@RequestBody TPERequest request) {
-        String tid = tpeService.generateTID(request.getRib(), request.getCodeAgence());
+        String rib = request.getRib() != null && !request.getRib().isBlank()
+                ? request.getRib()
+                : request.getNumeroCompte();
+        String tid = tpeService.generateTID(rib, request.getCodeAgence());
         return ResponseEntity.ok(tid);
     }
 

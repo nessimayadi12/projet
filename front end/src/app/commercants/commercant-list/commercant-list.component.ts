@@ -69,15 +69,11 @@ export class CommercantListComponent implements OnInit {
     this.filteredCommercants = this.commercants.filter(commercant => {
       const raisonSociale = (commercant.raisonSociale || '').toLowerCase();
       const adresse = (commercant.adresse || '').toLowerCase();
-      const nomContact = (commercant.nomContact || '').toLowerCase();
-      const prenomContact = (commercant.prenomContact || '').toLowerCase();
       const query = (this.searchTerm || '').toLowerCase();
 
       const matchesSearch = !this.searchTerm || 
         raisonSociale.includes(query) ||
-        adresse.includes(query) ||
-        nomContact.includes(query) ||
-        prenomContact.includes(query);
+        adresse.includes(query);
       
       const matchesStatut = !this.selectedStatut || commercant.statut === this.selectedStatut;
       
@@ -157,7 +153,6 @@ export class CommercantListComponent implements OnInit {
       'Raison Sociale': commercant.raisonSociale || '-',
       'N° Compte': commercant.numeroCompte || '-',
       'Adresse': commercant.adresse || '-',
-      'Nom Contact': `${commercant.nomContact || ''} ${commercant.prenomContact || ''}`.trim() || '-',
       'Email': commercant.email || '-',
       'Téléphone': commercant.telephone || '-',
       'Nb TPE': commercant.nombreTpes || 0,

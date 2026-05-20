@@ -18,6 +18,8 @@ public interface CommercantRepository extends JpaRepository<Commercant, Long>, J
     Optional<Commercant> findByEmail(String email);
     
     Optional<Commercant> findByRaisonSociale(String raisonSociale);
+
+    Optional<Commercant> findFirstByRaisonSociale(String raisonSociale);
     
     Optional<Commercant> findByNumeroCompte(String numeroCompte);
 

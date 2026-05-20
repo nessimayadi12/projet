@@ -22,6 +22,7 @@ export interface Commercant {
   localite?: string;
   activite?: string;
   numeroCompte?: string;
+  rib?: string;
   codeAgence?: string;
   loyer?: number;
   mcc?: string;
@@ -33,6 +34,7 @@ export interface Commercant {
   prenomContact?: string;
   cheminFichierRNE?: string;
   nombreTpes?: number;
+  nombreTPEs?: number;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

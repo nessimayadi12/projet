@@ -220,9 +220,30 @@ export class TpeService {
     if (!tpe) {
       return tpe;
     }
+
+    const commercantNom = tpe.commercantActuelNom || tpe.commercantNom;
+
     return {
       ...tpe,
-      typeTpe: tpe.typeTpe || tpe.typeTPE
+      typeTpe: tpe.typeTpe || tpe.typeTPE,
+      commercantActuelId: tpe.commercantActuelId ?? tpe.commercantId,
+      commercantActuelNom: commercantNom,
+      raisonSociale: tpe.raisonSociale || commercantNom,
+      numeroCompte: tpe.numeroCompte || tpe.rib,
+      serieTpe: tpe.serieTpe || tpe.numeroSerie,
+      tauxCommission: this.toNumberOrOriginal(tpe.tauxCommission),
+      tauxCommissionInter: this.toNumberOrOriginal(tpe.tauxCommissionInter),
+      loyer: this.toNumberOrOriginal(tpe.loyer),
+      cartesAcceptees: tpe.cartesAcceptees || tpe.typeCartesAcceptees
     } as TPE;
+  }
+
+  private toNumberOrOriginal(value: any): any {
+    if (value === null || value === undefined || value === '') {
+      return value;
+    }
+
+    const numericValue = Number(value);
+    return Number.isNaN(numericValue) ? value : numericValue;
   }
 }

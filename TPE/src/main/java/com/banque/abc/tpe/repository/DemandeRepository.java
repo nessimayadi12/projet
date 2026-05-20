@@ -5,6 +5,7 @@ import com.banque.abc.tpe.entity.enums.StatutDemande;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -44,4 +45,11 @@ public interface DemandeRepository extends JpaRepository<Demande, Long>, JpaSpec
 
     @Query("SELECT d FROM Demande d WHERE d.reference LIKE CONCAT(:prefix, '%') AND d.statut = :statut")
     List<Demande> findByReferenceStartingWithAndStatut(String prefix, StatutDemande statut);
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT COALESCE(NULLIF(d.numero_terminal, ''), NULLIF(d.serie_tpe, ''), d.reference))
+            FROM demandes d
+            WHERE d.commercant_id = :commercantId
+            """, nativeQuery = true)
+    Long countDistinctTpeReferencesByCommercantId(@Param("commercantId") Long commercantId);
 }

@@ -119,7 +119,10 @@ public class TPEExcelImportService {
                                         int sourceRowNumber,
                                         TPEImportResult result) throws IOException {
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), "ROW_" + sourceRowNumber);
+        String tauxCommission = readAnyString(row, headers, formatter, "TAUX_COMMISSION", "TAUX_COMMISION");
+        String tauxCommissionInter = readAnyString(row, headers, formatter, "TAUX_COMMISSION_INTER", "TAUX_COMMISION_INTER");
         Map<String, Object> rawData = new LinkedHashMap<>();
+        rawData.put("IMPORT_MODE", readString(row, headers, formatter, "IMPORT_MODE"));
         rawData.put("TYPE_TPE", readString(row, headers, formatter, "TYPE_TPE"));
         rawData.put("MARQUE", readString(row, headers, formatter, "MARQUE"));
         rawData.put("N_AFFILIATION", readString(row, headers, formatter, "N_AFFILIATION"));
@@ -133,9 +136,10 @@ public class TPEExcelImportService {
         rawData.put("CODE_POSTAL", readString(row, headers, formatter, "CODE_POSTAL"));
         rawData.put("TELEPHONE", readString(row, headers, formatter, "TELEPHONE"));
         rawData.put("EMAIL", firstNonBlank(readString(row, headers, formatter, "EMAIL"), readString(row, headers, formatter, "MAIL"), readString(row, headers, formatter, "EMAIL_NOTIFICATION")));
+        rawData.put("OPERATEUR", readString(row, headers, formatter, "OPERATEUR"));
         rawData.put("PREVILEGE_SECTEUR", readString(row, headers, formatter, "PREVILEGE_SECTEUR"));
-        rawData.put("TAUX_COMMISSION", readString(row, headers, formatter, "TAUX_COMMISSION"));
-        rawData.put("TAUX_COMMISSION_INTER", readString(row, headers, formatter, "TAUX_COMMISSION_INTER"));
+        rawData.put("TAUX_COMMISSION", tauxCommission);
+        rawData.put("TAUX_COMMISSION_INTER", tauxCommissionInter);
         rawData.put("LOYER", readString(row, headers, formatter, "LOYER"));
         rawData.put("N_COMPTE_INTERN", readString(row, headers, formatter, "N_COMPTE_INTERN"));
         rawData.put("GROUP", readString(row, headers, formatter, "GROUP"));
@@ -169,8 +173,8 @@ public class TPEExcelImportService {
         record.setTelephone(readString(row, headers, formatter, "TELEPHONE"));
         record.setEmail(firstNonBlank(readString(row, headers, formatter, "EMAIL"), readString(row, headers, formatter, "MAIL"), readString(row, headers, formatter, "EMAIL_NOTIFICATION")));
         record.setPrivilegeSecteur(readString(row, headers, formatter, "PREVILEGE_SECTEUR"));
-        record.setTauxCommission(readString(row, headers, formatter, "TAUX_COMMISSION"));
-        record.setTauxCommissionInter(readString(row, headers, formatter, "TAUX_COMMISSION_INTER"));
+        record.setTauxCommission(tauxCommission);
+        record.setTauxCommissionInter(tauxCommissionInter);
         record.setLoyer(readString(row, headers, formatter, "LOYER"));
         record.setNCompteIntern(readString(row, headers, formatter, "N_COMPTE_INTERN"));
         record.setGroupe(readString(row, headers, formatter, "GROUP"));
@@ -186,6 +190,7 @@ public class TPEExcelImportService {
     }
 
     private void importRow(Row row, Map<String, Integer> headers, DataFormatter formatter, TPEImportResult result, String rawKey) {
+        boolean parcUpdate = "PARC_TPE_MAJ".equalsIgnoreCase(firstNonBlank(readString(row, headers, formatter, "IMPORT_MODE"), ""));
         String typeValue = readString(row, headers, formatter, "TYPE_TPE");
         String marque = readString(row, headers, formatter, "MARQUE");
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), rawKey);
@@ -205,21 +210,21 @@ public class TPEExcelImportService {
                 readString(row, headers, formatter, "EMAIL_NOTIFICATION")
         );
         String previlegeSecteur = readString(row, headers, formatter, "PREVILEGE_SECTEUR");
-        String tauxCommission = readString(row, headers, formatter, "TAUX_COMMISSION");
-        String tauxCommissionInter = readString(row, headers, formatter, "TAUX_COMMISSION_INTER");
+        String operateur = readString(row, headers, formatter, "OPERATEUR");
+        String tauxCommission = readAnyString(row, headers, formatter, "TAUX_COMMISSION", "TAUX_COMMISION");
+        String tauxCommissionInter = readAnyString(row, headers, formatter, "TAUX_COMMISSION_INTER", "TAUX_COMMISION_INTER");
         String loyer = readString(row, headers, formatter, "LOYER");
         String nCompteIntern = readString(row, headers, formatter, "N_COMPTE_INTERN");
         String groupe = readString(row, headers, formatter, "GROUP");
         String numSeq = readString(row, headers, formatter, "NUM_SEQ");
         LocalDate valueDate = readLocalDate(row, headers, formatter, "VALUE_DATE");
         LocalDate dateAffiliation = readLocalDate(row, headers, formatter, "DATE_AFFILIATION");
+        LocalDate effectiveTpeDate = valueDate != null ? valueDate : dateAffiliation;
         Boolean active = resolveActiveStatus(row, headers, formatter, valueDate, dateAffiliation, numeroTerminal);
 
         if ((numeroSerie == null || numeroSerie.isBlank()) && (numeroTerminal == null || numeroTerminal.isBlank())) {
             throw new BusinessException("numéro de série et numéro terminal manquants");
         }
-
-        numeroSerie = resolveSafeNumeroSerie(numeroSerie, numeroTerminal, numeroAffiliation, null);
 
         String safeRaisonSociale = firstNonBlank(raisonSociale, numeroAffiliation, numeroSerie);
         String safeActivite = blankToNull(activite);
@@ -231,18 +236,40 @@ public class TPEExcelImportService {
         TPE tpe = findOrCreateTPE(numeroSerie, numeroTerminal);
         boolean isNew = tpe.getId() == null;
 
-        tpe.setTypeTPE(parseTypeTPE(typeValue));
-        tpe.setNumeroSerie(resolveSafeNumeroSerie(numeroSerie, numeroTerminal, numeroAffiliation, tpe.getId()));
-        tpe.setNumeroTerminal(blankToNull(numeroTerminal));
-        tpe.setNumeroAffiliation(blankToNull(numeroAffiliation != null ? numeroAffiliation : numeroSerie));
-        tpe.setStatut(Boolean.TRUE.equals(active) ? StatutTPE.AFFECTE : StatutTPE.DISPONIBLE);
+        if (blankToNull(typeValue) != null || tpe.getTypeTPE() == null) {
+            tpe.setTypeTPE(parseTypeTPE(typeValue));
+        }
+
+        if (blankToNull(numeroSerie) != null || isNew) {
+            tpe.setNumeroSerie(resolveSafeNumeroSerie(numeroSerie, numeroTerminal, numeroAffiliation, tpe.getId()));
+        }
+        if (blankToNull(numeroTerminal) != null && isTerminalAvailableForTpe(numeroTerminal, tpe.getId())) {
+            tpe.setNumeroTerminal(blankToNull(numeroTerminal));
+        }
+        if (!parcUpdate && blankToNull(numeroAffiliation) != null) {
+            tpe.setNumeroAffiliation(blankToNull(numeroAffiliation));
+        }
+        if (Boolean.TRUE.equals(active)) {
+            tpe.setStatut(StatutTPE.AFFECTE);
+        } else if (!parcUpdate) {
+            tpe.setStatut(StatutTPE.DISPONIBLE);
+        }
         tpe.setMarque(firstNonBlank(marque, tpe.getMarque(), typeValue));
-        tpe.setModele(firstNonBlank(readString(row, headers, formatter, "CODE_TPE"), readString(row, headers, formatter, "SERIE_PUCE")));
-        tpe.setDateAcquisition(valueDate);
-        tpe.setDateMiseEnService(valueDate);
-        tpe.setMcc(blankToNull(mcc));
-        tpe.setCommercant(Boolean.TRUE.equals(active) ? commercant : null);
-        tpe.setCommentaire(buildCommentaire(previlegeSecteur, tauxCommission, tauxCommissionInter, nCompteIntern, groupe, numSeq));
+        tpe.setModele(firstNonBlank(readString(row, headers, formatter, "CODE_TPE"), tpe.getModele()));
+        if (effectiveTpeDate != null) {
+            tpe.setDateAcquisition(effectiveTpeDate);
+            tpe.setDateMiseEnService(effectiveTpeDate);
+        }
+        if (blankToNull(mcc) != null) {
+            tpe.setMcc(blankToNull(mcc));
+        }
+        if (Boolean.TRUE.equals(active)) {
+            tpe.setCommercant(commercant);
+        }
+        String commentaire = buildCommentaire(previlegeSecteur, operateur, tauxCommission, tauxCommissionInter, nCompteIntern, groupe, numSeq);
+        if (blankToNull(commentaire) != null) {
+            tpe.setCommentaire(commentaire);
+        }
 
         tpeRepository.save(tpe);
         if (isNew) {
@@ -257,7 +284,7 @@ public class TPEExcelImportService {
             upsertActiveAffectation(tpe, commercant, demande, dateAffiliation != null ? dateAffiliation : valueDate, result);
         }
 
-        if (!Boolean.TRUE.equals(active)) {
+        if (!parcUpdate && !Boolean.TRUE.equals(active)) {
             deactivateActiveAffectationIfNeeded(tpe);
         }
     }
@@ -376,7 +403,8 @@ public class TPEExcelImportService {
         demande.setLoyer(parseDouble(loyer));
         demande.setSerieTpe(tpe.getNumeroSerie());
         demande.setNumeroTerminal(tpe.getNumeroTerminal());
-        demande.setValueDate(valueDate != null ? valueDate.atStartOfDay() : null);
+        LocalDate effectiveDate = valueDate != null ? valueDate : dateAffiliation;
+        demande.setValueDate(effectiveDate != null ? effectiveDate.atStartOfDay() : null);
 
         if (parseTypeTPE(typeValue) == TypeTPE.ECOMMERCE) {
             demande.setRib(numeroCompte);
@@ -410,6 +438,10 @@ public class TPEExcelImportService {
             )
             .orElse(null);
 
+        if (commercant == null && !"COMMERCANT_SANS_NOM".equals(normalizedRaisonSociale)) {
+            commercant = commercantRepository.findFirstByRaisonSociale(normalizedRaisonSociale).orElse(null);
+        }
+
         if (commercant == null) {
             commercant = new Commercant();
             commercant.setNumeroCompte(normalizedNumeroCompte);
@@ -419,7 +451,7 @@ public class TPEExcelImportService {
         }
 
         commercant.setRaisonSociale(firstNonBlank(blankToNull(commercant.getRaisonSociale()), normalizedRaisonSociale));
-        commercant.setActivite(firstNonBlank(blankToNull(activite), blankToNull(commercant.getActivite()), "INCONNUE"));
+        commercant.setActivite(firstNonBlank(blankToNull(commercant.getActivite()), blankToNull(activite), "INCONNUE"));
         commercant.setNumeroCompte(firstNonBlank(blankToNull(commercant.getNumeroCompte()), normalizedNumeroCompte));
         commercant.setCodeAgence(firstNonBlank(blankToNull(commercant.getCodeAgence()), normalizedCodeAgence));
 
@@ -439,8 +471,13 @@ public class TPEExcelImportService {
             commercant.setEmailNotification(safeEmail);
         }
 
-        commercant.setLoyer(parseDouble(loyer));
-        commercant.setTypeCommerce(parseTypeTPE(typeValue));
+        Double parsedLoyer = parseDouble(loyer);
+        if (parsedLoyer != null) {
+            commercant.setLoyer(parsedLoyer);
+        }
+        if (blankToNull(typeValue) != null || commercant.getTypeCommerce() == null) {
+            commercant.setTypeCommerce(parseTypeTPE(typeValue));
+        }
         commercant.setStatut(StatutCommercant.ACTIF);
 
         return commercantRepository.save(commercant);
@@ -449,21 +486,53 @@ public class TPEExcelImportService {
     private TPE findOrCreateTPE(String numeroSerie, String numeroTerminal) {
         TPE tpe = null;
 
-        if (numeroTerminal != null && !numeroTerminal.isBlank()) {
-            tpe = tpeRepository.findByNumeroTerminal(numeroTerminal).orElse(null);
-            if (tpe == null) {
-                tpe = findByCanonicalTerminal(numeroTerminal).orElse(null);
-            }
-        }
-
-        if (tpe == null && numeroSerie != null && !numeroSerie.isBlank()) {
+        if (numeroSerie != null && !numeroSerie.isBlank()) {
             tpe = tpeRepository.findByNumeroSerie(numeroSerie).orElse(null);
             if (tpe == null) {
                 tpe = findByCanonicalSerie(numeroSerie).orElse(null);
             }
         }
 
+        if (tpe == null && numeroTerminal != null && !numeroTerminal.isBlank()) {
+            TPE terminalMatch = tpeRepository.findByNumeroTerminal(numeroTerminal).orElse(null);
+            if (terminalMatch == null) {
+                terminalMatch = findByCanonicalTerminal(numeroTerminal).orElse(null);
+            }
+            if (terminalMatch != null && canReuseTerminalMatch(terminalMatch, numeroSerie)) {
+                tpe = terminalMatch;
+            }
+        }
+
         return tpe != null ? tpe : new TPE();
+    }
+
+    private boolean canReuseTerminalMatch(TPE terminalMatch, String incomingNumeroSerie) {
+        String incomingSerie = blankToNull(incomingNumeroSerie);
+        if (incomingSerie == null) {
+            return true;
+        }
+
+        String existingSerie = blankToNull(terminalMatch.getNumeroSerie());
+        if (existingSerie == null || existingSerie.startsWith("SERIE-")) {
+            return true;
+        }
+
+        return Objects.equals(canonicalizeKey(existingSerie), canonicalizeKey(incomingSerie));
+    }
+
+    private boolean isTerminalAvailableForTpe(String numeroTerminal, Long currentTpeId) {
+        String normalizedTerminal = blankToNull(numeroTerminal);
+        if (normalizedTerminal == null) {
+            return false;
+        }
+
+        Optional<TPE> existing = tpeRepository.findByNumeroTerminal(normalizedTerminal);
+        if (existing.isEmpty()) {
+            existing = findByCanonicalTerminal(normalizedTerminal);
+        }
+
+        return existing.isEmpty()
+                || (currentTpeId != null && existing.get().getId().equals(currentTpeId));
     }
 
     private String resolveSafeNumeroSerie(String numeroSerie,
@@ -508,7 +577,6 @@ public class TPEExcelImportService {
                 readString(row, headers, formatter, "NUMERO_SERIE"),
                 readString(row, headers, formatter, "N_SERIE"),
                 readString(row, headers, formatter, "N_SERIE_TPE"),
-                readString(row, headers, formatter, "SERIE_PUCE"),
                 readString(row, headers, formatter, "SERIAL_NUMBER"),
                 readString(row, headers, formatter, "SERIE")
         );
@@ -603,6 +671,21 @@ public class TPEExcelImportService {
         return blankToNull(value);
     }
 
+    private String readAnyString(Row row, Map<String, Integer> headers, DataFormatter formatter, String... headerNames) {
+        if (headerNames == null) {
+            return null;
+        }
+
+        for (String headerName : headerNames) {
+            String value = readString(row, headers, formatter, headerName);
+            if (blankToNull(value) != null) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
     private Boolean readBoolean(Row row, Map<String, Integer> headers, DataFormatter formatter, String headerName) {
         String value = readString(row, headers, formatter, headerName);
         if (value == null) {
@@ -635,7 +718,10 @@ public class TPEExcelImportService {
             }
             if ("0".equals(normalized) || "FALSE".equals(normalized) || "NON".equals(normalized)
                     || "NO".equals(normalized) || "N".equals(normalized) || "INACTIF".equals(normalized)
-                    || "I".equals(normalized) || "INACTIVE".equals(normalized)) {
+                    || "I".equals(normalized) || "INACTIVE".equals(normalized)
+                    || "TERMINATED".equals(normalized) || "TERMINETED".equals(normalized)
+                    || "TERMIANTED".equals(normalized) || "TERMINE".equals(normalized)
+                    || "RESILIE".equals(normalized)) {
                 return false;
             }
         }
@@ -675,6 +761,9 @@ public class TPEExcelImportService {
             if (value.contains("T")) {
                 return LocalDateTime.parse(value).toLocalDate();
             }
+            if (value.matches("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?")) {
+                return LocalDate.parse(value.substring(0, 10));
+            }
             if (value.length() == 8 && value.chars().allMatch(Character::isDigit)) {
                 return LocalDate.parse(value, java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
             }
@@ -709,6 +798,7 @@ public class TPEExcelImportService {
     }
 
     private String buildCommentaire(String previlegeSecteur,
+                                    String operateur,
                                     String tauxCommission,
                                     String tauxCommissionInter,
                                     String nCompteIntern,
@@ -716,6 +806,7 @@ public class TPEExcelImportService {
                                     String numSeq) {
         StringBuilder builder = new StringBuilder();
         appendPart(builder, "Privilege secteur", previlegeSecteur);
+        appendPart(builder, "Operateur", operateur);
         appendPart(builder, "Taux commission", tauxCommission);
         appendPart(builder, "Taux commission inter", tauxCommissionInter);
         appendPart(builder, "Compte interne", nCompteIntern);

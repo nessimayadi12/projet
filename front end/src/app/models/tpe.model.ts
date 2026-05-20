@@ -19,8 +19,11 @@ export interface TPE {
   modele?: string;
   statut: StatutTPE;
   typeTpe: TypeTPE;
+  typeTPE?: TypeTPE;
   dateAcquisition: Date | string;
   dateMiseEnService?: Date | string;
+  commercantId?: number;
+  commercantNom?: string;
   commercantActuelId?: number;
   commercantActuelNom?: string;
   
@@ -31,6 +34,7 @@ export interface TPE {
   tauxCommission?: number;
   tauxCommissionInter?: number;
   numeroCompte?: string;
+  rib?: string;
   codeAgence?: string;
   serieTpe?: string;
   valueDate?: Date | string;
@@ -43,6 +47,7 @@ export interface TPE {
   numeroAffiliation?: string;
   typeCommerce?: string;
   cartesAcceptees?: string;
+  typeCartesAcceptees?: string;
   modeTest?: boolean;
 
   // Champs administratifs

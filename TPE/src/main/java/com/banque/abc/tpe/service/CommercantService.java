@@ -6,7 +6,10 @@ import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.enums.StatutCommercant;
 import com.banque.abc.tpe.exception.DuplicateResourceException;
 import com.banque.abc.tpe.exception.ResourceNotFoundException;
+import com.banque.abc.tpe.repository.AffectationRepository;
 import com.banque.abc.tpe.repository.CommercantRepository;
+import com.banque.abc.tpe.repository.DemandeRepository;
+import com.banque.abc.tpe.repository.TPERepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -22,6 +25,9 @@ import java.util.stream.Collectors;
 public class CommercantService {
 
     private final CommercantRepository commercantRepository;
+    private final TPERepository tpeRepository;
+    private final AffectationRepository affectationRepository;
+    private final DemandeRepository demandeRepository;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
 
@@ -129,7 +135,21 @@ public class CommercantService {
 
     private CommercantResponse mapToResponse(Commercant commercant) {
         CommercantResponse response = modelMapper.map(commercant, CommercantResponse.class);
-        response.setNombreTPEs(commercant.getTpes().size());
+        response.setNombreTPEs(resolveNombreTpes(commercant.getId()));
         return response;
+    }
+
+    private Integer resolveNombreTpes(Long commercantId) {
+        if (commercantId == null) {
+            return 0;
+        }
+
+        Long directCount = tpeRepository.countByCommercantId(commercantId);
+        Long activeAffectationCount = affectationRepository.countActiveAffectationsByCommercant(commercantId);
+        Long demandeTpeCount = demandeRepository.countDistinctTpeReferencesByCommercantId(commercantId);
+        long count = Math.max(directCount != null ? directCount : 0L, activeAffectationCount != null ? activeAffectationCount : 0L);
+        count = Math.max(count, demandeTpeCount != null ? demandeTpeCount : 0L);
+
+        return Math.toIntExact(count);
     }
 }

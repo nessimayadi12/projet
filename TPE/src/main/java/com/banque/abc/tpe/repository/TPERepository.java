@@ -36,6 +36,8 @@ public interface TPERepository extends JpaRepository<TPE, Long>, JpaSpecificatio
     List<TPE> findByTypeTPE(TypeTPE typeTPE);
     
     List<TPE> findByCommercantId(Long commercantId);
+
+    Long countByCommercantId(Long commercantId);
     
     @Query("SELECT COUNT(t) FROM TPE t WHERE t.statut = :statut")
     Long countByStatut(StatutTPE statut);

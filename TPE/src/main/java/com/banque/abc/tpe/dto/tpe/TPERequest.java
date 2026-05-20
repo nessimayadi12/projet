@@ -24,10 +24,42 @@ public class TPERequest {
     private String modele;
     
     private LocalDate dateAcquisition;
+
+    private LocalDate dateMiseEnService;
     
     private String mcc;
     
     private String numeroAffiliation;
+
+    private String numeroTerminal;
+
+    private String raisonSociale;
+
+    private String activite;
+
+    private Double tauxCommission;
+
+    private Double tauxCommissionInter;
+
+    private String numeroCompte;
+
+    private String serieTpe;
+
+    private LocalDate valueDate;
+
+    private Double loyer;
+
+    private String urlSiteMarchand;
+
+    private String webhookUrl;
+
+    private String cleApi;
+
+    private String typeCommerce;
+
+    private String cartesAcceptees;
+
+    private Boolean modeTest;
     
     private String rib;
     
