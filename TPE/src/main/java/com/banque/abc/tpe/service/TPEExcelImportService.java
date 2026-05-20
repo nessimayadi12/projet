@@ -121,12 +121,14 @@ public class TPEExcelImportService {
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), "ROW_" + sourceRowNumber);
         String tauxCommission = readAnyString(row, headers, formatter, "TAUX_COMMISSION", "TAUX_COMMISION");
         String tauxCommissionInter = readAnyString(row, headers, formatter, "TAUX_COMMISSION_INTER", "TAUX_COMMISION_INTER");
+        String numeroTerminal = readNumeroTerminal(row, headers, formatter);
+        boolean parcUpdate = "PARC_TPE_MAJ".equalsIgnoreCase(firstNonBlank(readString(row, headers, formatter, "IMPORT_MODE"), ""));
         Map<String, Object> rawData = new LinkedHashMap<>();
         rawData.put("IMPORT_MODE", readString(row, headers, formatter, "IMPORT_MODE"));
         rawData.put("TYPE_TPE", readString(row, headers, formatter, "TYPE_TPE"));
         rawData.put("MARQUE", readString(row, headers, formatter, "MARQUE"));
         rawData.put("N_AFFILIATION", readString(row, headers, formatter, "N_AFFILIATION"));
-        rawData.put("N_TERMINAL", readString(row, headers, formatter, "N_TERMINAL"));
+        rawData.put("N_TERMINAL", numeroTerminal);
         rawData.put("RAISON_SOCIALE", readString(row, headers, formatter, "RAISON_SOCIALE"));
         rawData.put("ACTIVITE", readString(row, headers, formatter, "ACTIVITE"));
         rawData.put("MCC", readString(row, headers, formatter, "MCC"));
@@ -147,7 +149,7 @@ public class TPEExcelImportService {
         Boolean active = resolveActiveStatus(row, headers, formatter,
             readLocalDate(row, headers, formatter, "VALUE_DATE"),
             readLocalDate(row, headers, formatter, "DATE_AFFILIATION"),
-            readString(row, headers, formatter, "N_TERMINAL"));
+            numeroTerminal);
         rawData.put("ACTIVE", active);
         rawData.put("VALUE_DATE", readString(row, headers, formatter, "VALUE_DATE"));
         rawData.put("DATE_AFFILIATION", readString(row, headers, formatter, "DATE_AFFILIATION"));
@@ -160,13 +162,14 @@ public class TPEExcelImportService {
         record.setSourceFileName(sourceFileName);
         record.setTypeTPE(firstNonBlank(readString(row, headers, formatter, "TYPE_TPE"), null));
         String resolvedNumeroSerie = resolveNumeroSerie(row, headers, formatter);
-        String normalizedTerminal = normalizeTerminal(readString(row, headers, formatter, "N_TERMINAL"));
+        String normalizedTerminal = normalizeTerminal(numeroTerminal);
         record.setNumeroSerie(firstNonBlank(resolvedNumeroSerie, normalizedTerminal, numeroAffiliation));
         record.setNumeroTerminal(normalizedTerminal);
         record.setRaisonSociale(firstNonBlank(readString(row, headers, formatter, "RAISON_SOCIALE"), numeroAffiliation));
         record.setActivite(readString(row, headers, formatter, "ACTIVITE"));
         record.setMcc(readString(row, headers, formatter, "MCC"));
-        record.setNumeroCompte(firstNonBlank(readString(row, headers, formatter, "N_COMPTE"), numeroAffiliation));
+        String recordNumeroCompte = readString(row, headers, formatter, "N_COMPTE");
+        record.setNumeroCompte(parcUpdate ? recordNumeroCompte : firstNonBlank(recordNumeroCompte, numeroAffiliation));
         record.setCodeAgence(firstNonBlank(readString(row, headers, formatter, "CODE_AGENCE"), "000"));
         record.setAdresse(readString(row, headers, formatter, "ADRESSE"));
         record.setCodePostal(readString(row, headers, formatter, "CODE_POSTAL"));
@@ -195,7 +198,7 @@ public class TPEExcelImportService {
         String marque = readString(row, headers, formatter, "MARQUE");
         String numeroAffiliation = firstNonBlank(readString(row, headers, formatter, "N_AFFILIATION"), rawKey);
         String numeroSerie = resolveNumeroSerie(row, headers, formatter);
-        String numeroTerminal = normalizeTerminal(readString(row, headers, formatter, "N_TERMINAL"));
+        String numeroTerminal = normalizeTerminal(readNumeroTerminal(row, headers, formatter));
         String raisonSociale = readString(row, headers, formatter, "RAISON_SOCIALE");
         String activite = readString(row, headers, formatter, "ACTIVITE");
         String mcc = readString(row, headers, formatter, "MCC");
@@ -228,10 +231,13 @@ public class TPEExcelImportService {
 
         String safeRaisonSociale = firstNonBlank(raisonSociale, numeroAffiliation, numeroSerie);
         String safeActivite = blankToNull(activite);
-        String safeNumeroCompte = firstNonBlank(normalizeNumeroCompte(numeroCompte), numeroAffiliation, numeroSerie);
+        String normalizedNumeroCompte = normalizeNumeroCompte(numeroCompte);
+        String safeNumeroCompte = parcUpdate
+                ? blankToNull(normalizedNumeroCompte)
+                : firstNonBlank(normalizedNumeroCompte, numeroAffiliation, numeroSerie);
         String safeCodeAgence = firstNonBlank(codeAgence, "000");
 
-        Commercant commercant = findOrCreateCommercant(safeRaisonSociale, safeActivite, safeNumeroCompte, numeroAffiliation, adresse, codePostal, safeCodeAgence, telephone, email, loyer, typeValue);
+        Commercant commercant = findOrCreateCommercant(safeRaisonSociale, safeActivite, safeNumeroCompte, numeroAffiliation, adresse, codePostal, safeCodeAgence, telephone, email, loyer, typeValue, !parcUpdate);
 
         TPE tpe = findOrCreateTPE(numeroSerie, numeroTerminal);
         boolean isNew = tpe.getId() == null;
@@ -423,11 +429,19 @@ public class TPEExcelImportService {
                                               String telephone,
                                               String email,
                                               String loyer,
-                                              String typeValue) {
+                                              String typeValue,
+                                              boolean allowNumeroCompteFallback) {
         String normalizedCodeAgence = firstNonBlank(blankToNull(codeAgence), "000");
-        String normalizedNumeroCompte = firstNonBlank(normalizeNumeroCompte(numeroCompte), blankToNull(numeroAffiliation));
         String normalizedRaisonSociale = firstNonBlank(blankToNull(raisonSociale), "COMMERCANT_SANS_NOM");
         String normalizedAdresse = blankToNull(adresse);
+        String normalizedNumeroCompte = firstNonBlank(
+                normalizeNumeroCompte(numeroCompte),
+                allowNumeroCompteFallback ? blankToNull(numeroAffiliation) : null
+        );
+        String creationNumeroCompte = firstNonBlank(
+                normalizedNumeroCompte,
+                buildGeneratedNumeroCompte(normalizedRaisonSociale, numeroAffiliation)
+        );
 
         Commercant commercant = commercantRepository
             .findForImportExact(
@@ -444,7 +458,7 @@ public class TPEExcelImportService {
 
         if (commercant == null) {
             commercant = new Commercant();
-            commercant.setNumeroCompte(normalizedNumeroCompte);
+            commercant.setNumeroCompte(creationNumeroCompte);
             commercant.setCodeAgence(normalizedCodeAgence);
             commercant.setRaisonSociale(normalizedRaisonSociale);
             commercant.setStatut(StatutCommercant.ACTIF);
@@ -452,7 +466,7 @@ public class TPEExcelImportService {
 
         commercant.setRaisonSociale(firstNonBlank(blankToNull(commercant.getRaisonSociale()), normalizedRaisonSociale));
         commercant.setActivite(firstNonBlank(blankToNull(commercant.getActivite()), blankToNull(activite), "INCONNUE"));
-        commercant.setNumeroCompte(firstNonBlank(blankToNull(commercant.getNumeroCompte()), normalizedNumeroCompte));
+        commercant.setNumeroCompte(firstNonBlank(blankToNull(commercant.getNumeroCompte()), normalizedNumeroCompte, creationNumeroCompte));
         commercant.setCodeAgence(firstNonBlank(blankToNull(commercant.getCodeAgence()), normalizedCodeAgence));
 
         if (blankToNull(commercant.getAdresse()) == null) {
@@ -686,6 +700,20 @@ public class TPEExcelImportService {
         return null;
     }
 
+    private String readNumeroTerminal(Row row, Map<String, Integer> headers, DataFormatter formatter) {
+        return readAnyString(
+                row,
+                headers,
+                formatter,
+                "N_TERMINAL",
+                "ID_TERMINAL",
+                "ID TERMINAL",
+                "NUMERO_TERMINAL",
+                "NUMERO TERMINAL",
+                "TID"
+        );
+    }
+
     private Boolean readBoolean(Row row, Map<String, Integer> headers, DataFormatter formatter, String headerName) {
         String value = readString(row, headers, formatter, headerName);
         if (value == null) {
@@ -871,6 +899,11 @@ public class TPEExcelImportService {
             String digitsOnly = normalized.replaceAll("\\D", "");
             return digitsOnly.isBlank() ? normalized : digitsOnly;
         }
+    }
+
+    private String buildGeneratedNumeroCompte(String raisonSociale, String reference) {
+        String base = firstNonBlank(raisonSociale, reference, "IMPORT");
+        return "SANS_RIB_" + Integer.toUnsignedString(base.hashCode());
     }
 
     private String normalizeTerminal(String value) {

@@ -388,7 +388,7 @@ export class TpeListComponent implements OnInit {
       OPERATEUR: operateur,
       ACTIVITE: '',
       MCC: '',
-      N_COMPTE: terminal || numeroSerie,
+      N_COMPTE: '',
       LOYER: '',
       N_COMPTE_INTERN: numeroSerieSim,
       GROUP: banque,
