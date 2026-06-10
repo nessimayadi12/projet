@@ -23,7 +23,7 @@ public class Demande extends BaseEntity {
     private String reference; // Ex: DEM-2026-001
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50, columnDefinition = "VARCHAR(50)")
     private TypeTPE typeDemande;
 
     @Enumerated(EnumType.STRING)
@@ -67,7 +67,7 @@ public class Demande extends BaseEntity {
     @Builder.Default
     private Urgence urgence = Urgence.NORMALE;
 
-    // Champs de demande agence (TPE Physique)
+    // Champs de demande agence (TPE)
     private String raisonSociale;
     private String activite;
     private String numeroCompte;
@@ -77,9 +77,8 @@ public class Demande extends BaseEntity {
     private String telephone;
     @Column(name = "rne_file_path")
     private String rneFilePath;
-    private String emailNotification;
     
-    // Champs de validation Monetique (TPE Physique)
+    // Champs de validation Monetique (TPE)
     private String mcc;
     private Double tauxCommission;
     private Double tauxCommissionInter;
@@ -87,9 +86,10 @@ public class Demande extends BaseEntity {
     private String serieTpe;
     private String numeroTerminal; // généré automatiquement
     @Column(name = "value_date")
-    private LocalDateTime valueDate;
+    @Builder.Default
+    private Integer valueDate = 1;
     
-    // Champs spécifiques E-commerce
+    // Champs spécifiques Mobile
     private String localite;
     private String rib;
     private String webmaster;
@@ -106,4 +106,12 @@ public class Demande extends BaseEntity {
 
     @OneToOne(mappedBy = "demande")
     private Affectation affectation;
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeTypeDemande() {
+        if (typeDemande != null) {
+            typeDemande = typeDemande.canonical();
+        }
+    }
 }

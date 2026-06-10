@@ -1,0 +1,187 @@
+%% Diagramme de composants - Systeme de Gestion du Parc TPE Bancaire
+%% Version Mermaid simplifiee pour previsualisation rapide.
+
+flowchart LR
+  Admin["Administrateur"]
+  Monetique["Service<br/>Monetique"]
+  Agence["Agence<br/>bancaire"]
+
+  subgraph Browser["Navigateur Web"]
+    subgraph Angular["Application Angular"]
+      AppModule["AppModule"]
+      Routing["AppRoutingModule"]
+      AdminLayout["AdminLayoutModule"]
+      Components["ComponentsModule<br/>Navbar / Sidebar / Footer"]
+      AuthGuard["AuthGuard"]
+      AuthInterceptor["AuthInterceptor"]
+    end
+
+    subgraph AngularModules["Modules fonctionnels Angular"]
+      LoginUI["Login / Register"]
+      DashboardUI["Dashboard"]
+      TPEUI["Gestion TPE"]
+      CommercantUI["Gestion Commercants"]
+      DemandeUI["Demandes TPE"]
+      TauxUI["Gestion Taux"]
+      MaintenanceUI["Maintenance / Pannes"]
+      UploadUI["Upload Transactions"]
+      PermissionUI["Gestion Permissions"]
+      PowerBIUI["Power BI Report"]
+    end
+
+    subgraph AngularServices["Services Angular"]
+      NgAuthService["AuthService"]
+      ScreenService["ScreenService"]
+      DashboardService["DashboardService"]
+      TpeService["TpeService"]
+      CommercantService["CommercantService"]
+      DemandeService["DemandeService"]
+      TauxTpeService["TauxTpeService"]
+      PanneService["PanneService"]
+      FileUploadService["FileUploadService"]
+      TpePostingService["TpePostingService"]
+      PowerBIService["PowerBIService"]
+      PdfService["PdfService"]
+      ExcelExportService["ExcelExportService"]
+    end
+  end
+
+  subgraph Server["Serveur Applicatif Spring Boot<br/>Java 17 / Spring Boot 3"]
+    subgraph Controllers["API REST Controllers"]
+      AuthController["AuthController"]
+      DashboardController["DashboardController"]
+      TPEController["TPEController"]
+      CommercantController["CommercantController"]
+      DemandeController["DemandeController"]
+      AffectationController["AffectationController"]
+      TauxController["TauxController"]
+      PanneController["PanneController"]
+      FileUploadController["FileUploadController"]
+      FichierBancaireController["FichierBancaireController"]
+      TPEPostingController["TPEPostingController"]
+      ScreenController["ScreenController"]
+      RoleController["RoleController"]
+      PowerBIController["PowerBIController"]
+    end
+
+    subgraph Security["Securite"]
+      SecurityConfig["SecurityConfig"]
+      JwtFilter["JwtAuthenticationFilter"]
+      JwtProvider["JwtTokenProvider"]
+      UserDetails["CustomUserDetailsService"]
+    end
+
+    subgraph Business["Services metier"]
+      BAuth["AuthService backend"]
+      BDashboard["DashboardService backend"]
+      BTPE["TPEService"]
+      BCommercant["CommercantService backend"]
+      BDemande["DemandeService backend"]
+      BAffectation["AffectationService"]
+      BTaux["TauxService"]
+      BPanne["PanneService backend"]
+      BScreen["ScreenService backend"]
+      BFileUpload["FileUploadService backend"]
+      BFichier["FichierBancaireService"]
+      BPosting["TPEPostingService"]
+      BAudit["AuditService"]
+    end
+
+    subgraph Persistence["Couche persistance"]
+      Repos["Repositories Spring Data JPA"]
+      Entities["Entites JPA"]
+      DTOs["DTO / ModelMapper"]
+    end
+
+    subgraph Documents["Generation documents"]
+      PDF["PDF / iText"]
+      Excel["Excel / Apache POI"]
+    end
+
+    Swagger["Swagger / OpenAPI"]
+  end
+
+  DB[("Base de donnees<br/>SQL Server<br/>TPE_Managements")]
+  Uploads[["Stockage fichiers<br/>./uploads"]]
+  Logs[["Logs application<br/>logs/tpe-management.log"]]
+  PowerBI[("Power BI Service<br/>optionnel")]
+  ExcelFiles["Fichiers Excel / CSV<br/>Import parc TPE"]
+  BankFile["Fichier bancaire<br/>transactions"]
+
+  Admin --> AppModule
+  Monetique --> AppModule
+  Agence --> AppModule
+
+  AppModule --> Routing
+  AppModule --> AdminLayout
+  AppModule --> Components
+  AppModule --> AuthInterceptor
+  Routing --> AuthGuard
+  AdminLayout --> DashboardUI
+  AdminLayout --> TPEUI
+  AdminLayout --> CommercantUI
+  AdminLayout --> DemandeUI
+  AdminLayout --> MaintenanceUI
+  AdminLayout --> PermissionUI
+
+  LoginUI --> NgAuthService
+  DashboardUI --> DashboardService
+  TPEUI --> TpeService
+  TPEUI --> TauxTpeService
+  CommercantUI --> CommercantService
+  DemandeUI --> DemandeService
+  DemandeUI --> PdfService
+  MaintenanceUI --> PanneService
+  UploadUI --> FileUploadService
+  UploadUI --> TpePostingService
+  PermissionUI --> ScreenService
+  PowerBIUI --> PowerBIService
+
+  AuthInterceptor --> Controllers
+  AuthGuard --> ScreenService
+
+  NgAuthService --> AuthController
+  ScreenService --> ScreenController
+  DashboardService --> DashboardController
+  TpeService --> TPEController
+  CommercantService --> CommercantController
+  DemandeService --> DemandeController
+  DemandeService --> AffectationController
+  TauxTpeService --> TauxController
+  PanneService --> PanneController
+  FileUploadService --> FileUploadController
+  TpePostingService --> FichierBancaireController
+  TpePostingService --> TPEPostingController
+  PowerBIService --> PowerBIController
+
+  Controllers --> Security
+  Security --> BAuth
+  Security --> UserDetails
+  Controllers --> Business
+  Business --> Persistence
+  Business --> Documents
+  Business --> BAudit
+  Persistence --> DB
+  Documents --> Uploads
+  BFileUpload --> Uploads
+  BDemande --> Uploads
+  BPosting --> Persistence
+  BFichier --> Persistence
+  BFichier --> Documents
+  PowerBIController --> PowerBI
+  BAudit --> Logs
+  Swagger --> Controllers
+
+  ExcelFiles --> TPEUI
+  ExcelFiles --> TPEController
+  BankFile --> UploadUI
+  BankFile --> FichierBancaireController
+
+  classDef actor fill:#FFFFFF,stroke:#111827,color:#111827;
+  classDef frontend fill:#F8FAFC,stroke:#2563EB,color:#111827;
+  classDef backend fill:#F0FDFA,stroke:#0F766E,color:#111827;
+  classDef external fill:#FFFBEB,stroke:#B45309,color:#111827;
+  class Admin,Monetique,Agence actor;
+  class AppModule,Routing,AdminLayout,Components,AuthGuard,AuthInterceptor,LoginUI,DashboardUI,TPEUI,CommercantUI,DemandeUI,TauxUI,MaintenanceUI,UploadUI,PermissionUI,PowerBIUI,NgAuthService,ScreenService,DashboardService,TpeService,CommercantService,DemandeService,TauxTpeService,PanneService,FileUploadService,TpePostingService,PowerBIService,PdfService,ExcelExportService frontend;
+  class AuthController,DashboardController,TPEController,CommercantController,DemandeController,AffectationController,TauxController,PanneController,FileUploadController,FichierBancaireController,TPEPostingController,ScreenController,RoleController,PowerBIController,SecurityConfig,JwtFilter,JwtProvider,UserDetails,BAuth,BDashboard,BTPE,BCommercant,BDemande,BAffectation,BTaux,BPanne,BScreen,BFileUpload,BFichier,BPosting,BAudit,Repos,Entities,DTOs,PDF,Excel,Swagger backend;
+  class ExcelFiles,BankFile external;

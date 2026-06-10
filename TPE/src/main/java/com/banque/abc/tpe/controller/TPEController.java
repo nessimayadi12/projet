@@ -50,6 +50,14 @@ public class TPEController {
         return ResponseEntity.ok(tpes);
     }
 
+    @GetMapping("/declaration-panne/search")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
+    public ResponseEntity<List<TPEResponse>> searchTPEsForPanneDeclaration(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(tpeService.searchTPEsForPanneDeclaration(query, limit));
+    }
+
     @GetMapping("/statut/{statut}")
     @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
     public ResponseEntity<List<TPEResponse>> getTPEsByStatut(@PathVariable StatutTPE statut) {

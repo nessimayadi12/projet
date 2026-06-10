@@ -38,15 +38,15 @@ public class TauxService {
 
     @Transactional
     public TauxResponse createTaux(TauxRequest request) {
-        // Vérifier que l'utilisateur a le rôle INPUTER ou MONETIQUE
+        // Vérifier que l'utilisateur a le rôle MONETIQUE
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
 
         boolean canInput = hasAnyAuthority(userPrincipal,
-            RoleType.ROLE_INPUTER, RoleType.ROLE_ADMIN);
+            RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN);
 
         if (!canInput) {
-            throw new UnauthorizedException("Seuls les Inputer peuvent saisir des taux");
+            throw new UnauthorizedException("Seuls le service Monetique ou un administrateur peuvent saisir des taux");
         }
 
         Commercant commercant = commercantRepository.findById(request.getCommercantId())
@@ -97,10 +97,10 @@ public class TauxService {
                 .getAuthentication().getPrincipal();
 
         boolean canInput = hasAnyAuthority(userPrincipal,
-                RoleType.ROLE_INPUTER, RoleType.ROLE_ADMIN);
+                RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN);
 
         if (!canInput) {
-            throw new UnauthorizedException("Seuls les Inputer peuvent soumettre des taux");
+            throw new UnauthorizedException("Seuls le service Monetique ou un administrateur peuvent soumettre des taux");
         }
         
         if (!taux.getInputer().getId().equals(userPrincipal.getId())) {
@@ -125,20 +125,15 @@ public class TauxService {
             throw new BusinessException("Ce taux ne peut pas être validé");
         }
 
-        // Vérifier que l'utilisateur a le rôle AUTHORIZER ou MONETIQUE
+        // Vérifier que l'utilisateur a le rôle MONETIQUE
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
 
         boolean canAuthorize = hasAnyAuthority(userPrincipal,
-            RoleType.ROLE_AUTHORIZER, RoleType.ROLE_ADMIN);
+            RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN);
 
         if (!canAuthorize) {
-            throw new UnauthorizedException("Seuls les Authorizer peuvent valider des taux");
-        }
-
-        // RÈGLE MÉTIER CRITIQUE: Inputer ≠ Authorizer
-        if (taux.getInputer().getId().equals(userPrincipal.getId())) {
-            throw new BusinessException("Vous ne pouvez pas valider vos propres saisies (Règle 4 yeux)");
+            throw new UnauthorizedException("Seuls le service Monetique ou un administrateur peuvent valider des taux");
         }
 
         User authorizer = userRepository.findById(userPrincipal.getId())

@@ -11,18 +11,17 @@
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
-              <p><strong>Type:</strong> {{ demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-commerce' }}</p>
+              <p><strong>Type:</strong> {{ demande.typeDemande === 'TPE' ? 'TPE' : 'Mobile' }}</p>
               <p><strong>Raison Sociale:</strong> {{ demande.raisonSociale }}</p>
               <p><strong>Activité:</strong> {{ demande.activite }}</p>
             </div>
             <div class="col-md-6">
               <p><strong>Code Agence:</strong> {{ demande.codeAgence }}</p>
               <p><strong>Téléphone:</strong> {{ demande.telephone }}</p>
-              <p><strong>Email:</strong> {{ demande.emailNotification }}</p>
             </div>
           </div>
 
-          <!-- Champs spécifiques TPE Physique -->
+          <!-- Champs spécifiques TPE -->
           <div *ngIf="isTPEPhysique()" class="row mt-3">
             <div class="col-md-6">
               <p><strong>N° Compte:</strong> {{ demande.numeroCompte }}</p>
@@ -33,7 +32,7 @@
             </div>
           </div>
 
-          <!-- Champs spécifiques E-commerce -->
+          <!-- Champs spécifiques Mobile -->
           <div *ngIf="isECommerce()" class="row mt-3">
             <div class="col-md-6">
               <p><strong>URL Site:</strong> {{ demande.urlSiteMarchand }}</p>
@@ -103,7 +102,7 @@
             </div>
           </div>
 
-          <!-- Champs spécifiques TPE Physique -->
+          <!-- Champs spécifiques TPE -->
           <div *ngIf="isTPEPhysique()">
             <div class="row">
               <div class="col-md-6">
@@ -156,9 +155,12 @@
               <div class="col-md-4">
                 <mat-form-field appearance="outline" class="w-100">
                   <mat-label>Value Date</mat-label>
-                  <input matInput type="date" formControlName="valueDate">
+                  <input matInput type="number" formControlName="valueDate" min="1" max="2" step="1">
                   <mat-error *ngIf="validationForm.get('valueDate')?.hasError('required')">
                     La value date est obligatoire
+                  </mat-error>
+                  <mat-error *ngIf="validationForm.get('valueDate')?.hasError('min') || validationForm.get('valueDate')?.hasError('max') || validationForm.get('valueDate')?.hasError('pattern')">
+                    La value date doit etre 1 ou 2
                   </mat-error>
                 </mat-form-field>
               </div>
@@ -193,7 +195,7 @@
   <mat-dialog-actions align="end">
     <button mat-button (click)="onCancel()" [disabled]="loading">Annuler</button>
     <button mat-raised-button color="primary" (click)="onSubmit()" 
-            [disabled]="loading || validationForm.invalid || !numeroTerminalGenere">
+            [disabled]="!canSubmit()">
       <mat-spinner *ngIf="loading" diameter="20" class="mr-2"></mat-spinner>
       {{ getActionLabel() }}
     </button>

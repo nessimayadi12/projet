@@ -1,12 +1,15 @@
 package com.banque.abc.tpe.controller;
 
+import com.banque.abc.tpe.dto.panne.PanneRequest;
 import com.banque.abc.tpe.dto.panne.PanneResponse;
 import com.banque.abc.tpe.entity.Panne;
 import com.banque.abc.tpe.entity.enums.StatutPanne;
 import com.banque.abc.tpe.service.PanneService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -77,9 +80,9 @@ public class PanneController {
      * Créer une nouvelle panne (déclaration)
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
-    public ResponseEntity<PanneResponse> createPanne(@RequestBody Panne panne) {
-        Panne nouvellePanne = panneService.createPanne(panne);
+    @PreAuthorize("hasAnyRole('ADMIN', 'AGENCE')")
+    public ResponseEntity<PanneResponse> createPanne(@RequestBody @jakarta.validation.Valid PanneRequest request) {
+        Panne nouvellePanne = panneService.createPanne(request);
         PanneResponse response = panneService.mapToResponse(nouvellePanne);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -105,13 +108,9 @@ public class PanneController {
     @PutMapping("/{id}/statut/{statut}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> changeStatut(@PathVariable Long id, @PathVariable StatutPanne statut) {
-        try {
-            Panne panne = panneService.changeStatut(id, statut);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Panne panne = panneService.changeStatut(id, statut);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -135,14 +134,10 @@ public class PanneController {
     @PostMapping("/{id}/diagnostiquer")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> diagnostiquer(@PathVariable Long id, @RequestBody Map<String, String> payload) {
-        try {
-            String diagnostic = payload.get("diagnostic");
-            Panne panne = panneService.diagnostiquer(id, diagnostic);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        String diagnostic = payload.get("diagnostic");
+        Panne panne = panneService.diagnostiquer(id, diagnostic);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -151,13 +146,9 @@ public class PanneController {
     @PostMapping("/{id}/en-reparation")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> marquerEnReparation(@PathVariable Long id) {
-        try {
-            Panne panne = panneService.marquerEnReparation(id);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Panne panne = panneService.marquerEnReparation(id);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -166,14 +157,35 @@ public class PanneController {
     @PostMapping("/{id}/reparee")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> marquerReparee(@PathVariable Long id, @RequestBody Map<String, String> payload) {
-        try {
-            String solution = payload.get("solution");
-            Panne panne = panneService.marquerReparee(id, solution);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        String solution = payload.get("solution");
+        Panne panne = panneService.marquerReparee(id, solution);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Marquer une panne comme irrécupérable avec remplacement du TPE
+     */
+    @PostMapping("/{id}/irrecuperable")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<PanneResponse> marquerIrrecuperableAvecRemplacement(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        String nouveauNumeroSerie = payload.get("nouveauNumeroSerie");
+        String nouveauTypeTPE = firstNonBlank(payload.get("nouveauTypeTPE"), payload.get("typeTPE"));
+        String nouvelleMarque = firstNonBlank(payload.get("nouvelleMarque"), payload.get("marque"));
+        String nouveauModele = firstNonBlank(payload.get("nouveauModele"), payload.get("modele"));
+        String commentaire = payload.get("commentaire");
+        Panne panne = panneService.marquerIrrecuperableAvecRemplacement(
+                id,
+                nouveauNumeroSerie,
+                nouveauTypeTPE,
+                nouvelleMarque,
+                nouveauModele,
+                commentaire
+        );
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -182,14 +194,10 @@ public class PanneController {
     @PostMapping("/{id}/resoudre")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> resoudrePanne(@PathVariable Long id, @RequestBody Map<String, String> payload) {
-        try {
-            String solution = payload.get("solution");
-            Panne panne = panneService.resoudrePanne(id, solution);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        String solution = payload.get("solution");
+        Panne panne = panneService.resoudrePanne(id, solution);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -198,14 +206,10 @@ public class PanneController {
     @PostMapping("/{id}/tester")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
     public ResponseEntity<PanneResponse> testerPanne(@PathVariable Long id, @RequestBody Map<String, Boolean> payload) {
-        try {
-            Boolean resultat = payload.get("resultat");
-            Panne panne = panneService.testerPanne(id, resultat != null && resultat);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Boolean resultat = payload.get("resultat");
+        Panne panne = panneService.testerPanne(id, resultat != null && resultat);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -216,13 +220,9 @@ public class PanneController {
     public ResponseEntity<PanneResponse> affecterTPERemplacement(
             @PathVariable Long panneId,
             @PathVariable Long tpeRemplacementId) {
-        try {
-            Panne panne = panneService.affecterTPERemplacement(panneId, tpeRemplacementId);
-            PanneResponse response = panneService.mapToResponse(panne);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        Panne panne = panneService.affecterTPERemplacement(panneId, tpeRemplacementId);
+        PanneResponse response = panneService.mapToResponse(panne);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -234,6 +234,32 @@ public class PanneController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fin) {
         return ResponseEntity.ok(panneService.getPannesByPeriode(debut, fin));
+    }
+
+    @GetMapping("/export/excel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
+    public ResponseEntity<byte[]> exportPannesExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fin)
+            throws Exception {
+        byte[] content = panneService.exportPannesExcel(debut, fin);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=pannes_tpe.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(content);
+    }
+
+    @GetMapping("/export/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
+    public ResponseEntity<byte[]> exportPannesPdf(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fin)
+            throws Exception {
+        byte[] content = panneService.exportPannesPdf(debut, fin);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=pannes_tpe.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(content);
     }
 
     /**
@@ -248,5 +274,9 @@ public class PanneController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        return primary != null && !primary.isBlank() ? primary : fallback;
     }
 }

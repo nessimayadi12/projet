@@ -266,15 +266,36 @@ export class DashboardDemandesComponent implements OnInit {
 
   get tauxConversion(): number {
     const total = Number(this.performanceData?.totalDemandes || 0);
-    const traitees = Number(this.performanceData?.demandesTraitees || 0);
+    const taux = this.performanceData?.tauxConversion;
+    if (taux !== undefined && taux !== null) return Number(taux);
+    const traitees = Number(this.performanceData?.demandesConverties || 0);
     if (total === 0) return 0;
     return (traitees / total) * 100;
   }
 
   get demandesEnRetard(): number {
+    if (this.performanceData?.demandesEnRetard !== undefined && this.performanceData?.demandesEnRetard !== null) {
+      return Number(this.performanceData.demandesEnRetard || 0);
+    }
     return this.demandesStatutData
-      .filter((item) => ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE', 'AFFECTEE'].includes(item.statut))
+      .filter((item) => ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE'].includes(item.statut))
       .reduce((sum, item) => sum + Number(item.count || 0), 0);
+  }
+
+  get demandesClotureesCeMois(): number {
+    return Number(this.performanceData?.demandesClotureesCeMois || 0);
+  }
+
+  get slaRespect(): number {
+    return Number(this.performanceData?.slaRespect || 0);
+  }
+
+  get demandesTraitees(): number {
+    return Number(this.performanceData?.demandesTraitees || 0);
+  }
+
+  get currentMonthLabel(): string {
+    return new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   }
 
   exportData(): void {

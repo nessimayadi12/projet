@@ -186,7 +186,7 @@ export class AffectationTPEComponent implements OnInit {
   }
 
   private getRequiredTpeType(): TypeTPE {
-    return this.demande?.typeDemande === TypeDemande.ECOMMERCE ? TypeTPE.ECOMMERCE : TypeTPE.PHYSIQUE;
+    return this.demande?.typeDemande === TypeDemande.MOBILE ? TypeTPE.MOBILE : TypeTPE.TPE;
   }
 
   private finish(result: { success: boolean }): void {

@@ -4,17 +4,22 @@ import com.banque.abc.tpe.dto.affectation.AffectationRequest;
 import com.banque.abc.tpe.dto.demande.DemandeRequest;
 import com.banque.abc.tpe.dto.demande.DemandeResponse;
 import com.banque.abc.tpe.dto.demande.ValiderDemandeRequest;
+import com.banque.abc.tpe.entity.Affectation;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
+import com.banque.abc.tpe.entity.Panne;
+import com.banque.abc.tpe.entity.TPE;
 import com.banque.abc.tpe.entity.User;
 import com.banque.abc.tpe.entity.PieceJointe;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
+import com.banque.abc.tpe.entity.enums.StatutTPE;
 import com.banque.abc.tpe.exception.BusinessException;
 import com.banque.abc.tpe.exception.ResourceNotFoundException;
 import com.banque.abc.tpe.entity.enums.RoleType;
 import com.banque.abc.tpe.repository.AffectationRepository;
 import com.banque.abc.tpe.repository.CommercantRepository;
 import com.banque.abc.tpe.repository.DemandeRepository;
+import com.banque.abc.tpe.repository.PanneRepository;
 import com.banque.abc.tpe.repository.UserRepository;
 import com.banque.abc.tpe.security.UserPrincipal;
 import com.banque.abc.tpe.util.ReferenceGenerator;
@@ -34,6 +39,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -47,9 +54,9 @@ public class DemandeService {
     private final ReferenceGenerator referenceGenerator;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
-    private final NotificationService notificationService;
     private final AffectationService affectationService;
     private final AffectationRepository affectationRepository;
+    private final PanneRepository panneRepository;
 
     @Transactional
     public DemandeResponse createDemande(DemandeRequest request) {
@@ -77,7 +84,7 @@ public class DemandeService {
                 .description(request.getDescription())
                 .urgence(request.getUrgence())
                 .statut(StatutDemande.NOUVELLE)
-                // Champs agence (TPE Physique)
+                // Champs agence (TPE)
                 .raisonSociale(request.getRaisonSociale())
                 .activite(request.getActivite())
                 .numeroCompte(request.getNumeroCompte())
@@ -85,8 +92,7 @@ public class DemandeService {
                 .codePostal(request.getCodePostal())
                 .codeAgence(request.getCodeAgence())
                 .telephone(request.getTelephone())
-                .emailNotification(request.getEmailNotification())
-                // Champs E-commerce
+                // Champs Mobile
                 .localite(request.getLocalite())
                 .rib(request.getRib())
                 .webmaster(request.getWebmaster())
@@ -98,9 +104,6 @@ public class DemandeService {
 
         auditService.logAction("CREATE", "Demande", savedDemande.getId().toString(),
                 "Demande créée: " + savedDemande.getReference(), "SUCCESS");
-
-        // Notifier la Monétique
-        notificationService.notifierNouvelleDemande(savedDemande);
 
         return mapToResponse(savedDemande);
     }
@@ -133,7 +136,9 @@ public class DemandeService {
                 throw new BusinessException("Seul le service Monétique peut modifier après affectation");
             }
 
-            resetWorkflowForModification(demande);
+            if (hasWorkflowImpactingChanges(demande, request)) {
+                resetWorkflowForModification(demande);
+            }
         } else if (demande.getStatut() != StatutDemande.NOUVELLE
                 && demande.getStatut() != StatutDemande.EN_COURS) {
             throw new BusinessException("Cette demande ne peut pas être modifiée à ce statut");
@@ -153,13 +158,13 @@ public class DemandeService {
         demande.setCodePostal(request.getCodePostal());
         demande.setCodeAgence(request.getCodeAgence());
         demande.setTelephone(request.getTelephone());
-        demande.setEmailNotification(request.getEmailNotification());
 
         demande.setLocalite(request.getLocalite());
         demande.setRib(request.getRib());
         demande.setWebmaster(request.getWebmaster());
         demande.setContactTechnique(request.getContactTechnique());
         demande.setUrlSiteMarchand(request.getUrlSiteMarchand());
+        applyMonetiqueFieldsForUpdate(demande, request);
 
         Demande updatedDemande = demandeRepository.save(demande);
 
@@ -179,52 +184,18 @@ public class DemandeService {
         User valideur = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-        if (demande.getStatut() == StatutDemande.NOUVELLE) {
-            if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_INPUTER, RoleType.ROLE_ADMIN)) {
-                throw new BusinessException("Seuls les Inputer peuvent saisir les donnees monetiques");
-            }
-
-            if (!Boolean.TRUE.equals(request.getApprouver())) {
-                throw new BusinessException("La saisie des taux ne peut pas rejeter la demande");
-            }
-
-            // Etape 1: Inputer Monétique saisit les taux
-            demande.setInputer(valideur);
-            demande.setDateSaisieTaux(LocalDateTime.now());
-            demande.setCommentaireValidation(request.getCommentaire());
-
-            demande.setMcc(request.getMcc());
-            demande.setTauxCommission(request.getTauxCommission());
-            demande.setTauxCommissionInter(request.getTauxCommissionInter());
-            demande.setLoyer(request.getLoyer());
-            demande.setSerieTpe(request.getSerieTpe());
-            demande.setNumeroTerminal(request.getNumeroTerminal());
-            demande.setValueDate(request.getValueDate());
-
-            demande.setStatut(StatutDemande.EN_COURS);
-
-            Demande updatedDemande = demandeRepository.save(demande);
-            auditService.logAction("TAUX_INPUT", "Demande", updatedDemande.getId().toString(),
-                    "Taux saisis par monétique", "SUCCESS");
-
-            return mapToResponse(updatedDemande);
+        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN)) {
+            throw new BusinessException("Seuls le service Monetique ou un administrateur peuvent valider ou rejeter une demande");
         }
 
-        if (demande.getStatut() != StatutDemande.EN_COURS) {
-            throw new BusinessException("Cette demande ne peut plus être validée");
+        if (demande.getStatut() != StatutDemande.NOUVELLE
+                && demande.getStatut() != StatutDemande.EN_COURS) {
+            throw new BusinessException("Seules les demandes nouvelles ou en cours peuvent etre validees");
         }
 
-        // Etape 2: Authorizer Monétique valide ou rejette
-        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_AUTHORIZER, RoleType.ROLE_ADMIN)) {
-            throw new BusinessException("Seuls les Authorizer peuvent valider ou rejeter une demande");
-        }
-
-        if (demande.getInputer() != null && demande.getInputer().getId().equals(valideur.getId())) {
-            throw new BusinessException("Vous ne pouvez pas valider vos propres saisies (Règle 4 yeux)");
-        }
-
+        LocalDateTime decisionDate = LocalDateTime.now();
         demande.setValideur(valideur);
-        demande.setDateValidation(LocalDateTime.now());
+        demande.setDateValidation(decisionDate);
         demande.setCommentaireValidation(request.getCommentaire());
 
         // Autoriser la modification des taux avant validation finale
@@ -234,15 +205,14 @@ public class DemandeService {
         demande.setLoyer(request.getLoyer());
         demande.setSerieTpe(request.getSerieTpe());
         demande.setNumeroTerminal(request.getNumeroTerminal());
-        demande.setValueDate(request.getValueDate());
+        demande.setValueDate(resolveValueDate(request.getValueDate()));
 
         if (Boolean.TRUE.equals(request.getApprouver())) {
+            demande.setDateSaisieTaux(decisionDate);
             demande.setStatut(StatutDemande.VALIDEE_MONETIQUE);
-            notificationService.notifierDemandeValidee(demande);
         } else {
             demande.setStatut(StatutDemande.REJETEE);
             demande.setDateCloture(LocalDateTime.now());
-            notificationService.notifierDemandeRejetee(demande);
         }
 
         Demande updatedDemande = demandeRepository.save(demande);
@@ -264,7 +234,7 @@ public class DemandeService {
         }
 
         auditService.logAction("VALIDATE", "Demande", updatedDemande.getId().toString(),
-                "Demande " + (request.getApprouver() ? "validée" : "rejetée"), "SUCCESS");
+                "Demande " + (request.getApprouver() ? "validee" : "rejetee") + " par Monetique", "SUCCESS");
 
         return mapToResponse(updatedDemande);
     }
@@ -274,8 +244,9 @@ public class DemandeService {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
 
-        if (demande.getStatut() != StatutDemande.EN_COURS) {
-            throw new BusinessException("Seule une demande en cours peut etre rejetee par un Authorizer");
+        if (demande.getStatut() != StatutDemande.NOUVELLE
+                && demande.getStatut() != StatutDemande.EN_COURS) {
+            throw new BusinessException("Seules les demandes nouvelles ou en cours peuvent etre rejetees");
         }
 
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
@@ -283,12 +254,8 @@ public class DemandeService {
         User valideur = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_AUTHORIZER, RoleType.ROLE_ADMIN)) {
-            throw new BusinessException("Seuls les Authorizer peuvent rejeter une demande");
-        }
-
-        if (demande.getInputer() != null && demande.getInputer().getId().equals(valideur.getId())) {
-            throw new BusinessException("Vous ne pouvez pas rejeter vos propres saisies (Regle 4 yeux)");
+        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN)) {
+            throw new BusinessException("Seuls le service Monetique ou un administrateur peuvent rejeter une demande");
         }
 
         demande.setValideur(valideur);
@@ -299,7 +266,6 @@ public class DemandeService {
 
         Demande updatedDemande = demandeRepository.save(demande);
 
-        notificationService.notifierDemandeRejetee(demande);
 
         auditService.logAction("REJECT", "Demande", updatedDemande.getId().toString(),
                 "Demande rejetée: " + demande.getReference(), "SUCCESS");
@@ -332,14 +298,16 @@ public class DemandeService {
             response.setCommercantNom(demande.getRaisonSociale());
         }
         
-        response.setDemandeurId(demande.getDemandeur().getId());
-        response.setDemandeurNom(demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom());
+        if (demande.getDemandeur() != null) {
+            response.setDemandeurId(demande.getDemandeur().getId());
+            response.setDemandeurNom(demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom());
+        }
 
         if (demande.getInputer() != null) {
             response.setInputerId(demande.getInputer().getId());
             response.setInputerNom(demande.getInputer().getNom() + " " + demande.getInputer().getPrenom());
-            response.setDateSaisieTaux(demande.getDateSaisieTaux());
         }
+        response.setDateSaisieTaux(demande.getDateSaisieTaux());
         
         if (demande.getValideur() != null) {
             response.setValideurId(demande.getValideur().getId());
@@ -350,12 +318,133 @@ public class DemandeService {
         if (demande.getPiecesJointes() != null && !demande.getPiecesJointes().isEmpty()) {
             response.setPiecesJointes(
                 demande.getPiecesJointes().stream()
-                    .map(pj -> pj.getCheminFichier())
+                    .filter(pj -> pj != null && pj.getCheminFichier() != null)
+                    .map(PieceJointe::getCheminFichier)
                     .toList()
             );
         }
+
+        populateTpeAffectationFields(response, demande);
         
         return response;
+    }
+
+    private void populateTpeAffectationFields(DemandeResponse response, Demande demande) {
+        findPrimaryAffectation(demande).ifPresent(affectation -> {
+            response.setDateAffectation(affectation.getDateAffectation());
+
+            TPE tpe = affectation.getTpe();
+            if (tpe != null) {
+                response.setTpeAffecteId(tpe.getId());
+                response.setTpeAffecteNumeroSerie(tpe.getNumeroSerie());
+                response.setTpeAffecteStatut(toTpeDisplayStatut(tpe.getStatut()));
+
+                findLatestReplacement(tpe).ifPresent(replacement -> {
+                    response.setTpeRemplacementId(replacement.getId());
+                    response.setTpeRemplacementNumeroSerie(replacement.getNumeroSerie());
+                    response.setNouvelleSerieTpe(replacement.getNumeroSerie());
+                });
+            }
+        });
+    }
+
+    private Optional<Affectation> findPrimaryAffectation(Demande demande) {
+        if (demande.getId() == null) {
+            return Optional.empty();
+        }
+        return affectationRepository.findByDemandeIdOrderByActifDescDateAffectationDescIdDesc(demande.getId())
+                .stream()
+                .findFirst();
+    }
+
+    private Optional<TPE> findLatestReplacement(TPE oldTpe) {
+        if (oldTpe.getId() == null) {
+            return Optional.empty();
+        }
+
+        return panneRepository.findByTpeId(oldTpe.getId()).stream()
+                .filter(panne -> panne.getTpeRemplacement() != null)
+                .max(Comparator
+                        .comparing(Panne::getDateResolution, Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(Panne::getCreatedDate, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .map(Panne::getTpeRemplacement);
+    }
+
+    private String toTpeDisplayStatut(StatutTPE statut) {
+        if (statut == null) {
+            return null;
+        }
+        if (statut == StatutTPE.HORS_SERVICE) {
+            return "Cloture";
+        }
+        return statut.name();
+    }
+
+    private boolean hasWorkflowImpactingChanges(Demande demande, DemandeRequest request) {
+        if (!Objects.equals(demande.getTypeDemande(), request.getTypeDemande())) {
+            return true;
+        }
+        if (!Objects.equals(demande.getUrgence(), request.getUrgence())) {
+            return true;
+        }
+        if (request.getCommercantId() != null
+                && (demande.getCommercant() == null
+                || !Objects.equals(demande.getCommercant().getId(), request.getCommercantId()))) {
+            return true;
+        }
+
+        return !sameText(demande.getDescription(), request.getDescription())
+                || !sameText(demande.getRaisonSociale(), request.getRaisonSociale())
+                || !sameText(demande.getActivite(), request.getActivite())
+                || !sameText(demande.getNumeroCompte(), request.getNumeroCompte())
+                || !sameText(demande.getAdresse(), request.getAdresse())
+                || !sameText(demande.getCodePostal(), request.getCodePostal())
+                || !sameText(demande.getCodeAgence(), request.getCodeAgence())
+                || !sameText(demande.getTelephone(), request.getTelephone())
+                || !sameText(demande.getLocalite(), request.getLocalite())
+                || !sameText(demande.getRib(), request.getRib())
+                || !sameText(demande.getWebmaster(), request.getWebmaster())
+                || !sameText(demande.getContactTechnique(), request.getContactTechnique())
+                || !sameText(demande.getUrlSiteMarchand(), request.getUrlSiteMarchand());
+    }
+
+    private void applyMonetiqueFieldsForUpdate(Demande demande, DemandeRequest request) {
+        if (!hasMonetiqueFields(request)) {
+            return;
+        }
+
+        demande.setMcc(trimToNull(request.getMcc()));
+        demande.setTauxCommission(request.getTauxCommission());
+        demande.setTauxCommissionInter(request.getTauxCommissionInter());
+        demande.setLoyer(request.getLoyer());
+        demande.setSerieTpe(trimToNull(request.getSerieTpe()));
+        demande.setNumeroTerminal(trimToNull(request.getNumeroTerminal()));
+        demande.setValueDate(resolveValueDate(request.getValueDate()));
+    }
+
+    private boolean hasMonetiqueFields(DemandeRequest request) {
+        return hasText(request.getMcc())
+                || request.getTauxCommission() != null
+                || request.getTauxCommissionInter() != null
+                || request.getLoyer() != null
+                || hasText(request.getSerieTpe())
+                || hasText(request.getNumeroTerminal())
+                || request.getValueDate() != null;
+    }
+
+    private boolean sameText(String currentValue, String requestedValue) {
+        return Objects.equals(trimToNull(currentValue), trimToNull(requestedValue));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private void resetWorkflowForModification(Demande demande) {
@@ -374,7 +463,17 @@ public class DemandeService {
         demande.setLoyer(null);
         demande.setSerieTpe(null);
         demande.setNumeroTerminal(null);
-        demande.setValueDate(null);
+        demande.setValueDate(1);
+    }
+
+    private Integer resolveValueDate(Integer valueDate) {
+        if (valueDate == null) {
+            return 1;
+        }
+        if (valueDate != 1 && valueDate != 2) {
+            throw new BusinessException("La value date doit etre 1 ou 2");
+        }
+        return valueDate;
     }
 
     private boolean hasAnyAuthority(UserPrincipal userPrincipal, RoleType... roles) {
@@ -419,10 +518,9 @@ public class DemandeService {
                 .codePostal(request.getCodePostal())
                 .codeAgence(request.getCodeAgence())
                 .telephone(request.getTelephone())
-                .email(request.getEmailNotification())
                 .statut(com.banque.abc.tpe.entity.enums.StatutCommercant.ACTIF)
                 .typeCommerce(request.getTypeDemande())
-                // Champs E-commerce
+                // Champs Mobile
                 .urlSiteMarchand(request.getUrlSiteMarchand())
                 .webmaster(request.getWebmaster())
                 .contactTechnique(request.getContactTechnique())

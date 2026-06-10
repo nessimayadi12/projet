@@ -27,9 +27,6 @@ export class ScreenManagementComponent implements OnInit {
     'ROLE_ADMIN': 'Administrateur',
     'ROLE_MONETIQUE': 'Monétique',
     'ROLE_AGENCE': 'Agence',
-    'ROLE_INPUTER': 'Saisisseur',
-    'ROLE_AUTHORIZER': 'Valideur',
-    'ROLE_COMMERCANT': 'Commerçant',
   };
 
   // Formulaire pour ajouter/modifier un screen

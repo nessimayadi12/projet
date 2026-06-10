@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -33,14 +34,14 @@ public class DataInitializer {
                                       PasswordEncoder passwordEncoder) {
         return args -> {
             removeDeprecatedRoles(jdbcTemplate);
+            deactivateDeprecatedUsers(jdbcTemplate);
             backfillBaseEntityColumns(jdbcTemplate);
+            normalizeLegacyTypeTpeValues(jdbcTemplate);
 
             // Créer les rôles s'ils n'existent pas
             createRoleIfNotExists(roleRepository, RoleType.ROLE_ADMIN, "Administrateur système");
             createRoleIfNotExists(roleRepository, RoleType.ROLE_MONETIQUE, "Service Monétique");
             createRoleIfNotExists(roleRepository, RoleType.ROLE_AGENCE, "Agence bancaire");
-            createRoleIfNotExists(roleRepository, RoleType.ROLE_INPUTER, "Saisie des taux (Monétique)");
-            createRoleIfNotExists(roleRepository, RoleType.ROLE_AUTHORIZER, "Validation des taux (Monétique)");
 
             // Créer un utilisateur admin par défaut
             if (!userRepository.existsByUsername("admin")) {
@@ -115,65 +116,6 @@ public class DataInitializer {
                 System.out.println("Utilisateur agence créé: username=agence, password=Agence@123");
             }
 
-            // Créer un Inputer
-            if (!userRepository.existsByUsername("inputer")) {
-                Role monetiqueRole = roleRepository.findByName(RoleType.ROLE_MONETIQUE)
-                        .orElseThrow(() -> new RuntimeException("Rôle MONETIQUE non trouvé"));
-                Role inputerRole = roleRepository.findByName(RoleType.ROLE_INPUTER)
-                        .orElseThrow(() -> new RuntimeException("Rôle INPUTER non trouvé"));
-
-                Set<Role> roles = new HashSet<>();
-                roles.add(monetiqueRole);
-                roles.add(inputerRole);
-
-                User inputer = User.builder()
-                        .username("inputer")
-                        .password(passwordEncoder.encode("Inputer@123"))
-                        .nom("Inputer")
-                        .prenom("Taux")
-                        .email("inputer@banque.com")
-                        .actif(true)
-                        .accountLocked(false)
-                        .failedLoginAttempts(0)
-                        .roles(roles)
-                        .build();
-
-                userRepository.save(inputer);
-                System.out.println("Utilisateur inputer créé: username=inputer, password=Inputer@123");
-            }
-            ensureUserHasRoles(jdbcTemplate, "inputer",
-                    RoleType.ROLE_MONETIQUE, RoleType.ROLE_INPUTER);
-
-            // Créer un Authorizer
-            if (!userRepository.existsByUsername("authorizer")) {
-                Role monetiqueRole = roleRepository.findByName(RoleType.ROLE_MONETIQUE)
-                        .orElseThrow(() -> new RuntimeException("Rôle MONETIQUE non trouvé"));
-                Role authorizerRole = roleRepository.findByName(RoleType.ROLE_AUTHORIZER)
-                        .orElseThrow(() -> new RuntimeException("Rôle AUTHORIZER non trouvé"));
-
-                Set<Role> roles = new HashSet<>();
-                roles.add(monetiqueRole);
-                roles.add(authorizerRole);
-
-                User authorizer = User.builder()
-                        .username("authorizer")
-                        .password(passwordEncoder.encode("Authorizer@123"))
-                        .nom("Authorizer")
-                        .prenom("Taux")
-                        .email("authorizer@banque.com")
-                        .actif(true)
-                        .accountLocked(false)
-                        .failedLoginAttempts(0)
-                        .roles(roles)
-                        .build();
-
-                userRepository.save(authorizer);
-                System.out.println("Utilisateur authorizer créé: username=authorizer, password=Authorizer@123");
-            }
-            ensureUserHasRoles(jdbcTemplate, "authorizer",
-                    RoleType.ROLE_MONETIQUE, RoleType.ROLE_AUTHORIZER);
-            ensureMonetiqueForSubRoleUsers(jdbcTemplate);
-
                         // Créer les écrans utilisés par le frontend
                         seedScreensAndPermissions(roleRepository, screenRepository, screenRoleRepository);
 
@@ -183,23 +125,41 @@ public class DataInitializer {
 
     private void removeDeprecatedRoles(JdbcTemplate jdbcTemplate) {
         int screenRolesDeleted = jdbcTemplate.update(
-                "DELETE FROM screen_roles WHERE role_id IN (SELECT id FROM roles WHERE name IN (?, ?))",
+                "DELETE FROM screen_roles WHERE role_id IN (SELECT id FROM roles WHERE name IN (?, ?, ?, ?))",
                 "ROLE_TECHNICIEN",
-                "ROLE_LOGISTIQUE"
+                "ROLE_LOGISTIQUE",
+                "ROLE_INPUTER",
+                "ROLE_AUTHORIZER"
         );
         int userRolesDeleted = jdbcTemplate.update(
-                "DELETE FROM user_roles WHERE role_id IN (SELECT id FROM roles WHERE name IN (?, ?))",
+                "DELETE FROM user_roles WHERE role_id IN (SELECT id FROM roles WHERE name IN (?, ?, ?, ?))",
                 "ROLE_TECHNICIEN",
-                "ROLE_LOGISTIQUE"
+                "ROLE_LOGISTIQUE",
+                "ROLE_INPUTER",
+                "ROLE_AUTHORIZER"
         );
         int rolesDeleted = jdbcTemplate.update(
-                "DELETE FROM roles WHERE name IN (?, ?)",
+                "DELETE FROM roles WHERE name IN (?, ?, ?, ?)",
                 "ROLE_TECHNICIEN",
-                "ROLE_LOGISTIQUE"
+                "ROLE_LOGISTIQUE",
+                "ROLE_INPUTER",
+                "ROLE_AUTHORIZER"
         );
 
         if (screenRolesDeleted + userRolesDeleted + rolesDeleted > 0) {
-            System.out.println("Roles obsoletes supprimes: TECHNICIEN, LOGISTIQUE");
+            System.out.println("Roles obsoletes supprimes: TECHNICIEN, LOGISTIQUE, INPUTER, AUTHORIZER");
+        }
+    }
+
+    private void deactivateDeprecatedUsers(JdbcTemplate jdbcTemplate) {
+        int usersUpdated = jdbcTemplate.update(
+                "UPDATE users SET actif = false WHERE username IN (?, ?) AND actif = true",
+                "inputer",
+                "authorizer"
+        );
+
+        if (usersUpdated > 0) {
+            System.out.println("Comptes obsoletes desactives: inputer, authorizer");
         }
     }
 
@@ -226,6 +186,39 @@ public class DataInitializer {
                     + "last_modified_date = COALESCE(last_modified_date, CURRENT_TIMESTAMP) "
                     + "WHERE created_date IS NULL OR last_modified_date IS NULL");
         }
+    }
+
+    private void normalizeLegacyTypeTpeValues(JdbcTemplate jdbcTemplate) {
+        int updatedRows = 0;
+        updatedRows += normalizeLegacyTypeValues(jdbcTemplate, "tpes", List.of("typetpe", "type_tpe"));
+        updatedRows += normalizeLegacyTypeValues(jdbcTemplate, "demandes", List.of("type_demande"));
+        updatedRows += normalizeLegacyTypeValues(jdbcTemplate, "commercants", List.of("type_commerce"));
+
+        if (updatedRows > 0) {
+            System.out.println("Types TPE historiques normalises: " + updatedRows + " lignes");
+        }
+    }
+
+    private int normalizeLegacyTypeValues(JdbcTemplate jdbcTemplate, String table, List<String> candidateColumns) {
+        for (String column : candidateColumns) {
+            try {
+                int physicalRows = jdbcTemplate.update(
+                        "UPDATE " + table + " SET " + column + " = ? WHERE " + column + " = ?",
+                        "TPE",
+                        "PHYSIQUE"
+                );
+                int mobileRows = jdbcTemplate.update(
+                        "UPDATE " + table + " SET " + column + " = ? WHERE " + column + " = ?",
+                        "MOBILE",
+                        "ECOMMERCE"
+                );
+                return physicalRows + mobileRows;
+            } catch (DataAccessException ignored) {
+                // Older local databases used different physical names for typeTPE.
+            }
+        }
+
+        return 0;
     }
 
     private void createRoleIfNotExists(RoleRepository roleRepository, RoleType roleType, String description) {
@@ -261,27 +254,6 @@ public class DataInitializer {
         }
     }
 
-    private void ensureMonetiqueForSubRoleUsers(JdbcTemplate jdbcTemplate) {
-        int inserted = jdbcTemplate.update(
-                "INSERT INTO user_roles (user_id, role_id) "
-                        + "SELECT DISTINCT u.id, monetique.id FROM users u "
-                        + "JOIN user_roles ur_sub ON ur_sub.user_id = u.id "
-                        + "JOIN roles sub_role ON sub_role.id = ur_sub.role_id "
-                        + "JOIN roles monetique ON monetique.name = ? "
-                        + "WHERE sub_role.name IN (?, ?) "
-                        + "AND NOT EXISTS ("
-                        + "SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role_id = monetique.id"
-                        + ")",
-                RoleType.ROLE_MONETIQUE.name(),
-                RoleType.ROLE_INPUTER.name(),
-                RoleType.ROLE_AUTHORIZER.name()
-        );
-
-        if (inserted > 0) {
-            System.out.println("Role MONETIQUE ajoute pour " + inserted + " utilisateur(s) inputer/authorizer");
-        }
-    }
-
     private void seedScreensAndPermissions(RoleRepository roleRepository,
                                            ScreenRepository screenRepository,
                                            ScreenRoleRepository screenRoleRepository) {
@@ -291,10 +263,6 @@ public class DataInitializer {
                 .orElseThrow(() -> new RuntimeException("Rôle MONETIQUE non trouvé"));
         Role agence = roleRepository.findByName(RoleType.ROLE_AGENCE)
                 .orElseThrow(() -> new RuntimeException("Rôle AGENCE non trouvé"));
-        Role inputer = roleRepository.findByName(RoleType.ROLE_INPUTER)
-                .orElseThrow(() -> new RuntimeException("Rôle INPUTER non trouvé"));
-        Role authorizer = roleRepository.findByName(RoleType.ROLE_AUTHORIZER)
-                .orElseThrow(() -> new RuntimeException("Rôle AUTHORIZER non trouvé"));
 
         List<Screen> screens = List.of(
                 createScreenIfNotExists(screenRepository, "DASHBOARD", "Dashboard", "/dashboard", "dashboard", 1),
@@ -336,7 +304,8 @@ public class DataInitializer {
             boolean monetiqueCanView = !isPermissionAdminScreen;
             boolean monetiqueCanCreate = monetiqueCanView
                     && !screen.getCode().startsWith("DASHBOARD")
-                    && !"PROFIL_UTILISATEUR".equals(screen.getCode());
+                    && !"PROFIL_UTILISATEUR".equals(screen.getCode())
+                    && !"CREER_DEMANDE".equals(screen.getCode());
             boolean monetiqueCanEdit = monetiqueCanCreate;
             boolean monetiqueCanDelete = screen.getCode().startsWith("MODIFIER_");
             boolean monetiqueCanExport = monetiqueCanView
@@ -359,12 +328,6 @@ public class DataInitializer {
                     screen, agence,
                     agenceCanView, agenceCanCreate, agenceCanEdit, agenceCanDelete, agenceCanExport);
 
-                        // INPUTER / AUTHORIZER: profil + gestion des taux
-                        boolean tauxView = "PROFIL_UTILISATEUR".equals(screen.getCode()) || "GESTION_TAUX".equals(screen.getCode());
-                        upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
-                                screen, inputer, tauxView, false, false, false, false);
-                        upsertScreenRole(screenRoleRepository, screenRepository, roleRepository,
-                                screen, authorizer, tauxView, false, false, false, false);
         }
     }
 

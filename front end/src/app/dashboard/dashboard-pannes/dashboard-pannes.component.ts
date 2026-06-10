@@ -146,7 +146,9 @@ export class DashboardPannesComponent implements OnInit {
             callbacks: {
               label: function(context) {
                 const value = context.parsed || 0;
-                return `${context.label}: ${value}%`;
+                const total = (context.dataset.data as number[]).reduce((sum, current) => sum + Number(current || 0), 0) || 1;
+                const percentage = ((Number(value) / total) * 100).toFixed(1);
+                return `${context.label}: ${value} panne(s) (${percentage}%)`;
               }
             }
           }
@@ -171,7 +173,7 @@ export class DashboardPannesComponent implements OnInit {
     let cumul = 0;
     const cumulPourcentage = pannes.map(p => {
       cumul += p;
-      return (cumul / total * 100);
+      return total > 0 ? (cumul / total * 100) : 0;
     });
 
     this.paretoChart = new Chart(ctx, {
@@ -336,6 +338,31 @@ export class DashboardPannesComponent implements OnInit {
     const total = (this.stats.pannesEnCours || 0) + (this.stats.pannesResoluesCeMois || 0);
     if (total === 0) return 0;
     return ((this.stats.pannesResoluesCeMois || 0) / total * 100);
+  }
+
+  get peakHeatmapLabel(): string {
+    if (!this.heatmapData || this.heatmapData.length === 0) {
+      return 'aucune donnée';
+    }
+
+    const dayIndexToLabel: Record<number, string> = {
+      1: 'Dimanche',
+      2: 'Lundi',
+      3: 'Mardi',
+      4: 'Mercredi',
+      5: 'Jeudi',
+      6: 'Vendredi',
+      7: 'Samedi'
+    };
+
+    const peak = this.heatmapData.reduce((best, current) =>
+      Number(current.count || 0) > Number(best.count || 0) ? current : best
+    );
+    const count = Number(peak.count || 0);
+    if (count === 0) return 'aucune donnée';
+
+    const day = dayIndexToLabel[Number(peak.dayOfWeek)] || 'Jour inconnu';
+    return `${day} ${peak.period} (${count} panne(s))`;
   }
 
   exportData(): void {

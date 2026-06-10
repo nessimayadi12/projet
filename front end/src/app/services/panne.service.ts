@@ -72,6 +72,24 @@ export class PanneService {
     return this.http.post<Panne>(`${this.apiUrl}/${id}/en-reparation`, {});
   }
 
+  // Marquer comme irrécupérable et remplacer le TPE
+  marquerIrrecuperableAvecRemplacement(
+    id: number,
+    nouveauNumeroSerie: string,
+    nouveauTypeTPE: string,
+    nouvelleMarque: string,
+    nouveauModele: string,
+    commentaire?: string
+  ): Observable<Panne> {
+    return this.http.post<Panne>(`${this.apiUrl}/${id}/irrecuperable`, {
+      nouveauNumeroSerie,
+      nouveauTypeTPE,
+      nouvelleMarque,
+      nouveauModele,
+      commentaire
+    });
+  }
+
   // Marquer comme réparée
   marquerReparee(id: number, solution: string): Observable<Panne> {
     return this.http.post<Panne>(`${this.apiUrl}/${id}/reparee`, { solution });
@@ -109,7 +127,15 @@ export class PanneService {
 
   // Export rapport pannes
   exportRapportPannes(dateDebut?: string, dateFin?: string): Observable<Blob> {
-    let url = `${this.apiUrl}/export`;
+    let url = `${this.apiUrl}/export/excel`;
+    if (dateDebut && dateFin) {
+      url += `?debut=${dateDebut}&fin=${dateFin}`;
+    }
+    return this.http.get(url, { responseType: 'blob' });
+  }
+
+  exportRapportPannesPdf(dateDebut?: string, dateFin?: string): Observable<Blob> {
+    let url = `${this.apiUrl}/export/pdf`;
     if (dateDebut && dateFin) {
       url += `?debut=${dateDebut}&fin=${dateFin}`;
     }

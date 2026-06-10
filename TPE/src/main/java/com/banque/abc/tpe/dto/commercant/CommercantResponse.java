@@ -25,7 +25,6 @@ public class CommercantResponse {
     private String email;
     private StatutCommercant statut;
     private Double loyer;
-    private String emailNotification;
     private TypeTPE typeCommerce;
     private String urlSiteMarchand;
     private String webhookUrl;

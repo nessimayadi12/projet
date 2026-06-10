@@ -70,7 +70,6 @@ CREATE TABLE commercants
     statut                VARCHAR(255) NOT NULL,
     loyer DOUBLE NULL,
     rne_file_path         VARCHAR(255) NULL,
-    email_notification    VARCHAR(255) NULL,
     type_commerce         VARCHAR(255) NULL,
     url_site_marchand     VARCHAR(255) NULL,
     webhook_url           VARCHAR(255) NULL,
@@ -110,14 +109,13 @@ CREATE TABLE demandes
     code_agence            VARCHAR(255) NULL,
     telephone              VARCHAR(255) NULL,
     rne_file_path          VARCHAR(255) NULL,
-    email_notification     VARCHAR(255) NULL,
     mcc                    VARCHAR(255) NULL,
     taux_commission DOUBLE NULL,
     taux_commission_inter DOUBLE NULL,
     loyer DOUBLE NULL,
     serie_tpe              VARCHAR(255) NULL,
     numero_terminal        VARCHAR(255) NULL,
-    value_date             datetime NULL,
+    value_date             INT DEFAULT 1,
     localite               VARCHAR(255) NULL,
     rib                    VARCHAR(255) NULL,
     webmaster              VARCHAR(255) NULL,
@@ -477,6 +475,30 @@ ALTER TABLE taux
 
 ALTER TABLE tpes
     ADD CONSTRAINT FK_TPES_ON_COMMERCANT FOREIGN KEY (commercant_id) REFERENCES commercants (id);
+
+UPDATE demandes
+SET type_demande = 'TPE'
+WHERE type_demande = 'PHYSIQUE';
+
+UPDATE demandes
+SET type_demande = 'MOBILE'
+WHERE type_demande = 'ECOMMERCE';
+
+UPDATE tpes
+SET typetpe = 'TPE'
+WHERE typetpe = 'PHYSIQUE';
+
+UPDATE tpes
+SET typetpe = 'MOBILE'
+WHERE typetpe = 'ECOMMERCE';
+
+UPDATE commercants
+SET type_commerce = 'TPE'
+WHERE type_commerce = 'PHYSIQUE';
+
+UPDATE commercants
+SET type_commerce = 'MOBILE'
+WHERE type_commerce = 'ECOMMERCE';
 
 ALTER TABLE user_roles
     ADD CONSTRAINT fk_userol_on_role FOREIGN KEY (role_id) REFERENCES roles (id);

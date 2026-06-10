@@ -104,6 +104,7 @@
                 <thead class="text-primary">
                   <tr>
                     <th>N° Série</th>
+                    <th>Type TPE</th>
                     <th>Marque</th>
                     <th>Modèle</th>
                     <th>Statut</th>
@@ -115,6 +116,7 @@
                 <tbody>
                   <tr *ngFor="let tpe of pagedTpes">
                     <td>{{ tpe.numeroSerie }}</td>
+                    <td>{{ getTypeTpeLabel(tpe) }}</td>
                     <td>{{ tpe.marque }}</td>
                     <td>{{ tpe.modele }}</td>
                     <td>
@@ -154,7 +156,7 @@
                     </td>
                   </tr>
                   <tr *ngIf="filteredTpes.length === 0">
-                    <td colspan="7" class="text-center">Aucun TPE trouvé</td>
+                    <td colspan="8" class="text-center">Aucun TPE trouvé</td>
                   </tr>
                 </tbody>
               </table>

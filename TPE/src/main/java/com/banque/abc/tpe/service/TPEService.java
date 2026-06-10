@@ -6,6 +6,7 @@ import com.banque.abc.tpe.entity.Affectation;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
 import com.banque.abc.tpe.entity.HistoriqueStatut;
+import com.banque.abc.tpe.entity.Panne;
 import com.banque.abc.tpe.entity.TPE;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
 import com.banque.abc.tpe.exception.BusinessException;
@@ -14,18 +15,29 @@ import com.banque.abc.tpe.exception.ResourceNotFoundException;
 import com.banque.abc.tpe.repository.AffectationRepository;
 import com.banque.abc.tpe.repository.CommercantRepository;
 import com.banque.abc.tpe.repository.HistoriqueStatutRepository;
+import com.banque.abc.tpe.repository.PanneRepository;
 import com.banque.abc.tpe.repository.TPERepository;
 import com.banque.abc.tpe.util.TIDGenerator;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -37,6 +49,7 @@ public class TPEService {
     private final CommercantRepository commercantRepository;
     private final HistoriqueStatutRepository historiqueStatutRepository;
     private final AffectationRepository affectationRepository;
+    private final PanneRepository panneRepository;
     private final TIDGenerator tidGenerator;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
@@ -48,6 +61,7 @@ public class TPEService {
         }
 
         TPE tpe = modelMapper.map(request, TPE.class);
+        tpe.setTypeTPE(resolveTypeTPE(request.getTypeTPE()));
         tpe.setStatut(StatutTPE.DISPONIBLE);
 
         // Le TID sera généré lors de l'affectation
@@ -88,6 +102,60 @@ public class TPEService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<TPEResponse> searchTPEsForPanneDeclaration(String query, int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        List<String> terms = normalizeSearchTerms(query);
+
+        Specification<TPE> specification = (root, criteriaQuery, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(root.get("statut").in(
+                    StatutTPE.AFFECTE,
+                    StatutTPE.EN_PANNE,
+                    StatutTPE.MAINTENANCE
+            ));
+
+            if (!terms.isEmpty()) {
+                criteriaQuery.distinct(true);
+                var commercant = root.join("commercant", JoinType.LEFT);
+                var affectations = root.join("affectations", JoinType.LEFT);
+                var affectationCommercant = affectations.join("commercant", JoinType.LEFT);
+
+                for (String term : terms) {
+                    String pattern = "%" + term + "%";
+                    Predicate activeAffectationCommercantMatches = criteriaBuilder.and(
+                            criteriaBuilder.equal(affectations.get("actif"), true),
+                            criteriaBuilder.or(
+                                    containsIgnoreCase(criteriaBuilder, affectationCommercant.get("raisonSociale"), pattern),
+                                    containsIgnoreCase(criteriaBuilder, affectationCommercant.get("numeroCompte"), pattern),
+                                    containsIgnoreCase(criteriaBuilder, affectationCommercant.get("codeAgence"), pattern)
+                            )
+                    );
+
+                    predicates.add(criteriaBuilder.or(
+                            containsIgnoreCase(criteriaBuilder, root.get("numeroSerie"), pattern),
+                            containsIgnoreCase(criteriaBuilder, root.get("numeroTerminal"), pattern),
+                            containsIgnoreCase(criteriaBuilder, root.get("numeroAffiliation"), pattern),
+                            containsIgnoreCase(criteriaBuilder, root.get("typeTPE"), pattern),
+                            containsIgnoreCase(criteriaBuilder, root.get("marque"), pattern),
+                            containsIgnoreCase(criteriaBuilder, root.get("modele"), pattern),
+                            containsIgnoreCase(criteriaBuilder, commercant.get("raisonSociale"), pattern),
+                            containsIgnoreCase(criteriaBuilder, commercant.get("numeroCompte"), pattern),
+                            containsIgnoreCase(criteriaBuilder, commercant.get("codeAgence"), pattern),
+                            activeAffectationCommercantMatches
+                    ));
+                }
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+
+        Pageable pageable = PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "id"));
+        return tpeRepository.findAll(specification, pageable)
+                .map(this::mapToResponse)
+                .getContent();
+    }
+
     @Transactional
     public TPEResponse updateTPE(Long id, TPERequest request) {
         TPE tpe = tpeRepository.findById(id)
@@ -98,7 +166,9 @@ public class TPEService {
             throw new DuplicateResourceException("Un TPE avec ce numéro de série existe déjà");
         }
 
+        prepareNumeroTerminalForUpdate(tpe, request.getNumeroTerminal());
         modelMapper.map(request, tpe);
+        tpe.setTypeTPE(resolveTypeTPE(request.getTypeTPE()));
         TPE updatedTPE = tpeRepository.save(tpe);
 
         auditService.logAction("UPDATE", "TPE", updatedTPE.getId().toString(),
@@ -208,11 +278,10 @@ public class TPEService {
 
     private TPEResponse mapToResponse(TPE tpe, boolean includeMonetiqueDetails) {
         TPEResponse response = modelMapper.map(tpe, TPEResponse.class);
+        response.setTypeTPE(tpe.getTypeTPE());
         response.setSerieTpe(firstNonBlank(response.getSerieTpe(), tpe.getNumeroSerie()));
 
-        if (tpe.getCommercant() != null) {
-            populateCommercantFields(response, tpe.getCommercant());
-        }
+        resolveDisplayCommercant(tpe).ifPresent(commercant -> populateCommercantFields(response, commercant));
 
         if (includeMonetiqueDetails) {
             findDetailDemande(tpe).ifPresent(demande -> populateDemandeFields(response, demande));
@@ -252,9 +321,7 @@ public class TPEService {
         response.setLoyer(firstNonNull(demande.getLoyer(), response.getLoyer()));
         response.setUrlSiteMarchand(firstNonBlank(demande.getUrlSiteMarchand(), response.getUrlSiteMarchand()));
 
-        if (demande.getValueDate() != null) {
-            response.setValueDate(demande.getValueDate().toLocalDate());
-        }
+        response.setValueDate(demande.getValueDate());
     }
 
     private Optional<Demande> findDetailDemande(TPE tpe) {
@@ -270,13 +337,99 @@ public class TPEService {
             return activeDemande;
         }
 
-        return affectationRepository.findByTpeId(tpe.getId()).stream()
+        Optional<Demande> historicalDemande = affectationRepository.findByTpeId(tpe.getId()).stream()
                 .filter(affectation -> affectation.getDemande() != null)
                 .max(Comparator.comparing(
                         Affectation::getCreatedDate,
                         Comparator.nullsFirst(Comparator.naturalOrder())
                 ))
                 .map(Affectation::getDemande);
+
+        if (historicalDemande.isPresent()) {
+            return historicalDemande;
+        }
+
+        return findReplacementSourceDemande(tpe);
+    }
+
+    private Optional<Demande> findReplacementSourceDemande(TPE replacementTpe) {
+        if (replacementTpe.getId() == null) {
+            return Optional.empty();
+        }
+
+        return panneRepository.findByTpeRemplacementId(replacementTpe.getId()).stream()
+                .filter(panne -> panne.getTpe() != null)
+                .flatMap(panne -> affectationRepository.findByTpeId(panne.getTpe().getId()).stream())
+                .filter(affectation -> affectation.getDemande() != null)
+                .max(Comparator
+                        .comparing(Affectation::getDateFin, Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(Affectation::getDateAffectation, Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(Affectation::getCreatedDate, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .map(Affectation::getDemande);
+    }
+
+    private void prepareNumeroTerminalForUpdate(TPE targetTpe, String requestedNumeroTerminal) {
+        if (requestedNumeroTerminal == null || requestedNumeroTerminal.isBlank() || targetTpe.getId() == null) {
+            return;
+        }
+
+        Optional<TPE> owner = tpeRepository.findByNumeroTerminal(requestedNumeroTerminal);
+        if (owner.isEmpty() || owner.get().getId().equals(targetTpe.getId())) {
+            return;
+        }
+
+        TPE ownerTpe = owner.get();
+        boolean canTransferFromReplacedTpe = panneRepository.findByTpeRemplacementId(targetTpe.getId()).stream()
+                .anyMatch(panne -> panne.getTpe() != null
+                        && panne.getTpe().getId().equals(ownerTpe.getId())
+                        && ownerTpe.getStatut() == StatutTPE.HORS_SERVICE);
+
+        if (!canTransferFromReplacedTpe) {
+            throw new DuplicateResourceException("Ce numero de terminal est deja utilise");
+        }
+
+        ownerTpe.setNumeroTerminal(null);
+        tpeRepository.saveAndFlush(ownerTpe);
+    }
+
+    private Optional<Commercant> findActiveCommercant(TPE tpe) {
+        if (tpe.getId() == null) {
+            return Optional.empty();
+        }
+
+        return affectationRepository.findActiveByTpeId(tpe.getId())
+                .map(Affectation::getCommercant);
+    }
+
+    private Optional<Commercant> resolveDisplayCommercant(TPE tpe) {
+        if (tpe.getCommercant() != null) {
+            return Optional.of(tpe.getCommercant());
+        }
+
+        Optional<Commercant> activeCommercant = findActiveCommercant(tpe);
+        if (activeCommercant.isPresent()) {
+            return activeCommercant;
+        }
+
+        if (tpe.getStatut() == StatutTPE.HORS_SERVICE) {
+            return findLatestHistoricalCommercant(tpe);
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<Commercant> findLatestHistoricalCommercant(TPE tpe) {
+        if (tpe.getId() == null) {
+            return Optional.empty();
+        }
+
+        return affectationRepository.findByTpeId(tpe.getId()).stream()
+                .filter(affectation -> affectation.getCommercant() != null)
+                .max(Comparator
+                        .comparing(Affectation::getDateFin, Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(Affectation::getDateAffectation, Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(Affectation::getCreatedDate, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .map(Affectation::getCommercant);
     }
 
     private String firstNonBlank(String... values) {
@@ -291,6 +444,35 @@ public class TPEService {
         }
 
         return null;
+    }
+
+    private String resolveTypeTPE(String value) {
+        if (value == null || value.isBlank()) {
+            return "TPE";
+        }
+        return value.trim().toUpperCase();
+    }
+
+    private Predicate containsIgnoreCase(CriteriaBuilder criteriaBuilder, Expression<String> expression, String pattern) {
+        return criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(expression, "")), pattern);
+    }
+
+    private List<String> normalizeSearchTerms(String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+
+        String normalized = Normalizer.normalize(query, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+
+        if (normalized.isBlank()) {
+            return List.of();
+        }
+
+        return List.of(normalized.split("\\s+"));
     }
 
     @SafeVarargs

@@ -16,6 +16,8 @@ import java.util.Optional;
 public interface DemandeRepository extends JpaRepository<Demande, Long>, JpaSpecificationExecutor<Demande> {
     
     Optional<Demande> findByReference(String reference);
+
+    Optional<Demande> findFirstByReferenceOrderByLastModifiedDateDescIdDesc(String reference);
     
     List<Demande> findByStatut(StatutDemande statut);
     
@@ -28,6 +30,37 @@ public interface DemandeRepository extends JpaRepository<Demande, Long>, JpaSpec
     
     @Query("SELECT COUNT(d) FROM Demande d WHERE d.statut = :statut")
     Long countByStatut(StatutDemande statut);
+
+    @Query("SELECT COUNT(d) FROM Demande d WHERE d.statut IN :statuts")
+    Long countByStatutIn(@Param("statuts") List<StatutDemande> statuts);
+
+    @Query("SELECT COUNT(d) FROM Demande d WHERE d.statut IN :statuts AND d.dateCloture BETWEEN :debut AND :fin")
+    Long countByStatutInAndDateClotureBetween(
+            @Param("statuts") List<StatutDemande> statuts,
+            @Param("debut") LocalDateTime debut,
+            @Param("fin") LocalDateTime fin);
+
+    @Query("SELECT COUNT(d) FROM Demande d WHERE d.statut IN :statuts AND d.createdDate <= :dateLimite")
+    Long countPendingOlderThan(
+            @Param("statuts") List<StatutDemande> statuts,
+            @Param("dateLimite") LocalDateTime dateLimite);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM demandes d
+            WHERE d.statut IN ('AFFECTEE', 'CLOTUREE', 'REJETEE')
+              AND COALESCE(d.date_cloture, d.date_validation) IS NOT NULL
+            """, nativeQuery = true)
+    Long countTerminalWithCompletionDate();
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM demandes d
+            WHERE d.statut IN ('AFFECTEE', 'CLOTUREE', 'REJETEE')
+              AND COALESCE(d.date_cloture, d.date_validation) IS NOT NULL
+              AND TIMESTAMPDIFF(HOUR, d.created_date, COALESCE(d.date_cloture, d.date_validation)) <= :maxHours
+            """, nativeQuery = true)
+    Long countTerminalWithinSla(@Param("maxHours") long maxHours);
     
     @Query("SELECT d FROM Demande d WHERE d.urgence IN ('HAUTE', 'CRITIQUE') AND d.statut NOT IN ('CLOTUREE', 'REJETEE')")
     List<Demande> findDemandesUrgentes();

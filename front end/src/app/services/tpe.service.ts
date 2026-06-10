@@ -92,6 +92,16 @@ export class TpeService {
   }
 
   // Récupérer TPE par commerçant
+  searchTPEEligiblesDeclaration(query: string = '', limit: number = 50): Observable<TPE[]> {
+    const params = new HttpParams()
+      .set('query', query || '')
+      .set('limit', limit.toString());
+
+    return this.http.get<any>(`${this.apiUrl}/declaration-panne/search`, { params }).pipe(
+      map(response => this.extractTPEArray(response))
+    );
+  }
+
   getTPEByCommercant(commercantId: number): Observable<TPE[]> {
     return this.http.get<any>(`${this.apiUrl}/commercant/${commercantId}`).pipe(
       map(response => this.extractTPEArray(response))
@@ -111,19 +121,19 @@ export class TpeService {
     );
   }
 
-  // Créer TPE (Physique ou E-commerce)
+  // Créer TPE (TPE ou Mobile)
   createTPE(tpe: TPE): Observable<TPE> {
     return this.http.post<any>(`${this.apiUrl}`, tpe).pipe(
       map(response => this.normalizeTPE(response))
     );
   }
 
-  // Créer TPE Physique (alias pour compatibilité)
+  // Créer TPE (alias pour compatibilité)
   createTPEPhysique(tpe: TPE): Observable<TPE> {
     return this.createTPE(tpe);
   }
 
-  // Créer TPE E-commerce (alias pour compatibilité)
+  // Créer Mobile (alias pour compatibilité)
   createTPEEcommerce(tpe: TPE): Observable<TPE> {
     return this.createTPE(tpe);
   }
@@ -221,11 +231,11 @@ export class TpeService {
       return tpe;
     }
 
-    const commercantNom = tpe.commercantActuelNom || tpe.commercantNom;
+    const commercantNom = tpe.commercantActuelNom || tpe.commercantNom || tpe.raisonSociale;
 
     return {
       ...tpe,
-      typeTpe: tpe.typeTpe || tpe.typeTPE,
+      typeTpe: tpe.typeTPE || tpe.typeTpe,
       commercantActuelId: tpe.commercantActuelId ?? tpe.commercantId,
       commercantActuelNom: commercantNom,
       raisonSociale: tpe.raisonSociale || commercantNom,
@@ -234,6 +244,7 @@ export class TpeService {
       tauxCommission: this.toNumberOrOriginal(tpe.tauxCommission),
       tauxCommissionInter: this.toNumberOrOriginal(tpe.tauxCommissionInter),
       loyer: this.toNumberOrOriginal(tpe.loyer),
+      valueDate: this.normalizeValueDate(tpe.valueDate),
       cartesAcceptees: tpe.cartesAcceptees || tpe.typeCartesAcceptees
     } as TPE;
   }
@@ -245,5 +256,9 @@ export class TpeService {
 
     const numericValue = Number(value);
     return Number.isNaN(numericValue) ? value : numericValue;
+  }
+
+  private normalizeValueDate(value: any): number {
+    return Number(value) === 2 ? 2 : 1;
   }
 }

@@ -1,6 +1,6 @@
 package com.banque.abc.tpe.dto.panne;
 
-import jakarta.validation.constraints.NotBlank;
+import com.banque.abc.tpe.entity.enums.TypePanne;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,8 +14,9 @@ public class PanneRequest {
     @NotNull(message = "Le TPE est obligatoire")
     private Long tpeId;
     
-    @NotBlank(message = "La description de la panne est obligatoire")
     private String description;
+
+    private TypePanne typePanne;
     
     private Long tpeRemplacementId;
 }

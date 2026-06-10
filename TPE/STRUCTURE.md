@@ -105,8 +105,7 @@ TPE/
 │   │   │   │   ├── TPEService.java              # Logique métier TPE
 │   │   │   │   ├── CommercantService.java       # Logique métier Commerçants
 │   │   │   │   ├── DemandeService.java          # Logique métier Demandes
-│   │   │   │   ├── TauxService.java             # Logique métier Taux (4 yeux)
-│   │   │   │   └── NotificationService.java     # Envoi emails
+│   │   │   │   └── TauxService.java             # Logique métier Taux (4 yeux)
 │   │   │   │
 │   │   │   ├── util/                            # Utilitaires
 │   │   │   │   ├── TIDGenerator.java            # Génération TID + Luhn
@@ -241,8 +240,7 @@ Authorizer: POST /taux/{id}/valider → TauxService.validerTaux()
 4. **Validation demande** : Seule la Monétique peut valider
 5. **Traçabilité** : Toutes les actions sont auditées
 6. **Historique statuts** : Changements de statut TPE sont tracés
-7. **Email notifications** : Envoyées automatiquement
-8. **Algorithme Luhn** : Validation du TID
+7. **Algorithme Luhn** : Validation du TID
 
 ## Technologies & Dépendances principales
 
@@ -258,7 +256,6 @@ Authorizer: POST /taux/{id}/valider → TauxService.validerTaux()
 | ModelMapper       | 3.2.0   | DTO/Entity mapping             |
 | SpringDoc OpenAPI | 2.3.0   | Documentation Swagger          |
 | Apache POI        | 5.2.5   | Import/Export Excel            |
-| Jakarta Mail      | Latest  | Envoi d'emails                 |
 
 ## Points d'extension possibles
 

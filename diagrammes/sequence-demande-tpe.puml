@@ -1,0 +1,157 @@
+@startuml
+' Diagramme de sequence - Workflow principal de demande et affectation TPE
+' Scenario: Agence -> Inputer -> Authorizer -> Affectation -> Audit.
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #2563EB
+  ActorBorderColor #111827
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #F8FAFC
+  ParticipantBorderColor #2563EB
+  ParticipantBackgroundColor #F8FAFC
+  ParticipantFontColor #111827
+}
+
+title Workflow de demande TPE - creation, validation 4 yeux et affectation
+
+actor "Agence" as Agence
+actor "Inputer" as Inputer
+actor "Authorizer" as Authorizer
+
+participant "Frontend Angular" as Front
+participant "AuthInterceptor\n+ AuthGuard" as AngularSecurity
+participant "API REST\nSpring Boot" as API
+participant "Spring Security\nJWT" as Security
+participant "DemandeController" as DemandeController
+participant "DemandeService" as DemandeService
+participant "TPEController" as TPEController
+participant "TPEService" as TPEService
+participant "AffectationService" as AffectationService
+participant "Repositories JPA" as Repositories
+database "SQL Server\nTPE_Managements" as DB
+participant "AuditService" as AuditService
+
+== Creation de la demande par l'agence ==
+
+Agence -> Front : Remplir formulaire demande TPE
+Front -> AngularSecurity : verifier session et permissions
+AngularSecurity --> Front : acces autorise
+Front -> API : POST /api/demandes\nBearer JWT
+API -> Security : verifier token + role AGENCE
+Security --> API : autorise
+API -> DemandeController : createDemande(request)
+DemandeController -> DemandeService : createDemande(request)
+
+DemandeService -> Repositories : rechercher ou creer Commercant
+Repositories -> DB : SELECT/INSERT commercant
+DB --> Repositories : commercant
+Repositories --> DemandeService : commercant
+
+DemandeService -> Repositories : enregistrer Demande\nstatut=NOUVELLE
+Repositories -> DB : INSERT demande
+DB --> Repositories : demande sauvegardee
+Repositories --> DemandeService : DemandeResponse
+
+DemandeService -> AuditService : logAction(CREATE, Demande)
+DemandeService --> DemandeController : DemandeResponse
+DemandeController --> API : 201 Created
+API --> Front : demande creee
+Front --> Agence : afficher confirmation
+
+== Saisie monetique par l'Inputer ==
+
+Inputer -> Front : Ouvrir demande NOUVELLE
+Front -> API : POST /api/tpes/generer-tid\nrib, codeAgence, typeTPE
+API -> Security : verifier token + role INPUTER/ADMIN
+Security --> API : autorise
+API -> TPEController : genererTID(request)
+TPEController -> TPEService : genererNumeroTerminal()
+TPEService -> Repositories : controler unicite TID
+Repositories -> DB : SELECT TPE par numeroTerminal
+DB --> Repositories : aucun doublon
+TPEService --> TPEController : numeroTerminal
+TPEController --> API : TID genere
+API --> Front : numeroTerminal
+
+Inputer -> Front : Saisir donnees monetiques\nMCC, taux, loyer, TID
+Front -> API : POST /api/demandes/{id}/valider\nstatut courant=NOUVELLE
+API -> Security : verifier role INPUTER/ADMIN
+Security --> API : autorise
+API -> DemandeController : validerDemande(id, data)
+DemandeController -> DemandeService : validerDemande(id, data)
+DemandeService -> Repositories : charger demande
+Repositories -> DB : SELECT demande
+DB --> Repositories : demande NOUVELLE
+Repositories --> DemandeService : demande
+DemandeService -> Repositories : sauvegarder saisie\nstatut=EN_COURS
+Repositories -> DB : UPDATE demande
+DemandeService -> AuditService : logAction(TAUX_INPUT, Demande)
+DemandeService --> DemandeController : DemandeResponse
+DemandeController --> API : 200 OK
+API --> Front : demande en cours
+Front --> Inputer : afficher soumission reussie
+
+== Validation finale par l'Authorizer ==
+
+Authorizer -> Front : Ouvrir demande EN_COURS
+Front -> API : POST /api/demandes/{id}/valider\napprouver=true/false
+API -> Security : verifier role AUTHORIZER/ADMIN
+Security --> API : autorise
+API -> DemandeController : validerDemande(id, decision)
+DemandeController -> DemandeService : validerDemande(id, decision)
+DemandeService -> Repositories : charger demande
+Repositories -> DB : SELECT demande
+DB --> Repositories : demande EN_COURS
+Repositories --> DemandeService : demande
+
+alt Authorizer = Inputer
+  DemandeService --> DemandeController : erreur regle 4 yeux
+  DemandeController --> API : 400 Bad Request
+  API --> Front : validation refusee
+  Front --> Authorizer : afficher erreur
+else Authorizer different de l'Inputer
+  alt demande rejetee
+    DemandeService -> Repositories : statut=REJETEE\nmotif obligatoire
+    Repositories -> DB : UPDATE demande
+    DemandeService -> AuditService : logAction(REJECT, Demande)
+    DemandeService --> DemandeController : DemandeResponse
+    DemandeController --> API : 200 OK
+    API --> Front : demande rejetee
+  else demande approuvee
+    DemandeService -> Repositories : statut=VALIDEE_MONETIQUE
+    Repositories -> DB : UPDATE demande
+    DemandeService -> AffectationService : affecterTPE(demande)
+    AffectationService -> Repositories : chercher TPE disponible
+    Repositories -> DB : SELECT TPE DISPONIBLE
+    DB --> Repositories : TPE disponible
+    AffectationService -> Repositories : creer Affectation\nmettre TPE=AFFECTE
+    Repositories -> DB : INSERT affectation\nUPDATE tpe\nUPDATE demande=AFFECTEE
+    AffectationService --> DemandeService : affectation creee
+    DemandeService -> AuditService : logAction(VALIDATE, Demande)
+    DemandeService --> DemandeController : DemandeResponse
+    DemandeController --> API : 200 OK
+    API --> Front : demande affectee
+    Front --> Authorizer : afficher validation et affectation
+  end
+end
+
+== Suivi par l'agence ==
+
+Agence -> Front : Consulter liste des demandes
+Front -> API : GET /api/demandes
+API -> Security : verifier token + role AGENCE
+Security --> API : autorise
+API -> DemandeController : getAllDemandes()
+DemandeController -> DemandeService : getAllDemandes()
+DemandeService -> Repositories : lister demandes
+Repositories -> DB : SELECT demandes
+DB --> Repositories : page de demandes
+Repositories --> DemandeService : resultats
+DemandeService --> DemandeController : Page<DemandeResponse>
+DemandeController --> API : 200 OK
+API --> Front : demandes
+Front --> Agence : afficher statut final
+
+@enduml

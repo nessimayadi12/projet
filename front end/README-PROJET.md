@@ -122,7 +122,7 @@ src/app/
 - Numéro de compte (RIB)
 - Code Agence
 - Série TPE
-- Value Date
+- Value Date (1 ou 2, 1 par defaut)
 - **N° Terminal (TID)** - Généré automatiquement
 
 **Règle de génération TID** :
@@ -175,7 +175,6 @@ Exemple : 23 041 008 5
 - Loyer mensuel
 - MCC
 - Webmaster / Contact Technique (pour E-commerce)
-- Email de Notification
 
 **Statuts** :
 - `ACTIF` - Commerçant actif

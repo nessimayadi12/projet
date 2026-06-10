@@ -1,0 +1,138 @@
+%% Diagramme de sequence - Workflow principal de demande et affectation TPE
+
+sequenceDiagram
+  autonumber
+  actor Agence
+  actor Inputer
+  actor Authorizer
+  participant Front as Frontend Angular
+  participant AngularSecurity as AuthInterceptor + AuthGuard
+  participant API as API REST Spring Boot
+  participant Security as Spring Security JWT
+  participant DemandeController
+  participant DemandeService
+  participant TPEController
+  participant TPEService
+  participant AffectationService
+  participant Repo as Repositories JPA
+  participant DB as SQL Server TPE_Managements
+  participant AuditService
+
+  rect rgb(248,250,252)
+  note over Agence,AuditService: Creation de la demande par l'agence
+  Agence->>Front: Remplir formulaire demande TPE
+  Front->>AngularSecurity: Verifier session et permissions
+  AngularSecurity-->>Front: Acces autorise
+  Front->>API: POST /api/demandes + Bearer JWT
+  API->>Security: Verifier token + role AGENCE
+  Security-->>API: Autorise
+  API->>DemandeController: createDemande(request)
+  DemandeController->>DemandeService: createDemande(request)
+  DemandeService->>Repo: Rechercher ou creer Commercant
+  Repo->>DB: SELECT/INSERT commercant
+  DB-->>Repo: Commercant
+  Repo-->>DemandeService: Commercant
+  DemandeService->>Repo: Enregistrer Demande statut=NOUVELLE
+  Repo->>DB: INSERT demande
+  DB-->>Repo: Demande sauvegardee
+  Repo-->>DemandeService: DemandeResponse
+  DemandeService->>AuditService: logAction(CREATE, Demande)
+  DemandeService-->>DemandeController: DemandeResponse
+  DemandeController-->>API: 201 Created
+  API-->>Front: Demande creee
+  Front-->>Agence: Afficher confirmation
+  end
+
+  rect rgb(240,253,250)
+  note over Inputer,AuditService: Saisie monetique par l'Inputer
+  Inputer->>Front: Ouvrir demande NOUVELLE
+  Front->>API: POST /api/tpes/generer-tid
+  API->>Security: Verifier token + role INPUTER/ADMIN
+  Security-->>API: Autorise
+  API->>TPEController: genererTID(request)
+  TPEController->>TPEService: genererNumeroTerminal()
+  TPEService->>Repo: Controler unicite TID
+  Repo->>DB: SELECT TPE par numeroTerminal
+  DB-->>Repo: Aucun doublon
+  TPEService-->>TPEController: NumeroTerminal
+  TPEController-->>API: TID genere
+  API-->>Front: NumeroTerminal
+  Inputer->>Front: Saisir MCC, taux, loyer, TID
+  Front->>API: POST /api/demandes/{id}/valider
+  API->>Security: Verifier role INPUTER/ADMIN
+  Security-->>API: Autorise
+  API->>DemandeController: validerDemande(id, data)
+  DemandeController->>DemandeService: validerDemande(id, data)
+  DemandeService->>Repo: Charger demande
+  Repo->>DB: SELECT demande
+  DB-->>Repo: Demande NOUVELLE
+  DemandeService->>Repo: Sauvegarder saisie statut=EN_COURS
+  Repo->>DB: UPDATE demande
+  DemandeService->>AuditService: logAction(TAUX_INPUT, Demande)
+  DemandeService-->>DemandeController: DemandeResponse
+  DemandeController-->>API: 200 OK
+  API-->>Front: Demande en cours
+  Front-->>Inputer: Afficher soumission reussie
+  end
+
+  rect rgb(255,251,235)
+  note over Authorizer,AuditService: Validation finale par l'Authorizer
+  Authorizer->>Front: Ouvrir demande EN_COURS
+  Front->>API: POST /api/demandes/{id}/valider
+  API->>Security: Verifier role AUTHORIZER/ADMIN
+  Security-->>API: Autorise
+  API->>DemandeController: validerDemande(id, decision)
+  DemandeController->>DemandeService: validerDemande(id, decision)
+  DemandeService->>Repo: Charger demande
+  Repo->>DB: SELECT demande
+  DB-->>Repo: Demande EN_COURS
+
+  alt Authorizer = Inputer
+    DemandeService-->>DemandeController: Erreur regle 4 yeux
+    DemandeController-->>API: 400 Bad Request
+    API-->>Front: Validation refusee
+    Front-->>Authorizer: Afficher erreur
+  else Authorizer different de l'Inputer
+    alt Demande rejetee
+      DemandeService->>Repo: Statut=REJETEE + motif
+      Repo->>DB: UPDATE demande
+      DemandeService->>AuditService: logAction(REJECT, Demande)
+      DemandeService-->>DemandeController: DemandeResponse
+      DemandeController-->>API: 200 OK
+      API-->>Front: Demande rejetee
+    else Demande approuvee
+      DemandeService->>Repo: Statut=VALIDEE_MONETIQUE
+      Repo->>DB: UPDATE demande
+      DemandeService->>AffectationService: affecterTPE(demande)
+      AffectationService->>Repo: Chercher TPE disponible
+      Repo->>DB: SELECT TPE DISPONIBLE
+      DB-->>Repo: TPE disponible
+      AffectationService->>Repo: Creer affectation et mettre TPE=AFFECTE
+      Repo->>DB: INSERT affectation + UPDATE tpe + UPDATE demande
+      AffectationService-->>DemandeService: Affectation creee
+      DemandeService->>AuditService: logAction(VALIDATE, Demande)
+      DemandeService-->>DemandeController: DemandeResponse
+      DemandeController-->>API: 200 OK
+      API-->>Front: Demande affectee
+      Front-->>Authorizer: Afficher validation et affectation
+    end
+  end
+  end
+
+  rect rgb(239,246,255)
+  note over Agence,DB: Suivi par l'agence
+  Agence->>Front: Consulter liste des demandes
+  Front->>API: GET /api/demandes
+  API->>Security: Verifier token + role AGENCE
+  Security-->>API: Autorise
+  API->>DemandeController: getAllDemandes()
+  DemandeController->>DemandeService: getAllDemandes()
+  DemandeService->>Repo: Lister demandes
+  Repo->>DB: SELECT demandes
+  DB-->>Repo: Page de demandes
+  Repo-->>DemandeService: Resultats
+  DemandeService-->>DemandeController: Page<DemandeResponse>
+  DemandeController-->>API: 200 OK
+  API-->>Front: Demandes
+  Front-->>Agence: Afficher statut final
+  end

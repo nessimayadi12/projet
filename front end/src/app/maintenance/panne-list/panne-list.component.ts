@@ -1,14 +1,14 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatDialog } from '@angular/material/dialog';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Panne, TypePanne, StatutPanne } from '../../models/panne.model';
+import { Panne, StatutPanne, TypePanne } from '../../models/panne.model';
 import { StatutTPE } from '../../models/tpe.model';
 import { PanneService } from '../../services/panne.service';
 import { AuthService } from '../../services/auth.service';
 import { TpeService } from '../../services/tpe.service';
-import { ExcelExportService } from '../../services/excel-export.service';
 import { Role } from '../../models/utilisateur.model';
+
+type WorkflowAction = 'DETAIL' | 'DIAGNOSTIC' | 'RESOLUTION' | 'IRRECUPERABLE';
 
 @Component({
   selector: 'app-panne-list',
@@ -16,26 +16,56 @@ import { Role } from '../../models/utilisateur.model';
   styleUrls: ['./panne-list.component.css']
 })
 export class PanneListComponent implements OnInit {
+  readonly StatutPanne = StatutPanne;
+
   pannes: Panne[] = [];
   pannesFiltrees: Panne[] = [];
   tpes: any[] = [];
+  tpesFiltrees: any[] = [];
+  tpeSearchTerm = '';
   loading = false;
+  savingAction = false;
+  exportingExcel = false;
+  exportingPdf = false;
   showDeclarationForm = false;
+
   declarationForm: FormGroup;
-  currentUserRole: string = '';
+  workflowForm: FormGroup;
+  selectedPanne: Panne | null = null;
+  workflowAction: WorkflowAction = 'DETAIL';
 
-  // Filtres
-  filtreStatut: string = 'TOUS';
+  filtreStatut = 'TOUS';
 
-  statuts = ['TOUS', ...Object.values(StatutPanne)];
+  statuts = [
+    'TOUS',
+    StatutPanne.DECLAREE,
+    StatutPanne.DIAGNOSTIQUEE,
+    StatutPanne.EN_REPARATION,
+    StatutPanne.REPAREE,
+    StatutPanne.IRRECUPERABLE
+  ];
 
-  displayedColumns: string[] = [
-    'tpeNumeroSerie',
-    'typePanne',
-    'statut',
-    'dateDeclaration',
-    'technicienAssigne',
-    'actions'
+  panneTypes = [
+    { value: TypePanne.COURT_CIRCUIT, label: 'Le court-circuit' },
+    { value: TypePanne.DEFAUT_ISOLEMENT, label: "Le defaut d'isolement" },
+    { value: TypePanne.SURCHARGE, label: 'La surcharge' },
+    { value: TypePanne.COUPURE_SECTEUR, label: 'La coupure secteur' },
+    { value: TypePanne.RUPTURE_USURE_PIECES, label: 'Rupture ou usure de pieces' },
+    { value: TypePanne.DEFAUT_LUBRIFICATION, label: 'Defaut de lubrification' },
+    { value: TypePanne.GRIPPAGE, label: 'Grippage' },
+    { value: TypePanne.HARDWARE, label: 'Materielles (Hardware)' },
+    { value: TypePanne.SOFTWARE, label: 'Logicielles (Software)' },
+    { value: TypePanne.INCIDENT_0044_0088, label: 'Incident 0044 / 0088' },
+    { value: TypePanne.INCIDENT_0060_CENTRE_BANCAIRE_NON_ATTEINT, label: 'Incident 0060 / Centre bancaire non atteint' },
+    { value: TypePanne.INCIDENT_001, label: 'Incident 001' },
+    { value: TypePanne.INCIDENT_0074, label: 'Incident 0074' },
+    { value: TypePanne.INCIDENT_020E_0067, label: 'Incident 020E / 0067' },
+    { value: TypePanne.INCIDENT_0050, label: 'Incident 0050' },
+    { value: TypePanne.ALERTE_IRRUPTION, label: 'Alerte irruption' },
+    { value: TypePanne.PROBLEME_BATTERIE_CHARGE, label: 'Probleme de batterie / charge' },
+    { value: TypePanne.IMPRIMANTE_BLOQUEE, label: 'Imprimante bloquee' },
+    { value: TypePanne.INCIDENT_0060_ERREUR_CARTE, label: 'Incident 0060 / Erreur carte' },
+    { value: TypePanne.ERREUR_SAISIE_PIN, label: 'Erreur saisie PIN' }
   ];
 
   constructor(
@@ -43,38 +73,37 @@ export class PanneListComponent implements OnInit {
     private panneService: PanneService,
     private tpeService: TpeService,
     private authService: AuthService,
-    private dialog: MatDialog,
-    private snackBar: MatSnackBar,
-    private excelExportService: ExcelExportService
+    private snackBar: MatSnackBar
   ) {
-    const currentUser = this.authService.getCurrentUser();
-    this.currentUserRole = currentUser?.role || '';
-
     this.declarationForm = this.fb.group({
       tpeId: ['', Validators.required],
-      description: ['', [Validators.required, Validators.minLength(10)]]
+      typePanne: [''],
+      description: ['', [Validators.minLength(5)]]
+    }, { validators: this.requireTypeOrDescription });
+
+    this.workflowForm = this.fb.group({
+      diagnostic: [''],
+      solution: [''],
+      nouveauNumeroSerie: [''],
+      nouveauTypeTPE: [''],
+      nouvelleMarque: [''],
+      nouveauModele: [''],
+      commentaire: [''],
+      confirmationIrrecuperable: [false]
     });
   }
 
   ngOnInit(): void {
-    this.loadPannes();
     this.loadTPEs();
+    this.loadPannes();
   }
 
   loadTPEs(): void {
-    // Charger les TPE avec statut AFFECTE (ceux qui ont été acceptés par monétique)
     this.tpeService.getAllTPE().subscribe({
       next: (data) => {
-        // Filtrer uniquement les TPE affectés ou en service
-        this.tpes = data.filter(tpe => 
-          tpe.statut === StatutTPE.AFFECTE || 
-          tpe.statut === StatutTPE.EN_PANNE || 
-          tpe.statut === StatutTPE.MAINTENANCE
-        );
-        console.log('TPEs chargés:', this.tpes.length, this.tpes);
-        if (this.tpes.length === 0) {
-          console.warn('Aucun TPE affecté trouvé. Les TPE doivent être affectés via une demande acceptée.');
-        }
+        this.tpes = data.filter(tpe => this.isTPEEligibleForDeclaration(tpe.statut));
+        this.appliquerRechercheTPE();
+        this.clearSelectedTpeIfHidden();
       },
       error: (error) => {
         console.error('Erreur chargement TPEs', error);
@@ -83,35 +112,16 @@ export class PanneListComponent implements OnInit {
     });
   }
 
-  afficherAideTPE(): void {
-    if (this.tpes.length === 0) {
-      alert('Aucun TPE affecté disponible.\n\nPour déclarer une panne sur un TPE :\n1. Le TPE doit d\'abord être affecté à un commerçant via une demande\n2. La demande doit être acceptée par le monétique\n3. Une fois le TPE affecté, il apparaîtra dans cette liste\n\nAllez dans "Demandes TPE" pour créer et traiter des demandes.');
-      return;
-    }
-    
-    let message = 'TPE affectés disponibles:\n\n';
-    this.tpes.slice(0, 10).forEach(tpe => {
-      message += `ID: ${tpe.id} - ${tpe.numeroSerie} (${tpe.marque} ${tpe.modele}) - Statut: ${tpe.statut}\n`;
-    });
-    
-    if (this.tpes.length > 10) {
-      message += `\n... et ${this.tpes.length - 10} autres TPE`;
-    }
-    
-    alert(message);
-  }
-
   loadPannes(): void {
     this.loading = true;
     this.panneService.getAllPannes().subscribe({
       next: (data) => {
-        this.pannes = data;
-        // Enrichir les données avec les informations complètes des TPE
+        this.pannes = this.sortPannes(data || []);
         this.enrichirPannesAvecTPE();
       },
       error: (error) => {
         console.error('Erreur chargement pannes', error);
-        this.showNotification('Erreur lors du chargement des pannes', 'error');
+        this.showNotification(this.getErrorMessage(error, 'Erreur lors du chargement des pannes'), 'error');
         this.loading = false;
       }
     });
@@ -126,19 +136,17 @@ export class PanneListComponent implements OnInit {
 
     this.tpeService.getAllTPE().subscribe({
       next: (tpes) => {
-        // Enrichir chaque panne avec les infos du TPE
         this.pannes.forEach(panne => {
-          const tpe = tpes.find(t => t.id === panne.tpeId);
+          const tpe = tpes.find(t => Number(t.id) === Number(panne.tpeId));
           if (tpe) {
-            panne.tpeNumeroSerie = tpe.numeroSerie;
-            panne.commercantNom = tpe.commercantActuelNom || 'Non affecté';
+            panne.tpeNumeroSerie = panne.tpeNumeroSerie || tpe.numeroSerie;
+            panne.commercantNom = panne.commercantNom || tpe.commercantActuelNom || tpe.commercantNom || 'Non affecte';
           }
         });
         this.appliquerFiltres();
         this.loading = false;
       },
-      error: (error) => {
-        console.error('Erreur enrichissement pannes', error);
+      error: () => {
         this.appliquerFiltres();
         this.loading = false;
       }
@@ -146,10 +154,9 @@ export class PanneListComponent implements OnInit {
   }
 
   appliquerFiltres(): void {
-    this.pannesFiltrees = this.pannes.filter(panne => {
-      const matchStatut = this.filtreStatut === 'TOUS' || panne.statut === this.filtreStatut;
-      return matchStatut;
-    });
+    this.pannesFiltrees = this.sortPannes(this.pannes.filter(panne =>
+      this.filtreStatut === 'TOUS' || panne.statut === this.filtreStatut
+    ));
   }
 
   onFiltreChange(): void {
@@ -157,313 +164,462 @@ export class PanneListComponent implements OnInit {
   }
 
   toggleDeclarationForm(): void {
+    if (!this.canDeclarerPanne()) {
+      this.showNotification('Seule une agence ou un admin peut declarer une panne', 'error');
+      return;
+    }
+
     this.showDeclarationForm = !this.showDeclarationForm;
     if (!this.showDeclarationForm) {
       this.declarationForm.reset();
+      this.clearTpeSearch();
     }
   }
 
   declarerPanne(): void {
+    if (!this.canDeclarerPanne()) {
+      this.showNotification('Seule une agence ou un admin peut declarer une panne', 'error');
+      return;
+    }
+
     if (this.declarationForm.invalid) {
-      this.showNotification('Formulaire invalide', 'error');
+      this.declarationForm.markAllAsTouched();
+      this.showNotification('Renseignez le TPE et au moins un type ou une description', 'error');
+      return;
+    }
+
+    const selectedTpe = this.tpes.find(tpe => Number(tpe.id) === Number(this.declarationForm.value.tpeId));
+    if (selectedTpe && !this.isTPEEligibleForDeclaration(selectedTpe.statut)) {
+      this.showNotification('Le TPE doit etre affecte, en panne ou en maintenance', 'error');
       return;
     }
 
     const panneData = {
-      tpe: {
-        id: this.declarationForm.value.tpeId
-      },
-      description: this.declarationForm.value.description
+      tpeId: Number(this.declarationForm.value.tpeId),
+      description: this.cleanText(this.declarationForm.value.description),
+      typePanne: this.declarationForm.value.typePanne || null,
+      statut: StatutPanne.DECLAREE
     };
 
     this.panneService.declarerPanne(panneData as any).subscribe({
       next: () => {
-        this.showNotification('Panne déclarée avec succès', 'success');
+        this.showNotification('Panne declaree avec succes', 'success');
         this.declarationForm.reset();
         this.showDeclarationForm = false;
+        this.loadTPEs();
         this.loadPannes();
       },
       error: (error) => {
-        console.error('Erreur déclaration panne', error);
-        let message = 'Erreur lors de la déclaration';
-        if (error.error && error.error.message) {
-          if (error.error.message.includes('TPE non trouvé')) {
-            message = `TPE introuvable. Vérifiez l'ID du TPE (${this.declarationForm.value.tpeId}). Allez dans "Gestion TPE" pour voir les TPE disponibles.`;
-          } else {
-            message = error.error.message;
-          }
-        }
-        this.showNotification(message, 'error');
+        console.error('Erreur declaration panne', error);
+        this.showNotification(this.getErrorMessage(error, 'Erreur lors de la declaration'), 'error');
       }
     });
   }
 
-  assignerTechnicien(panne: Panne): void {
-    const technicienId = prompt('ID du technicien à assigner:');
-    if (technicienId) {
-      this.panneService.assignerTechnicien(panne.id!, parseInt(technicienId)).subscribe({
-        next: () => {
-          this.showNotification('Technicien assigné avec succès', 'success');
-          this.loadPannes();
-        },
-        error: (error) => {
-          console.error('Erreur assignation technicien', error);
-          this.showNotification('Erreur lors de l\'assignation', 'error');
-        }
-      });
+  afficherAideTPE(): void {
+    if (this.tpes.length === 0) {
+      alert('Aucun TPE eligible. Le TPE doit deja etre AFFECTE, EN_PANNE ou MAINTENANCE.');
+      return;
     }
+
+    const source = this.tpeSearchTerm ? this.tpesFiltrees : this.tpes;
+    if (source.length === 0) {
+      alert('Aucun TPE ne correspond a la recherche.');
+      return;
+    }
+
+    const lines = source.slice(0, 10).map(tpe => this.getTpeDisplayLabel(tpe));
+    alert(`TPE eligibles disponibles:\n\n${lines.join('\n')}`);
+  }
+
+  onTpeSearchChange(value: string): void {
+    this.tpeSearchTerm = value || '';
+    this.appliquerRechercheTPE();
+    this.clearSelectedTpeIfHidden();
+  }
+
+  clearTpeSearch(): void {
+    this.tpeSearchTerm = '';
+    this.appliquerRechercheTPE();
+  }
+
+  getTpeDisplayLabel(tpe: any): string {
+    if (!tpe) {
+      return '';
+    }
+
+    const parts = [
+      tpe.numeroSerie || `TPE #${tpe.id}`,
+      tpe.marque || '-',
+      tpe.modele || '',
+      tpe.numeroTerminal ? `TID ${tpe.numeroTerminal}` : '',
+      tpe.commercantActuelNom || tpe.commercantNom || '',
+      `(${tpe.statut})`
+    ];
+
+    return parts.filter(part => String(part).trim()).join(' ');
+  }
+
+  ouvrirDetails(panne: Panne): void {
+    this.openWorkflowPanel(panne, 'DETAIL');
   }
 
   diagnostiquerPanne(panne: Panne): void {
-    const diagnostic = prompt('Diagnostic de la panne:');
-    if (diagnostic) {
-      this.panneService.diagnostiquer(panne.id!, diagnostic).subscribe({
-        next: () => {
-          this.showNotification('Diagnostic enregistre avec succes', 'success');
-          this.loadPannes();
-        },
-        error: (error) => {
-          console.error('Erreur diagnostic panne', error);
-          this.showNotification('Erreur lors du diagnostic', 'error');
-        }
-      });
+    if (!this.ensureTransitionAllowed(panne, StatutPanne.DECLAREE)) {
+      return;
     }
+    this.openWorkflowPanel(panne, 'DIAGNOSTIC');
   }
 
   demarrerReparation(panne: Panne): void {
+    if (!this.ensureTransitionAllowed(panne, StatutPanne.DIAGNOSTIQUEE)) {
+      return;
+    }
+
+    this.savingAction = true;
     this.panneService.marquerEnReparation(panne.id!).subscribe({
-      next: () => {
-        this.showNotification('Panne marquee en reparation', 'success');
-        this.loadPannes();
-      },
-      error: (error) => {
-        console.error('Erreur passage en reparation', error);
-        this.showNotification('Erreur lors du changement de statut', 'error');
-      }
+      next: () => this.afterWorkflowSuccess('Panne marquee en reparation'),
+      error: (error) => this.afterWorkflowError(error, 'Erreur lors du demarrage de la reparation')
     });
   }
 
   resoudrePanne(panne: Panne): void {
-    const solution = prompt('Description de la solution:');
-    if (solution) {
-      this.panneService.resoudrePanne(panne.id!, solution).subscribe({
-        next: () => {
-          this.showNotification('Panne résolue avec succès', 'success');
-          this.loadPannes();
-        },
-        error: (error) => {
-          console.error('Erreur résolution panne', error);
-          this.showNotification('Erreur lors de la résolution', 'error');
-        }
-      });
+    if (!this.ensureTransitionAllowed(panne, StatutPanne.EN_REPARATION)) {
+      return;
     }
+    this.openWorkflowPanel(panne, 'RESOLUTION');
   }
 
   marquerIrrecuperable(panne: Panne): void {
-    if (confirm('Confirmer que ce TPE est irrecuperable ?')) {
-      this.panneService.changeStatut(panne.id!, StatutPanne.IRRECUPERABLE).subscribe({
-        next: () => {
-          this.showNotification('Panne marquee irrecuperable', 'success');
-          this.loadPannes();
-        },
-        error: (error) => {
-          console.error('Erreur statut irrecuperable', error);
-          this.showNotification('Erreur lors du changement de statut', 'error');
-        }
+    if (!this.ensureTransitionAllowed(panne, StatutPanne.EN_REPARATION)) {
+      return;
+    }
+    this.openWorkflowPanel(panne, 'IRRECUPERABLE');
+  }
+
+  submitWorkflowAction(): void {
+    if (!this.selectedPanne?.id) {
+      return;
+    }
+
+    if (this.workflowAction === 'DIAGNOSTIC') {
+      const diagnostic = this.cleanText(this.workflowForm.value.diagnostic);
+      if (!diagnostic) {
+        this.showNotification('Le diagnostic est obligatoire', 'error');
+        return;
+      }
+
+      this.savingAction = true;
+      this.panneService.diagnostiquer(this.selectedPanne.id, diagnostic).subscribe({
+        next: () => this.afterWorkflowSuccess('Diagnostic enregistre avec succes'),
+        error: (error) => this.afterWorkflowError(error, 'Erreur lors du diagnostic')
       });
-    }
-  }
-
-  canAssigner(): boolean {
-    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
-  }
-
-  canResoudre(): boolean {
-    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
-  }
-
-  exportToExcel(): void {
-    if (this.pannesFiltrees.length === 0) {
-      this.showNotification('Aucune donnée à exporter', 'info');
       return;
     }
 
-    const dataToExport = this.pannesFiltrees.map(panne => ({
-      'TPE': panne.tpeNumeroSerie || '-',
-      'Commerçant': panne.commercantNom || 'Non affecté',
-      'Type Panne': panne.typePanne,
-      'Description': panne.description,
-      'Urgence': panne.urgence,
-      'Statut': panne.statut,
-      'Déclarant': panne.declarantNom || '-',
-      'Technicien': panne.technicienNom || '-',
-      'Date Déclaration': panne.dateDeclaration ? new Date(panne.dateDeclaration).toLocaleDateString('fr-FR') : '-',
-      'Date Résolution': panne.dateResolution ? new Date(panne.dateResolution).toLocaleDateString('fr-FR') : '-',
-      'Temps Résolution (h)': panne.tempsResolutionHeures || '-',
-      'Diagnostic': panne.diagnostic || '-',
-      'Solution': panne.solution || '-'
-    }));
+    if (this.workflowAction === 'RESOLUTION') {
+      const solution = this.cleanText(this.workflowForm.value.solution);
+      if (!solution) {
+        this.showNotification('La solution est obligatoire', 'error');
+        return;
+      }
 
-    this.excelExportService.exportToExcel(dataToExport, 'pannes_tpe', 'Pannes');
-    this.showNotification('Export Excel effectué avec succès', 'success');
-  }
-
-  exportToPDF(): void {
-    if (this.pannesFiltrees.length === 0) {
-      this.showNotification('Aucune donnée à exporter', 'info');
+      this.savingAction = true;
+      this.panneService.marquerReparee(this.selectedPanne.id, solution).subscribe({
+        next: () => this.afterWorkflowSuccess('Panne resolue avec succes'),
+        error: (error) => this.afterWorkflowError(error, 'Erreur lors de la resolution')
+      });
       return;
     }
 
-    const printContent = this.generatePrintContent();
-    const printWindow = window.open('', '_blank');
-    
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-      
-      this.showNotification('Génération du PDF en cours...', 'success');
+    if (this.workflowAction === 'IRRECUPERABLE') {
+      const nouveauNumeroSerie = this.cleanText(this.workflowForm.value.nouveauNumeroSerie);
+      const nouveauTypeTPE = this.cleanText(this.workflowForm.value.nouveauTypeTPE);
+      const nouvelleMarque = this.cleanText(this.workflowForm.value.nouvelleMarque);
+      const nouveauModele = this.cleanText(this.workflowForm.value.nouveauModele);
+      const commentaire = this.cleanText(this.workflowForm.value.commentaire);
+      const confirmation = Boolean(this.workflowForm.value.confirmationIrrecuperable);
+
+      if (!nouveauNumeroSerie) {
+        this.showNotification('Le nouveau numero de serie est obligatoire', 'error');
+        return;
+      }
+      if (!nouveauTypeTPE) {
+        this.showNotification('Le type du nouveau TPE est obligatoire', 'error');
+        return;
+      }
+      if (!nouvelleMarque) {
+        this.showNotification('La marque du nouveau TPE est obligatoire', 'error');
+        return;
+      }
+      if (!nouveauModele) {
+        this.showNotification('Le modele du nouveau TPE est obligatoire', 'error');
+        return;
+      }
+
+      if (!confirmation) {
+        this.showNotification('Confirmez le remplacement du TPE avant de valider', 'error');
+        return;
+      }
+
+      this.savingAction = true;
+      this.panneService
+        .marquerIrrecuperableAvecRemplacement(
+          this.selectedPanne.id,
+          nouveauNumeroSerie,
+          nouveauTypeTPE,
+          nouvelleMarque,
+          nouveauModele,
+          commentaire
+        )
+        .subscribe({
+          next: () => this.afterWorkflowSuccess('TPE marque irrecuperable et remplace'),
+          error: (error) => this.afterWorkflowError(error, 'Erreur lors du remplacement du TPE')
+        });
     }
   }
 
-  private generatePrintContent(): string {
-    const today = new Date().toLocaleDateString('fr-FR');
-    const pannesHTML = this.pannesFiltrees.map(panne => `
-      <tr>
-        <td>${panne.tpeNumeroSerie || '-'}</td>
-        <td>${panne.commercantNom || 'Non affecté'}</td>
-        <td>${panne.typePanne}</td>
-        <td>${panne.description}</td>
-        <td><span class="badge badge-${this.getStatutBadgeClass(panne.statut)}">${panne.statut}</span></td>
-        <td>${panne.urgence}</td>
-        <td>${panne.technicienNom || 'Non assigné'}</td>
-        <td>${panne.dateDeclaration ? new Date(panne.dateDeclaration).toLocaleDateString('fr-FR') : '-'}</td>
-      </tr>
-    `).join('');
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Liste des Pannes TPE</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #2196F3;
-            padding-bottom: 10px;
-          }
-          .header h1 {
-            color: #2196F3;
-            margin: 0;
-          }
-          .header p {
-            color: #666;
-            margin: 5px 0;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 12px;
-          }
-          th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-          }
-          th {
-            background-color: #2196F3;
-            color: white;
-            font-weight: bold;
-          }
-          tr:nth-child(even) {
-            background-color: #f9f9f9;
-          }
-          .badge {
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-          }
-          .badge-warning { background-color: #ff9800; }
-          .badge-primary { background-color: #2196F3; }
-          .badge-success { background-color: #4CAF50; }
-          .badge-secondary { background-color: #9e9e9e; }
-          .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 11px;
-            color: #666;
-          }
-          @media print {
-            body { margin: 10px; }
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>🛠️ Liste des Pannes TPE</h1>
-          <p>Généré le ${today}</p>
-          <p>Nombre total de pannes: ${this.pannesFiltrees.length}</p>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>TPE</th>
-              <th>Commerçant</th>
-              <th>Type</th>
-              <th>Description</th>
-              <th>Statut</th>
-              <th>Urgence</th>
-              <th>Technicien</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${pannesHTML}
-          </tbody>
-        </table>
-        <div class="footer">
-          <p>Système de Gestion du Parc TPE Bancaire - Document confidentiel</p>
-        </div>
-      </body>
-      </html>
-    `;
+  closeWorkflowPanel(): void {
+    this.selectedPanne = null;
+    this.workflowAction = 'DETAIL';
+    this.workflowForm.reset();
   }
 
-  private getStatutBadgeClass(statut: string): string {
-    const classes: { [key: string]: string } = {
-      'DECLAREE': 'warning',
-      'DIAGNOSTIQUEE': 'primary',
-      'EN_REPARATION': 'primary',
-      'REPAREE': 'success',
-      'TESTEE': 'success',
-      'IRRECUPERABLE': 'secondary'
+  canDeclarerPanne(): boolean {
+    return this.authService.hasAnyRole([Role.ADMIN, Role.AGENCE]);
+  }
+
+  canTraiterPanne(): boolean {
+    return this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE]);
+  }
+
+  canShowDeclarationHint(): boolean {
+    return this.canDeclarerPanne() && this.tpes.length === 0;
+  }
+
+  getTypePanneLabel(typePanne?: TypePanne | string): string {
+    const match = this.panneTypes.find(item => item.value === typePanne);
+    return match ? match.label : (typePanne || '-');
+  }
+
+  getStatutLabel(statut?: string): string {
+    const labels: { [key: string]: string } = {
+      DECLAREE: 'Declaree',
+      DIAGNOSTIQUEE: 'Diagnostiquee',
+      EN_REPARATION: 'En reparation',
+      REPAREE: 'Reparee / resolue',
+      TESTEE: 'Testee',
+      IRRECUPERABLE: 'Irrecuperable'
     };
-    return classes[statut] || 'secondary';
+    return statut ? labels[statut] || statut : '-';
   }
 
   getStatutClass(statut: string): string {
     const classes: { [key: string]: string } = {
-      'DECLAREE': 'badge-warning',
-      'DIAGNOSTIQUEE': 'badge-primary',
-      'EN_REPARATION': 'badge-primary',
-      'REPAREE': 'badge-success',
-      'TESTEE': 'badge-success',
-      'IRRECUPERABLE': 'badge-secondary'
+      DECLAREE: 'badge-warning',
+      DIAGNOSTIQUEE: 'badge-info',
+      EN_REPARATION: 'badge-primary',
+      REPAREE: 'badge-success',
+      TESTEE: 'badge-success',
+      IRRECUPERABLE: 'badge-secondary'
     };
     return classes[statut] || 'badge-default';
+  }
+
+  getStatCount(statut: StatutPanne): number {
+    return this.pannes.filter(panne => panne.statut === statut).length;
+  }
+
+  getEnCoursCount(): number {
+    return this.pannes.filter(panne =>
+      [StatutPanne.DECLAREE, StatutPanne.DIAGNOSTIQUEE, StatutPanne.EN_REPARATION].includes(panne.statut)
+    ).length;
+  }
+
+  getNextActionLabel(panne: Panne): string {
+    if (!this.canTraiterPanne()) {
+      return 'Consulter';
+    }
+    if (panne.statut === StatutPanne.DECLAREE) {
+      return 'Diagnostiquer';
+    }
+    if (panne.statut === StatutPanne.DIAGNOSTIQUEE) {
+      return 'Demarrer';
+    }
+    if (panne.statut === StatutPanne.EN_REPARATION) {
+      return 'Finaliser';
+    }
+    return 'Consulter';
+  }
+
+  exportToExcel(): void {
+    this.exportingExcel = true;
+    this.panneService.exportRapportPannes().subscribe({
+      next: (blob) => {
+        this.saveBlob(blob, 'pannes_tpe.xlsx');
+        this.showNotification('Export Excel genere avec succes', 'success');
+        this.exportingExcel = false;
+      },
+      error: (error) => {
+        this.exportingExcel = false;
+        this.showNotification(this.getErrorMessage(error, 'Erreur lors de l export Excel'), 'error');
+      }
+    });
+  }
+
+  exportToPDF(): void {
+    this.exportingPdf = true;
+    this.panneService.exportRapportPannesPdf().subscribe({
+      next: (blob) => {
+        this.saveBlob(blob, 'pannes_tpe.pdf');
+        this.showNotification('Export PDF genere avec succes', 'success');
+        this.exportingPdf = false;
+      },
+      error: (error) => {
+        this.exportingPdf = false;
+        this.showNotification(this.getErrorMessage(error, 'Erreur lors de l export PDF'), 'error');
+      }
+    });
+  }
+
+  private openWorkflowPanel(panne: Panne, action: WorkflowAction): void {
+    this.selectedPanne = panne;
+    this.workflowAction = action;
+    this.workflowForm.reset({
+      diagnostic: panne.diagnostic || '',
+      solution: panne.actionCorrective || panne.solution || '',
+      nouveauNumeroSerie: '',
+      nouveauTypeTPE: '',
+      nouvelleMarque: '',
+      nouveauModele: '',
+      commentaire: panne.commentaireTechnicien || '',
+      confirmationIrrecuperable: false
+    });
+  }
+
+  isIrrecuperableReady(): boolean {
+    return Boolean(
+      this.cleanText(this.workflowForm.value.nouveauNumeroSerie)
+      && this.cleanText(this.workflowForm.value.nouveauTypeTPE)
+      && this.cleanText(this.workflowForm.value.nouvelleMarque)
+      && this.cleanText(this.workflowForm.value.nouveauModele)
+      && this.workflowForm.value.confirmationIrrecuperable
+    );
+  }
+
+  private ensureTransitionAllowed(panne: Panne, expectedStatut: StatutPanne): boolean {
+    if (!this.canTraiterPanne()) {
+      this.showNotification('Seul Monetique ou Admin peut traiter une panne', 'error');
+      return false;
+    }
+
+    if (panne.statut !== expectedStatut) {
+      this.showNotification(`Action autorisee uniquement depuis ${expectedStatut}`, 'error');
+      return false;
+    }
+
+    return true;
+  }
+
+  private afterWorkflowSuccess(message: string): void {
+    this.savingAction = false;
+    this.showNotification(message, 'success');
+    this.closeWorkflowPanel();
+    this.loadTPEs();
+    this.loadPannes();
+  }
+
+  private afterWorkflowError(error: any, fallback: string): void {
+    console.error(fallback, error);
+    this.savingAction = false;
+    this.showNotification(this.getErrorMessage(error, fallback), 'error');
+  }
+
+  private requireTypeOrDescription(group: AbstractControl): ValidationErrors | null {
+    const typePanne = group.get('typePanne')?.value as string | undefined;
+    const description = group.get('description')?.value as string | undefined;
+    return (typePanne && typePanne.trim()) || (description && description.trim())
+      ? null
+      : { typeOrDescriptionRequired: true };
+  }
+
+  private isTPEEligibleForDeclaration(statut: StatutTPE | string): boolean {
+    return [
+      StatutTPE.AFFECTE,
+      StatutTPE.EN_PANNE,
+      StatutTPE.MAINTENANCE,
+      'EN_MAINTENANCE'
+    ].includes(statut as any);
+  }
+
+  private appliquerRechercheTPE(): void {
+    const term = this.normalizeSearch(this.tpeSearchTerm);
+
+    if (!term) {
+      this.tpesFiltrees = [...this.tpes];
+      return;
+    }
+
+    this.tpesFiltrees = this.tpes.filter(tpe => this.normalizeSearch([
+      tpe.id,
+      tpe.numeroSerie,
+      tpe.serieTpe,
+      tpe.numeroTerminal,
+      tpe.marque,
+      tpe.modele,
+      tpe.typeTpe,
+      tpe.typeTPE,
+      tpe.statut,
+      tpe.commercantActuelNom,
+      tpe.commercantNom,
+      tpe.raisonSociale,
+      tpe.numeroAffiliation
+    ].join(' ')).includes(term));
+  }
+
+  private clearSelectedTpeIfHidden(): void {
+    const selectedTpeId = this.declarationForm.get('tpeId')?.value;
+
+    if (!selectedTpeId) {
+      return;
+    }
+
+    const selectedTpeIsVisible = this.tpesFiltrees.some(tpe =>
+      Number(tpe.id) === Number(selectedTpeId)
+    );
+
+    if (!selectedTpeIsVisible) {
+      this.declarationForm.patchValue({ tpeId: '' });
+    }
+  }
+
+  private normalizeSearch(value: unknown): string {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  private sortPannes(pannes: Panne[]): Panne[] {
+    return [...pannes].sort((a, b) => {
+      const dateA = a.dateDeclaration ? new Date(a.dateDeclaration).getTime() : 0;
+      const dateB = b.dateDeclaration ? new Date(b.dateDeclaration).getTime() : 0;
+      return dateB - dateA;
+    });
+  }
+
+  private cleanText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private saveBlob(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }
 
   private showNotification(message: string, type: 'success' | 'error' | 'info'): void {
@@ -473,5 +629,12 @@ export class PanneListComponent implements OnInit {
       verticalPosition: 'top',
       panelClass: [`snackbar-${type}`]
     });
+  }
+
+  private getErrorMessage(error: any, fallback: string): string {
+    if (typeof error?.error === 'string') {
+      return error.error;
+    }
+    return error?.error?.message || error?.message || fallback;
   }
 }

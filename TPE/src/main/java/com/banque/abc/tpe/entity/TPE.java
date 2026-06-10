@@ -1,7 +1,6 @@
 package com.banque.abc.tpe.entity;
 
 import com.banque.abc.tpe.entity.enums.StatutTPE;
-import com.banque.abc.tpe.entity.enums.TypeTPE;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,9 +17,8 @@ import java.util.List;
 @Builder
 public class TPE extends BaseEntity {
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TypeTPE typeTPE;
+    @Column(nullable = false, length = 50, columnDefinition = "VARCHAR(50)")
+    private String typeTPE;
 
     @Column(nullable = false, unique = true)
     private String numeroSerie;

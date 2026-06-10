@@ -1,9 +1,7 @@
 package com.banque.abc.tpe.dto.tpe;
 
-import com.banque.abc.tpe.entity.enums.StatutTPE;
-import com.banque.abc.tpe.entity.enums.TypeTPE;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class TPERequest {
     
-    private TypeTPE typeTPE;
+    private String typeTPE;
     
     private String numeroSerie;
     
@@ -45,7 +43,9 @@ public class TPERequest {
 
     private String serieTpe;
 
-    private LocalDate valueDate;
+    @Min(value = 1, message = "La value date doit etre 1 ou 2")
+    @Max(value = 2, message = "La value date doit etre 1 ou 2")
+    private Integer valueDate = 1;
 
     private Double loyer;
 

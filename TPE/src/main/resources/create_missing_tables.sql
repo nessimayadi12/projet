@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS commercants (
     statut VARCHAR(50) NOT NULL DEFAULT 'ACTIF',
     loyer DOUBLE,
     rne_file_path VARCHAR(255),
-    email_notification VARCHAR(255),
     type_commerce VARCHAR(50),
     url_site_marchand VARCHAR(255),
     webhook_url VARCHAR(255),

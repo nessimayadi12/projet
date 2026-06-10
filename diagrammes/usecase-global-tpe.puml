@@ -1,0 +1,265 @@
+@startuml
+' Diagramme de cas d'utilisation global - Systeme de Gestion du Parc TPE Bancaire
+' Source d'analyse:
+' - Backend Spring Boot: controllers, services, SecurityConfig, DataInitializer
+' - Frontend Angular: routes, sidebar, guards, permissions screenCode
+' - Regles metier: workflow demandes, affectation TPE, controle 4 yeux, import bancaire
+
+title Systeme de Gestion du Parc TPE Bancaire - Diagramme de cas d'utilisation global
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #F8FAFC
+  BorderColor #2563EB
+  FontColor #111827
+}
+skinparam actor {
+  BorderColor #111827
+  FontColor #111827
+}
+skinparam rectangle {
+  BorderColor #0F766E
+  FontColor #111827
+}
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #F97316
+  FontColor #111827
+}
+
+actor "Utilisateur\nauthentifie" as User
+actor "Administrateur" as Admin
+actor "Service\nMonetique" as Monetique
+actor "Agence\nbancaire" as Agence
+actor "Inputer\n(Monetique)" as Inputer
+actor "Authorizer\n(Monetique)" as Authorizer
+actor "Microsoft\nPower BI" as PowerBI <<systeme_externe>>
+actor "Flux bancaire\nTXT" as BankFlow <<systeme_externe>>
+
+Admin --|> User
+Monetique --|> User
+Agence --|> User
+Inputer --|> Monetique
+Authorizer --|> Monetique
+
+rectangle "Systeme de Gestion du Parc TPE Bancaire" as System {
+
+  package "Securite et administration" {
+    usecase "Se connecter\n(JWT)" as UC_AUTH
+    usecase "Consulter son\nprofil" as UC_PROFILE
+    usecase "Gerer utilisateurs" as UC_USERS
+    usecase "Gerer ecrans,\nroles et permissions" as UC_PERMISSIONS
+    usecase "Controler acces\nscreenCode + droits" as UC_ACCESS
+  }
+
+  package "Pilotage et reporting" {
+    usecase "Consulter tableaux\nde bord" as UC_DASHBOARD
+    usecase "Analyser indicateurs\nTPE, demandes,\npannes, commercants" as UC_ANALYTICS
+    usecase "Exporter listes\nExcel / PDF" as UC_EXPORT
+    usecase "Consulter rapports\nPower BI" as UC_POWERBI
+  }
+
+  package "Referentiel TPE et commercants" {
+    usecase "Consulter parc TPE" as UC_TPE_VIEW
+    usecase "Creer, modifier,\nsupprimer TPE" as UC_TPE_MANAGE
+    usecase "Changer statut TPE" as UC_TPE_STATUS
+    usecase "Importer parc TPE\nExcel" as UC_TPE_IMPORT
+    usecase "Consulter lignes\nd'import TPE" as UC_TPE_IMPORT_RECORDS
+    usecase "Generer numero\nterminal TID" as UC_TID
+
+    usecase "Consulter\ncommercants" as UC_MERCHANT_VIEW
+    usecase "Creer, modifier,\nsupprimer commercant" as UC_MERCHANT_MANAGE
+    usecase "Activer / desactiver\ncommercant" as UC_MERCHANT_STATUS
+  }
+
+  package "Demandes TPE et affectations" {
+    usecase "Creer demande TPE" as UC_REQUEST_CREATE
+    usecase "Consulter, modifier\net imprimer demande" as UC_REQUEST_FOLLOW
+    usecase "Joindre / telecharger\npiece justificative" as UC_ATTACH
+    usecase "Identifier ou creer\ncommercant" as UC_RESOLVE_MERCHANT
+    usecase "Saisir donnees\nmonetiques" as UC_REQUEST_INPUT
+    usecase "Valider ou rejeter\ndemande" as UC_REQUEST_AUTHORIZE
+    usecase "Affecter TPE\nau commercant" as UC_AFFECT
+    usecase "Mettre en service\nou desaffecter TPE" as UC_SERVICE
+    usecase "Cloturer demande" as UC_CLOSE_REQUEST
+  }
+
+  package "Taux TPE - controle 4 yeux" {
+    usecase "Saisir taux\ncommercant" as UC_RATE_INPUT
+    usecase "Soumettre taux\na validation" as UC_RATE_SUBMIT
+    usecase "Valider ou rejeter\ntaux" as UC_RATE_AUTHORIZE
+    usecase "Consulter taux\npar commercant" as UC_RATE_VIEW
+    usecase "Controler regle\nInputer != Authorizer" as UC_FOUR_EYES
+  }
+
+  package "Maintenance TPE" {
+    usecase "Declarer panne TPE" as UC_FAILURE_DECLARE
+    usecase "Consulter et filtrer\npannes" as UC_FAILURE_VIEW
+    usecase "Assigner technicien" as UC_FAILURE_ASSIGN
+    usecase "Diagnostiquer,\nreparer et tester" as UC_FAILURE_REPAIR
+    usecase "Affecter TPE\nde remplacement" as UC_FAILURE_REPLACE
+    usecase "Exporter rapport\npannes" as UC_FAILURE_EXPORT
+  }
+
+  package "Transactions bancaires" {
+    usecase "Importer fichier\nbancaire TXT" as UC_BANK_IMPORT
+    usecase "Traiter transactions\nType 10 / Type 20" as UC_BANK_PROCESS
+    usecase "Verifier TPE et\ncommercant affecte" as UC_BANK_VERIFY
+    usecase "Generer ecritures\ncomptables" as UC_BANK_POSTINGS
+    usecase "Consulter transactions\npar session" as UC_BANK_VIEW
+    usecase "Generer rapports\nPDF / texte" as UC_BANK_REPORTS
+  }
+
+  package "Transverse" {
+    usecase "Tracer actions\nmetier" as UC_AUDIT
+  }
+}
+
+' Associations acteurs - cas d'utilisation
+User --> UC_AUTH
+User --> UC_PROFILE
+
+Admin --> UC_USERS
+Admin --> UC_PERMISSIONS
+Admin --> UC_DASHBOARD
+Admin --> UC_EXPORT
+Admin --> UC_POWERBI
+Admin --> UC_TPE_VIEW
+Admin --> UC_TPE_MANAGE
+Admin --> UC_TPE_IMPORT
+Admin --> UC_MERCHANT_VIEW
+Admin --> UC_MERCHANT_MANAGE
+Admin --> UC_REQUEST_CREATE
+Admin --> UC_REQUEST_FOLLOW
+Admin --> UC_REQUEST_INPUT
+Admin --> UC_REQUEST_AUTHORIZE
+Admin --> UC_AFFECT
+Admin --> UC_RATE_INPUT
+Admin --> UC_RATE_AUTHORIZE
+Admin --> UC_FAILURE_DECLARE
+Admin --> UC_FAILURE_REPAIR
+Admin --> UC_BANK_IMPORT
+Admin --> UC_BANK_VIEW
+
+Monetique --> UC_DASHBOARD
+Monetique --> UC_EXPORT
+Monetique --> UC_POWERBI
+Monetique --> UC_TPE_VIEW
+Monetique --> UC_TPE_MANAGE
+Monetique --> UC_TPE_IMPORT
+Monetique --> UC_TPE_IMPORT_RECORDS
+Monetique --> UC_MERCHANT_VIEW
+Monetique --> UC_MERCHANT_MANAGE
+Monetique --> UC_REQUEST_FOLLOW
+Monetique --> UC_AFFECT
+Monetique --> UC_SERVICE
+Monetique --> UC_FAILURE_DECLARE
+Monetique --> UC_FAILURE_VIEW
+Monetique --> UC_FAILURE_ASSIGN
+Monetique --> UC_FAILURE_REPAIR
+Monetique --> UC_FAILURE_REPLACE
+Monetique --> UC_FAILURE_EXPORT
+Monetique --> UC_BANK_IMPORT
+Monetique --> UC_BANK_VIEW
+Monetique --> UC_BANK_REPORTS
+
+Agence --> UC_TPE_VIEW
+Agence --> UC_MERCHANT_VIEW
+Agence --> UC_REQUEST_CREATE
+Agence --> UC_REQUEST_FOLLOW
+Agence --> UC_ATTACH
+Agence --> UC_CLOSE_REQUEST
+Agence --> UC_FAILURE_DECLARE
+Agence --> UC_FAILURE_VIEW
+
+Inputer --> UC_REQUEST_INPUT
+Inputer --> UC_RATE_INPUT
+Inputer --> UC_RATE_SUBMIT
+Inputer --> UC_RATE_VIEW
+
+Authorizer --> UC_REQUEST_AUTHORIZE
+Authorizer --> UC_RATE_AUTHORIZE
+Authorizer --> UC_RATE_VIEW
+
+PowerBI -- UC_POWERBI
+BankFlow -- UC_BANK_IMPORT
+
+' Relations UML include / extend
+UC_PROFILE .> UC_ACCESS : <<include>>
+UC_DASHBOARD .> UC_ACCESS : <<include>>
+UC_PERMISSIONS .> UC_ACCESS : <<include>>
+
+UC_DASHBOARD .> UC_ANALYTICS : <<include>>
+UC_EXPORT .> UC_ANALYTICS : <<include>>
+UC_POWERBI .> UC_ANALYTICS : <<extend>>
+
+UC_TPE_MANAGE .> UC_TPE_VIEW : <<include>>
+UC_TPE_STATUS .> UC_TPE_MANAGE : <<extend>>
+UC_TPE_IMPORT .> UC_TPE_MANAGE : <<include>>
+UC_TPE_IMPORT_RECORDS .> UC_TPE_IMPORT : <<extend>>
+UC_TID .> UC_TPE_MANAGE : <<extend>>
+
+UC_MERCHANT_MANAGE .> UC_MERCHANT_VIEW : <<include>>
+UC_MERCHANT_STATUS .> UC_MERCHANT_MANAGE : <<extend>>
+
+UC_REQUEST_CREATE .> UC_RESOLVE_MERCHANT : <<include>>
+UC_RESOLVE_MERCHANT .> UC_MERCHANT_VIEW : <<include>>
+UC_RESOLVE_MERCHANT .> UC_MERCHANT_MANAGE : <<extend>>
+UC_ATTACH .> UC_REQUEST_FOLLOW : <<extend>>
+UC_REQUEST_INPUT .> UC_REQUEST_FOLLOW : <<extend>>
+UC_REQUEST_INPUT .> UC_TID : <<include>>
+UC_REQUEST_AUTHORIZE .> UC_REQUEST_FOLLOW : <<extend>>
+UC_REQUEST_AUTHORIZE .> UC_FOUR_EYES : <<include>>
+UC_AFFECT .> UC_REQUEST_AUTHORIZE : <<extend>>
+UC_AFFECT .> UC_TPE_VIEW : <<include>>
+UC_SERVICE .> UC_AFFECT : <<extend>>
+UC_CLOSE_REQUEST .> UC_REQUEST_FOLLOW : <<extend>>
+
+UC_RATE_SUBMIT .> UC_RATE_INPUT : <<extend>>
+UC_RATE_AUTHORIZE .> UC_RATE_VIEW : <<include>>
+UC_RATE_AUTHORIZE .> UC_FOUR_EYES : <<include>>
+
+UC_FAILURE_REPAIR .> UC_FAILURE_VIEW : <<include>>
+UC_FAILURE_ASSIGN .> UC_FAILURE_VIEW : <<extend>>
+UC_FAILURE_REPLACE .> UC_FAILURE_REPAIR : <<extend>>
+UC_FAILURE_EXPORT .> UC_FAILURE_VIEW : <<include>>
+
+UC_BANK_IMPORT .> UC_BANK_PROCESS : <<include>>
+UC_BANK_PROCESS .> UC_BANK_VERIFY : <<include>>
+UC_BANK_PROCESS .> UC_BANK_POSTINGS : <<include>>
+UC_BANK_REPORTS .> UC_BANK_VIEW : <<include>>
+
+UC_TPE_MANAGE .> UC_AUDIT : <<include>>
+UC_MERCHANT_MANAGE .> UC_AUDIT : <<include>>
+UC_REQUEST_CREATE .> UC_AUDIT : <<include>>
+UC_REQUEST_AUTHORIZE .> UC_AUDIT : <<include>>
+UC_AFFECT .> UC_AUDIT : <<include>>
+UC_RATE_INPUT .> UC_AUDIT : <<include>>
+UC_RATE_AUTHORIZE .> UC_AUDIT : <<include>>
+
+note right of UC_ACCESS
+  Detecte dans AuthGuard, JwtAuthenticationFilter,
+  SecurityConfig et ScreenService.
+  Les droits dynamiques utilisent:
+  canView, canCreate, canEdit,
+  canDelete, canExport.
+end note
+
+note right of UC_FOUR_EYES
+  Regle critique implementee dans
+  DemandeService et TauxService:
+  un utilisateur ne peut pas valider
+  ses propres saisies.
+end note
+
+note bottom of UC_AFFECT
+  AffectationService verifie:
+  - demande VALIDEE_MONETIQUE
+  - absence d'affectation active
+  - TPE disponible ou creation depuis la demande
+end note
+
+@enduml

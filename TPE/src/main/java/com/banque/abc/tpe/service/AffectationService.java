@@ -32,7 +32,6 @@ public class AffectationService {
     private final CommercantRepository commercantRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
-    private final NotificationService notificationService;
     private final ModelMapper modelMapper;
 
     @Transactional
@@ -75,7 +74,7 @@ public class AffectationService {
                                 .numeroSerie(numeroSerie)
                                 .marque(request.getMarque() != null ? request.getMarque() : "Generic")
                                 .modele(request.getModele() != null ? request.getModele() : "Standard")
-                                .typeTPE(demande.getTypeDemande())
+                                .typeTPE(demande.getTypeDemande().name())
                                 .statut(StatutTPE.DISPONIBLE)
                                 .dateAcquisition(LocalDate.now())
                                 .build();
@@ -86,7 +85,7 @@ public class AffectationService {
         else {
             List<TPE> tpesDisponibles = tpeRepository.findByStatutAndTypeTPE(
                     StatutTPE.DISPONIBLE, 
-                    demande.getTypeDemande()
+                    demande.getTypeDemande().name()
             );
             
             if (tpesDisponibles.isEmpty()) {
@@ -97,6 +96,7 @@ public class AffectationService {
         }
 
         // Mettre à jour le statut du TPE
+        tpe.setCommercant(demande.getCommercant());
         tpe.setStatut(StatutTPE.AFFECTE);
         tpeRepository.save(tpe);
 
@@ -128,9 +128,6 @@ public class AffectationService {
         auditService.logAction("CREATE", "Affectation", savedAffectation.getId().toString(),
                 "TPE " + tpe.getNumeroTerminal() + " affecté au commerçant " + demande.getCommercant().getRaisonSociale(),
                 "SUCCESS");
-
-        // Notification
-        notificationService.notifierAffectationTPE(affectation);
 
         return mapToResponse(savedAffectation);
     }
@@ -190,6 +187,7 @@ public class AffectationService {
 
         // Remettre le TPE en disponible (ou en maintenance selon le motif)
         TPE tpe = affectation.getTpe();
+        tpe.setCommercant(null);
         tpe.setStatut(StatutTPE.DISPONIBLE);
         tpeRepository.save(tpe);
 

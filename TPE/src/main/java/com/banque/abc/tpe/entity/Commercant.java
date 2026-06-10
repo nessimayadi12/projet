@@ -44,16 +44,15 @@ public class Commercant extends BaseEntity {
     @Column(nullable = false)
     private StatutCommercant statut = StatutCommercant.ACTIF;
 
-    // Spécifique TPE Physique
+    // Spécifique TPE
     private Double loyer;
 
     @Column(name = "rne_file_path")
     private String rneFilePath;
 
-    private String emailNotification;
-
-    // Spécifique E-commerce
+    // Spécifique Mobile
     @Enumerated(EnumType.STRING)
+    @Column(name = "type_commerce", length = 50, columnDefinition = "VARCHAR(50)")
     private TypeTPE typeCommerce;
 
     private String urlSiteMarchand;
@@ -78,4 +77,12 @@ public class Commercant extends BaseEntity {
 
     @OneToMany(mappedBy = "commercant", cascade = CascadeType.ALL)
     private List<Taux> taux = new ArrayList<>();
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeTypeCommerce() {
+        if (typeCommerce != null) {
+            typeCommerce = typeCommerce.canonical();
+        }
+    }
 }

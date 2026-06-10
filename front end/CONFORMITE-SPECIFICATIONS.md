@@ -163,7 +163,6 @@ enum StatutDemande {
 | Fonctionnalité | Implémentation | Fichier | Statut |
 |----------------|----------------|---------|:------:|
 | Demande TPE/E-com par Agence | `createDemande()` | DemandeService | ✅ |
-| Notifications email | `envoyerNotification()` | NotificationService | ✅ |
 | Commentaires | `ajouterCommentaire()` | DemandeService | ✅ |
 | Pièces jointes | `uploadPieceJointe()` | DemandeService | ✅ |
 | Workflow 6 états | StatutDemande enum | models/demande.model.ts | ✅ |
@@ -416,7 +415,7 @@ public TauxTPE validerTaux(@PathVariable Long id) {
 | Numéro compte | `numeroCompte: FormControl` | tpe-form.component.ts | ✅ |
 | Code Agence | `codeAgence: FormControl` | tpe-form.component.ts | ✅ |
 | Série TPE | `numeroSerie: FormControl` | tpe-form.component.ts | ✅ |
-| Value Date | `valueDate: FormControl` | tpe-form.component.ts | ✅ |
+| Value Date (1 ou 2) | `valueDate: FormControl` | tpe-form.component.ts | ✅ |
 | **N° Terminal (auto)** | `numeroTerminal: FormControl (disabled)` | **tpe-form.component.ts** | ✅ |
 
 **Code de génération TID** :
@@ -454,7 +453,6 @@ genererTID(): void {
 | Téléphone | `telephone: FormControl` | Commercant | ✅ |
 | Loyer | `loyer: FormControl` | Commercant | ✅ |
 | RNE (file) | `fichierRNE: File` | `uploadFichierRNE()` | ✅ |
-| Email Notification | `email: FormControl` | Commercant | ✅ |
 
 **Conformité** : ✅ **100%** (11/11 champs)
 
@@ -569,7 +567,6 @@ Résultat : 23041008 5 ✅
 | Téléphone | `telephone: string` | Commercant | ✅ |
 | RNE (fichier) | `fichierRNE: File` | Upload | ✅ |
 | Webmaster | `contactTechnique: string` | Commercant | ✅ |
-| Email Notification | `email: string` | Commercant | ✅ |
 
 **Conformité** : ✅ **100%** (11/11 champs)
 

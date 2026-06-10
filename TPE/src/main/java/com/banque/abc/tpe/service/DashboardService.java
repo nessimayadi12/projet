@@ -1,6 +1,8 @@
 package com.banque.abc.tpe.service;
 
 import com.banque.abc.tpe.dto.DashboardStatsDTO;
+import com.banque.abc.tpe.entity.HistoriqueStatut;
+import com.banque.abc.tpe.entity.TPE;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
 import com.banque.abc.tpe.entity.enums.StatutPanne;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
@@ -55,12 +57,10 @@ public class DashboardService {
                 : 0.0;
 
             // Demandes
-            Long demandesNouvelles = demandeRepository.countByStatut(StatutDemande.NOUVELLE);
-            Long demandesEnCours = demandeRepository.countByStatut(StatutDemande.EN_COURS);
-            Long demandesEnAttente = (demandesNouvelles != null ? demandesNouvelles : 0L) + (demandesEnCours != null ? demandesEnCours : 0L);
-            demandesNouvelles = demandesNouvelles != null ? demandesNouvelles : 0L;
-            demandesEnCours = demandesEnCours != null ? demandesEnCours : 0L;
-            demandesEnAttente = demandesEnAttente != null ? demandesEnAttente : 0L;
+            Long demandesNouvelles = safeCount(demandeRepository.countByStatut(StatutDemande.NOUVELLE));
+            Long demandesEnCours = safeCount(demandeRepository.countByStatut(StatutDemande.EN_COURS));
+            Long demandesValideesMonetique = safeCount(demandeRepository.countByStatut(StatutDemande.VALIDEE_MONETIQUE));
+            Long demandesEnAttente = demandesNouvelles + demandesEnCours + demandesValideesMonetique;
 
             // Pannes en cours - utiliser une valeur par défaut
             Long pannesEnCours = 0L;
@@ -208,6 +208,33 @@ public class DashboardService {
         }
     }
 
+    private long safeCount(Long value) {
+        return value != null ? value : 0L;
+    }
+
+    private List<StatutDemande> pendingDemandStatuses() {
+        return List.of(
+            StatutDemande.NOUVELLE,
+            StatutDemande.EN_COURS,
+            StatutDemande.VALIDEE_MONETIQUE
+        );
+    }
+
+    private List<StatutDemande> terminalDemandStatuses() {
+        return List.of(
+            StatutDemande.AFFECTEE,
+            StatutDemande.CLOTUREE,
+            StatutDemande.REJETEE
+        );
+    }
+
+    private List<StatutDemande> convertedDemandStatuses() {
+        return List.of(
+            StatutDemande.AFFECTEE,
+            StatutDemande.CLOTUREE
+        );
+    }
+
     public List<Map<String, Object>> getDemandesParStatut() {
         List<Object[]> results = demandeRepository.countByStatutGrouped();
         if (results == null) {
@@ -243,9 +270,9 @@ public class DashboardService {
     public List<Map<String, Object>> getEvolutionMensuelle() {
         // Évolution des 6 derniers mois
         LocalDate now = LocalDate.now();
-        return java.util.stream.IntStream.range(0, 6)
+        return java.util.stream.IntStream.rangeClosed(0, 5)
             .mapToObj(i -> {
-                YearMonth month = YearMonth.from(now.minusMonths(i));
+                YearMonth month = YearMonth.from(now.minusMonths(5 - i));
                 LocalDateTime debut = month.atDay(1).atStartOfDay();
                 LocalDateTime fin = month.atEndOfMonth().atTime(23, 59, 59);
 
@@ -336,20 +363,36 @@ public class DashboardService {
         }
 
         try {
-            List<Object[]> rows = historiqueStatutRepository.countChangesByMonthSince(startMonth.atDay(1).atStartOfDay());
-            if (rows != null) {
-                for (Object[] row : rows) {
-                    if (row == null || row.length < 4 || row[0] == null || row[1] == null || row[2] == null) {
+            List<TPE> tpes = tpeRepository.findAll();
+            Map<Long, List<HistoriqueStatut>> historiesByTpe = historiqueStatutRepository.findAll().stream()
+                .filter(history -> history.getTpe() != null && history.getTpe().getId() != null)
+                .collect(Collectors.groupingBy(history -> history.getTpe().getId()));
+
+            historiesByTpe.values().forEach(histories ->
+                histories.sort(Comparator.comparing(
+                    HistoriqueStatut::getDateChangement,
+                    Comparator.nullsFirst(Comparator.naturalOrder())
+                ).reversed())
+            );
+
+            for (YearMonth month : months) {
+                LocalDateTime fin = month.atEndOfMonth().atTime(23, 59, 59);
+                Map<String, Long> values = evolution.get(month);
+
+                for (TPE tpe : tpes) {
+                    if (tpe.getCreatedDate() != null && tpe.getCreatedDate().isAfter(fin)) {
                         continue;
                     }
-                    YearMonth month = YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue());
-                    Map<String, Long> values = evolution.get(month);
-                    if (values == null) {
-                        continue;
+
+                    StatutTPE statut = resolveTpeStatusAt(
+                        tpe,
+                        historiesByTpe.getOrDefault(tpe.getId(), List.of()),
+                        fin
+                    );
+
+                    if (statut != null && values.containsKey(statut.name())) {
+                        values.put(statut.name(), values.get(statut.name()) + 1);
                     }
-                    String statut = row[2].toString();
-                    Long count = row[3] != null ? ((Number) row[3]).longValue() : 0L;
-                    values.put(statut, count);
                 }
             }
         } catch (Exception e) {
@@ -368,6 +411,19 @@ public class DashboardService {
                 return result;
             })
             .collect(Collectors.toList());
+    }
+
+    private StatutTPE resolveTpeStatusAt(TPE tpe, List<HistoriqueStatut> histories, LocalDateTime endOfMonth) {
+        StatutTPE status = tpe.getStatut();
+        for (HistoriqueStatut history : histories) {
+            if (history.getDateChangement() == null || !history.getDateChangement().isAfter(endOfMonth)) {
+                break;
+            }
+            if (history.getAncienStatut() != null) {
+                status = history.getAncienStatut();
+            }
+        }
+        return status;
     }
 
     public List<Map<String, Object>> getStatistiquesParAgence() {
@@ -423,10 +479,30 @@ public class DashboardService {
     public Map<String, Object> getPerformanceDemandes() {
         Map<String, Object> performance = new HashMap<>();
         long totalDemandes = demandeRepository.count();
-        long demandesTraitees = demandeRepository.countByStatut(StatutDemande.CLOTUREE);
+        long demandesTraitees = safeCount(demandeRepository.countByStatutIn(terminalDemandStatuses()));
+        long demandesConverties = safeCount(demandeRepository.countByStatutIn(convertedDemandStatuses()));
+        long demandesEnAttente = safeCount(demandeRepository.countByStatutIn(pendingDemandStatuses()));
+
+        YearMonth currentMonth = YearMonth.now();
+        LocalDateTime debutMois = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime finMois = currentMonth.atEndOfMonth().atTime(23, 59, 59);
+        long demandesClotureesCeMois = safeCount(demandeRepository.countByStatutInAndDateClotureBetween(
+            terminalDemandStatuses(), debutMois, finMois));
+        long demandesEnRetard = safeCount(demandeRepository.countPendingOlderThan(
+            pendingDemandStatuses(), LocalDateTime.now().minusHours(48)));
+        long demandesAvecDelai = safeCount(demandeRepository.countTerminalWithCompletionDate());
+        long demandesDansSla = safeCount(demandeRepository.countTerminalWithinSla(48));
+        double slaRespect = demandesAvecDelai > 0 ? (demandesDansSla * 100.0) / demandesAvecDelai : 0.0;
+
         performance.put("totalDemandes", totalDemandes);
         performance.put("demandesTraitees", demandesTraitees);
+        performance.put("demandesConverties", demandesConverties);
+        performance.put("demandesEnAttente", demandesEnAttente);
+        performance.put("demandesClotureesCeMois", demandesClotureesCeMois);
+        performance.put("demandesEnRetard", demandesEnRetard);
+        performance.put("slaRespect", slaRespect);
         performance.put("delaiMoyen", getAverageTreatmentDelayHours());
+        performance.put("tauxConversion", totalDemandes > 0 ? (demandesConverties * 100.0) / totalDemandes : 0.0);
         performance.put("tauxSatisfaction", totalDemandes > 0 ? (demandesTraitees * 100.0) / totalDemandes : 0.0);
         return performance;
     }

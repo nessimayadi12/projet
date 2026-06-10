@@ -210,8 +210,8 @@
         <div class="col-lg-12 col-md-12">
           <div class="card">
             <div class="card-header card-header-primary">
-              <h4 class="card-title">Analyse de Pareto - Top 10 TPE Problématiques</h4>
-              <p class="card-category">80% des pannes proviennent de 20% des TPE</p>
+              <h4 class="card-title">Analyse de Pareto - Types de pannes fréquents</h4>
+              <p class="card-category">Catégories les plus représentées dans les déclarations</p>
             </div>
             <div class="card-body">
               <div style="height: 350px;">
@@ -219,7 +219,7 @@
               </div>
               <div class="alert alert-info mt-3">
                 <strong><i class="material-icons" style="vertical-align: middle;">info</i> Recommandation :</strong>
-                Remplacer ces 10 TPE en priorité pour réduire 80% des pannes récurrentes.
+                Prioriser les catégories les plus fréquentes pour réduire les pannes récurrentes.
               </div>
             </div>
           </div>
@@ -241,48 +241,36 @@
               </div>
               <div class="alert alert-warning mt-3">
                 <strong><i class="material-icons" style="vertical-align: middle;">lightbulb_outline</i> Insight :</strong>
-                Pic de pannes le <strong>Vendredi 12h-18h</strong> (période commerçante intense)
+                Pic de pannes : <strong>{{ peakHeatmapLabel }}</strong>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Durée de Résolution -->
+        <!-- Indicateurs de résolution -->
         <div class="col-lg-4 col-md-12">
           <div class="card">
             <div class="card-header card-header-success">
-              <h4 class="card-title">Durée Résolution</h4>
-              <p class="card-category">Moyenne par type</p>
+              <h4 class="card-title">Indicateurs de Résolution</h4>
+              <p class="card-category">Données calculées à partir des pannes</p>
             </div>
             <div class="card-body">
               <ul class="list-group">
                 <li class="list-group-item d-flex justify-content-between">
-                  <span>
-                    <i class="material-icons text-danger">settings</i>
-                    Matériel
-                  </span>
-                  <span class="badge badge-primary">24h</span>
+                  <span><i class="material-icons text-info">schedule</i> MTTR global</span>
+                  <span class="badge badge-primary">{{ stats.mttr?.toFixed(1) || '0.0' }}h</span>
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
-                  <span>
-                    <i class="material-icons text-warning">computer</i>
-                    Logiciel
-                  </span>
-                  <span class="badge badge-success">8h</span>
+                  <span><i class="material-icons text-success">done_all</i> Résolues ce mois</span>
+                  <span class="badge badge-success">{{ stats.pannesResoluesCeMois || 0 }}</span>
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
-                  <span>
-                    <i class="material-icons text-info">wifi</i>
-                    Réseau
-                  </span>
-                  <span class="badge badge-info">16h</span>
+                  <span><i class="material-icons text-danger">error</i> En cours</span>
+                  <span class="badge badge-danger">{{ stats.pannesEnCours || 0 }}</span>
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
-                  <span>
-                    <i class="material-icons text-secondary">help_outline</i>
-                    Autre
-                  </span>
-                  <span class="badge badge-secondary">6h</span>
+                  <span><i class="material-icons text-warning">build</i> En réparation</span>
+                  <span class="badge badge-warning">{{ stats.pannesEnReparation || 0 }}</span>
                 </li>
               </ul>
             </div>
@@ -295,66 +283,25 @@
         <div class="col-md-12">
           <div class="card">
             <div class="card-header card-header-warning">
-              <h4 class="card-title">🛠️ TPE Nécessitant Maintenance Préventive</h4>
-              <p class="card-category">Dernière maintenance > 90 jours</p>
+              <h4 class="card-title">🛠️ Alertes Maintenance</h4>
+              <p class="card-category">Suivi des pannes dépassant le SLA</p>
             </div>
             <div class="card-body">
               <div class="table-responsive">
                 <table class="table table-hover">
                   <thead>
                     <tr>
-                      <th>Terminal</th>
-                      <th>Marque/Modèle</th>
-                      <th>Dernière Maintenance</th>
-                      <th>Jours Écoulés</th>
-                      <th>Priorité</th>
-                      <th>Action</th>
+                      <th>Indicateur</th>
+                      <th>Valeur</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td><strong>TPE-00045</strong></td>
-                      <td>Ingenico iWL250</td>
-                      <td>12/11/2025</td>
-                      <td><span class="badge badge-danger">98j</span></td>
-                      <td><span class="badge badge-danger">🔴 Urgent</span></td>
-                      <td>
-                        <button class="btn btn-sm btn-warning">
-                          <i class="material-icons">build</i> Planifier
-                        </button>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td><strong>TPE-00123</strong></td>
-                      <td>Verifone VX520</td>
-                      <td>28/12/2025</td>
-                      <td><span class="badge badge-warning">52j</span></td>
-                      <td><span class="badge badge-warning">🟡 Moyenne</span></td>
-                      <td>
-                        <button class="btn btn-sm btn-warning">
-                          <i class="material-icons">build</i> Planifier
-                        </button>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td><strong>TPE-00278</strong></td>
-                      <td>PAX A920</td>
-                      <td>05/01/2026</td>
-                      <td><span class="badge badge-info">44j</span></td>
-                      <td><span class="badge badge-success">🟢 Normale</span></td>
-                      <td>
-                        <button class="btn btn-sm btn-info">
-                          <i class="material-icons">event</i> Programmer
-                        </button>
-                      </td>
+                      <td>Pannes SLA dépassé</td>
+                      <td><span class="badge badge-danger">{{ stats.alertesPannesDepassantSLA || 0 }}</span></td>
                     </tr>
                   </tbody>
                 </table>
-              </div>
-              <div class="text-center mt-3">
-                <button mat-raised-button color="primary">
-                  <mat-icon>event</mat-icon> Planifier Maintenance Préventive (12 TPE)
-                </button>
               </div>
             </div>
           </div>

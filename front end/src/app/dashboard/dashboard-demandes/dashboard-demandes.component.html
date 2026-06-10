@@ -111,7 +111,7 @@
                 <i class="material-icons">trending_up</i>
               </div>
               <p class="card-category">Taux de Conversion</p>
-              <h3 class="card-title">{{ tauxConversion }}%</h3>
+              <h3 class="card-title">{{ tauxConversion.toFixed(1) }}%</h3>
             </div>
             <div class="card-footer">
               <div class="stats">
@@ -128,11 +128,11 @@
                 <i class="material-icons">check_circle</i>
               </div>
               <p class="card-category">Clôturées ce Mois</p>
-              <h3 class="card-title">156</h3>
+              <h3 class="card-title">{{ demandesClotureesCeMois }}</h3>
             </div>
             <div class="card-footer">
               <div class="stats">
-                <i class="material-icons">date_range</i> Février 2026
+                <i class="material-icons">date_range</i> {{ currentMonthLabel }}
               </div>
             </div>
           </div>
@@ -145,7 +145,7 @@
                 <i class="material-icons">speed</i>
               </div>
               <p class="card-category">SLA Respect</p>
-              <h3 class="card-title">89%</h3>
+              <h3 class="card-title">{{ slaRespect.toFixed(0) }}%</h3>
             </div>
             <div class="card-footer">
               <div class="stats">
@@ -161,12 +161,12 @@
               <div class="card-icon">
                 <i class="material-icons">person</i>
               </div>
-              <p class="card-category">Productivité</p>
-              <h3 class="card-title">7.2</h3>
+              <p class="card-category">Demandes Traitées</p>
+              <h3 class="card-title">{{ demandesTraitees }}</h3>
             </div>
             <div class="card-footer">
               <div class="stats">
-                <i class="material-icons">work</i> Demandes/jour/agent
+                <i class="material-icons">work</i> Workflow finalisé
               </div>
             </div>
           </div>
@@ -189,7 +189,7 @@
               <div class="text-center mt-3">
                 <p class="text-muted">
                   <i class="material-icons" style="vertical-align: middle;">info</i>
-                  Taux de conversion global: <strong>37.6%</strong>
+                  Taux de conversion global: <strong>{{ tauxConversion.toFixed(1) }}%</strong>
                 </p>
               </div>
             </div>
@@ -250,7 +250,7 @@
         <div class="col-lg-6 col-md-12">
           <div class="card">
             <div class="card-header card-header-danger">
-              <h4 class="card-title">⚠️ Demandes en Retard (>3 jours)</h4>
+              <h4 class="card-title">⚠️ Demandes en Retard (>48h)</h4>
               <p class="card-category">Actions urgentes requises</p>
             </div>
             <div class="card-body">
@@ -268,39 +268,8 @@
                   </thead>
                   <tbody>
                     <tr>
-                      <td>D-245</td>
-                      <td>Café Central</td>
-                      <td>12/02/2026</td>
-                      <td><span class="badge badge-danger">6j</span></td>
-                      <td>EN_COURS</td>
-                      <td>
-                        <button class="btn btn-sm btn-warning">
-                          <i class="material-icons">notification_important</i>
-                        </button>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>D-238</td>
-                      <td>Pharmacie Habib</td>
-                      <td>10/02/2026</td>
-                      <td><span class="badge badge-danger">8j</span></td>
-                      <td>VALIDEE</td>
-                      <td>
-                        <button class="btn btn-sm btn-warning">
-                          <i class="material-icons">notification_important</i>
-                        </button>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>D-231</td>
-                      <td>Épicerie Saïd</td>
-                      <td>08/02/2026</td>
-                      <td><span class="badge badge-danger">10j</span></td>
-                      <td>EN_COURS</td>
-                      <td>
-                        <button class="btn btn-sm btn-warning">
-                          <i class="material-icons">notification_important</i>
-                        </button>
+                      <td colspan="6" class="text-center text-muted">
+                        {{ demandesEnRetard }} demande(s) en attente depuis plus de 48h.
                       </td>
                     </tr>
                   </tbody>
@@ -336,32 +305,9 @@
                   </thead>
                   <tbody>
                     <tr>
-                      <td><strong>Lac 2</strong></td>
-                      <td>45</td>
-                      <td>2.1j</td>
-                      <td><span class="badge badge-success">92%</span></td>
-                      <td>⭐⭐⭐⭐⭐</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Sousse</strong></td>
-                      <td>38</td>
-                      <td>2.8j</td>
-                      <td><span class="badge badge-warning">85%</span></td>
-                      <td>⭐⭐⭐⭐</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Sfax</strong></td>
-                      <td>35</td>
-                      <td>2.3j</td>
-                      <td><span class="badge badge-success">90%</span></td>
-                      <td>⭐⭐⭐⭐⭐</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Centre Ville</strong></td>
-                      <td>32</td>
-                      <td>3.1j</td>
-                      <td><span class="badge badge-danger">78%</span></td>
-                      <td>⭐⭐⭐</td>
+                      <td colspan="5" class="text-center text-muted">
+                        Données détaillées par agence non disponibles pour le moment.
+                      </td>
                     </tr>
                   </tbody>
                 </table>

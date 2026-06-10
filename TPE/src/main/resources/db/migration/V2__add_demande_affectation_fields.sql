@@ -11,7 +11,6 @@ ALTER TABLE demandes ADD COLUMN code_postal VARCHAR(10);
 ALTER TABLE demandes ADD COLUMN code_agence VARCHAR(20);
 ALTER TABLE demandes ADD COLUMN telephone VARCHAR(20);
 ALTER TABLE demandes ADD COLUMN rne_file_path VARCHAR(500);
-ALTER TABLE demandes ADD COLUMN email_notification VARCHAR(255);
 
 -- Ajout des champs de validation Monétique (TPE Physique)
 ALTER TABLE demandes ADD COLUMN mcc VARCHAR(4);
@@ -20,7 +19,7 @@ ALTER TABLE demandes ADD COLUMN taux_commission_inter DECIMAL(5,2);
 ALTER TABLE demandes ADD COLUMN loyer DECIMAL(10,2);
 ALTER TABLE demandes ADD COLUMN serie_tpe VARCHAR(50);
 ALTER TABLE demandes ADD COLUMN numero_terminal VARCHAR(20);
-ALTER TABLE demandes ADD COLUMN value_date DATETIME;
+ALTER TABLE demandes ADD COLUMN value_date INT DEFAULT 1;
 
 -- Ajout des champs spécifiques E-commerce
 ALTER TABLE demandes ADD COLUMN localite VARCHAR(255);

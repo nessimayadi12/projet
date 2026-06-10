@@ -64,7 +64,7 @@ public class DashboardController {
     }
 
     /**
-     * Obtenir la répartition des TPE par type (Physique/E-commerce)
+     * Obtenir la répartition des TPE par type (TPE/Mobile)
      */
     @GetMapping("/repartition-type")
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")

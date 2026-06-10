@@ -90,8 +90,8 @@ export class DashboardComponent implements OnInit {
       const pannesElement = document.querySelector('#pannesChart');
       if (pannesElement && this.stats) {
         new Chartist.Pie('#pannesChart', {
-          labels: ['En Panne', 'Résolues'],
-          series: [this.stats.tpeEnPanne, this.stats.pannesResoluesCeMois]
+          labels: ['En cours', 'Résolues'],
+          series: [this.stats.pannesEnCours || this.stats.tpeEnPanne, this.stats.pannesResoluesCeMois]
         }, {
           labelInterpolationFnc: function(value) {
             return value;

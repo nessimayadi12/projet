@@ -16,14 +16,14 @@ export enum Urgence {
 }
 
 export enum TypeDemande {
-  PHYSIQUE = 'PHYSIQUE',
-  ECOMMERCE = 'ECOMMERCE'
+  TPE = 'TPE',
+  MOBILE = 'MOBILE'
 }
 
 // Alias pour compatibilité (à supprimer si non utilisé ailleurs)
 export const TypeDemande_LEGACY = {
-  TPE_PHYSIQUE: 'PHYSIQUE' as TypeDemande,
-  E_COMMERCE: 'ECOMMERCE' as TypeDemande
+  TPE_STANDARD: 'TPE' as TypeDemande,
+  MOBILE_STANDARD: 'MOBILE' as TypeDemande
 };
 
 export interface DemandeTPE {
@@ -48,6 +48,10 @@ export interface DemandeTPE {
   inputerNom?: string;
   tpeAffecteId?: number;
   tpeAffecteNumeroSerie?: string;
+  tpeAffecteStatut?: string;
+  tpeRemplacementId?: number;
+  tpeRemplacementNumeroSerie?: string;
+  nouvelleSerieTpe?: string;
   dateValidation?: Date | string;
   dateSaisieTaux?: Date | string;
   dateAffectation?: Date | string;
@@ -61,7 +65,7 @@ export interface DemandeTPE {
   createdAt?: Date | string;
   updatedAt?: Date | string;
   
-  // Champs de demande agence (TPE Physique)
+  // Champs de demande agence (TPE)
   raisonSociale?: string;
   activite?: string;
   numeroCompte?: string;
@@ -71,18 +75,17 @@ export interface DemandeTPE {
   telephone?: string;
   rneFile?: File | string;
   rneFilePath?: string;
-  emailNotification?: string;
   
-  // Champs de validation Monetique (TPE Physique)
+  // Champs de validation Monetique (TPE)
   mcc?: string;
   tauxCommission?: number;
   tauxCommissionInter?: number;
   loyer?: number;
   serieTpe?: string;
   numeroTerminal?: string; // généré automatiquement
-  valueDate?: Date | string;
+  valueDate?: number;
   
-  // Champs spécifiques E-commerce
+  // Champs spécifiques Mobile
   localite?: string;
   rib?: string;
   webmaster?: string;

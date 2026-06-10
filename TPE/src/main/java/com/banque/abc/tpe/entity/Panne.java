@@ -1,6 +1,7 @@
 package com.banque.abc.tpe.entity;
 
 import com.banque.abc.tpe.entity.enums.StatutPanne;
+import com.banque.abc.tpe.entity.enums.TypePanne;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,10 @@ public class Panne extends BaseEntity {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_panne")
+    private TypePanne typePanne;
 
     @Column(name = "date_declaration", nullable = false)
     private LocalDateTime dateDeclaration;

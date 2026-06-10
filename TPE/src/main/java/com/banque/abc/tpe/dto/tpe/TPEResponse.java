@@ -1,7 +1,6 @@
 package com.banque.abc.tpe.dto.tpe;
 
 import com.banque.abc.tpe.entity.enums.StatutTPE;
-import com.banque.abc.tpe.entity.enums.TypeTPE;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +14,7 @@ import java.time.LocalDateTime;
 public class TPEResponse {
     
     private Long id;
-    private TypeTPE typeTPE;
+    private String typeTPE;
     private String numeroSerie;
     private String numeroTerminal;
     private StatutTPE statut;
@@ -32,7 +31,7 @@ public class TPEResponse {
     private String numeroCompte;
     private String codeAgence;
     private String serieTpe;
-    private LocalDate valueDate;
+    private Integer valueDate;
     private Double loyer;
     private String urlSiteMarchand;
     private String webhookUrl;

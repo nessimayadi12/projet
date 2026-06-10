@@ -19,11 +19,11 @@
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>Type de TPE *</label>
-                    <select class="form-control" formControlName="typeTpe">
-                      <option *ngFor="let type of typesTPE" [value]="type">
-                        {{ type === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}
-                      </option>
-                    </select>
+                    <input type="text" class="form-control" formControlName="typeTpe" list="type-tpe-options"
+                      placeholder="MOBILE, MPOS, FIXE GPRS, E COMMERCE...">
+                    <datalist id="type-tpe-options">
+                      <option *ngFor="let type of typeSuggestions" [value]="type"></option>
+                    </datalist>
                   </div>
                 </div>
                 <div class="col-md-4">
@@ -48,13 +48,13 @@
                     <input type="text" class="form-control" formControlName="numeroSerie">
                   </div>
                 </div>
-                <div class="col-md-4" *ngIf="selectedType === 'PHYSIQUE'">
+                <div class="col-md-4" *ngIf="isPhysiqueType(selectedType)">
                   <div class="form-group">
                     <label class="bmd-label-floating">Marque</label>
                     <input type="text" class="form-control" formControlName="marque">
                   </div>
                 </div>
-                <div class="col-md-4" *ngIf="selectedType === 'PHYSIQUE'">
+                <div class="col-md-4" *ngIf="isPhysiqueType(selectedType)">
                   <div class="form-group">
                     <label class="bmd-label-floating">Modèle</label>
                     <input type="text" class="form-control" formControlName="modele">
@@ -158,7 +158,11 @@
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>Value Date</label>
-                    <input type="date" class="form-control" formControlName="valueDate">
+                    <input type="number" class="form-control" formControlName="valueDate" min="1" max="2" step="1">
+                    <div class="text-danger small mt-1"
+                      *ngIf="tpeForm.get('valueDate')?.invalid && tpeForm.get('valueDate')?.touched">
+                      La value date doit etre 1 ou 2
+                    </div>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -177,9 +181,9 @@
                 </div>
               </div>
 
-              <!-- Section: Données E-commerce (si applicable) -->
-              <div *ngIf="selectedType === 'ECOMMERCE'">
-                <h5 class="card-title mt-4">Données E-Commerce</h5>
+              <!-- Section: Données Mobile (si applicable) -->
+              <div *ngIf="isMobileType(selectedType)">
+                <h5 class="card-title mt-4">Données Mobile</h5>
                 <hr>
                 <div class="row">
                   <div class="col-md-6">

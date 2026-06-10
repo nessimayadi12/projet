@@ -1,10 +1,7 @@
 export enum Role {
   ADMIN = 'ADMIN',
   MONETIQUE = 'MONETIQUE',
-  AGENCE = 'AGENCE',
-  INPUTER = 'INPUTER',
-  AUTHORIZER = 'AUTHORIZER',
-  COMMERCANT = 'COMMERCANT'
+  AGENCE = 'AGENCE'
 }
 
 export interface Utilisateur {

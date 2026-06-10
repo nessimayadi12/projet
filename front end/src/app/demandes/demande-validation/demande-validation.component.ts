@@ -34,13 +34,13 @@ export class DemandeValidationComponent implements OnInit {
       approuver: [true, [Validators.required]],
       commentaire: [''],
       
-      // Champs spécifiques TPE Physique
+      // Champs spécifiques TPE
       mcc: ['', [Validators.required]],
       tauxCommission: ['', [Validators.required, Validators.min(0), Validators.max(100)]],
       tauxCommissionInter: ['', [Validators.min(0), Validators.max(100)]],
       loyer: ['', [Validators.min(0)]],
       serieTpe: [''],
-      valueDate: [new Date(), [Validators.required]],
+      valueDate: [1, [Validators.required, Validators.min(1), Validators.max(2), Validators.pattern(/^[12]$/)]],
       numeroTerminal: [{ value: '', disabled: true }] // Auto-généré
     });
   }
@@ -48,16 +48,11 @@ export class DemandeValidationComponent implements OnInit {
   ngOnInit(): void {
     this.prefillForm();
 
-    if (this.isInputerStep()) {
-      this.validationForm.get('approuver')?.setValue(true);
-      this.validationForm.get('approuver')?.disable();
-    } else {
-      this.validationForm.get('approuver')?.enable();
-    }
+    this.validationForm.get('approuver')?.enable();
 
     // Ajuster les validateurs selon le type de demande
-    if (this.demande.typeDemande === TypeDemande.ECOMMERCE) {
-      // Pour E-commerce, seuls MCC et N° Terminal sont nécessaires
+    if (this.demande.typeDemande === TypeDemande.MOBILE) {
+      // Pour Mobile, seuls MCC et N° Terminal sont nécessaires
       this.validationForm.get('tauxCommission')?.clearValidators();
       this.validationForm.get('tauxCommissionInter')?.clearValidators();
       this.validationForm.get('loyer')?.clearValidators();
@@ -70,30 +65,28 @@ export class DemandeValidationComponent implements OnInit {
     }
   }
 
+  isMonetiqueDecisionStep(): boolean {
+    return this.demande.statut === StatutDemande.NOUVELLE || this.demande.statut === StatutDemande.EN_COURS;
+  }
+
   isInputerStep(): boolean {
-    return this.demande.statut === StatutDemande.NOUVELLE;
+    return false;
   }
 
   isAuthorizerStep(): boolean {
-    return this.demande.statut === StatutDemande.EN_COURS;
+    return this.isMonetiqueDecisionStep();
   }
 
   getDialogTitle(): string {
-    if (this.isInputerStep()) {
-      return `Saisie des taux (Monetique) - ${this.demande.reference}`;
-    }
-    if (this.isAuthorizerStep()) {
-      return `Validation finale (Authorizer) - ${this.demande.reference}`;
-    }
-    return `Validation de Demande - ${this.demande.reference}`;
+    return `Validation Monetique - ${this.demande.reference}`;
   }
 
   getActionLabel(): string {
-    return this.isInputerStep() ? 'Soumettre' : 'Valider';
+    return 'Enregistrer la decision';
   }
 
   genererNumeroTerminal(): void {
-    if (this.demande.typeDemande === TypeDemande.PHYSIQUE) {
+    if (this.demande.typeDemande === TypeDemande.TPE) {
       if (!this.demande.numeroCompte || !this.demande.codeAgence) {
         this.showNotification('Numéro de compte et code agence requis', 'warning');
         return;
@@ -102,7 +95,7 @@ export class DemandeValidationComponent implements OnInit {
       const requestData = {
         rib: this.demande.numeroCompte,
         codeAgence: this.demande.codeAgence,
-        typeTPE: 'PHYSIQUE',
+        typeTPE: 'TPE',
         numeroSerie: this.validationForm.get('serieTpe')?.value || 'TEMP-' + Date.now()
       };
 
@@ -118,7 +111,7 @@ export class DemandeValidationComponent implements OnInit {
         }
       });
     } else {
-      // E-commerce: génération simplifiée
+      // Mobile: génération simplifiée
       if (!this.demande.rib || !this.demande.codeAgence) {
         this.showNotification('RIB et code agence requis', 'warning');
         return;
@@ -127,8 +120,8 @@ export class DemandeValidationComponent implements OnInit {
       const requestData = {
         rib: this.demande.rib,
         codeAgence: this.demande.codeAgence,
-        typeTPE: 'ECOMMERCE',
-        numeroSerie: 'ECOM-' + Date.now()
+        typeTPE: 'MOBILE',
+        numeroSerie: 'MOB-' + Date.now()
       };
 
       this.tpeService.genererNumeroTerminal(requestData).subscribe({
@@ -146,7 +139,10 @@ export class DemandeValidationComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.validationForm.invalid) {
+    const formData = this.validationForm.getRawValue();
+    const approuver = formData.approuver !== false;
+
+    if (approuver && this.validationForm.invalid) {
       Object.keys(this.validationForm.controls).forEach(key => {
         this.validationForm.get(key)?.markAsTouched();
       });
@@ -155,20 +151,18 @@ export class DemandeValidationComponent implements OnInit {
     }
 
     // Vérifier que le TID a été généré
-    if (!this.numeroTerminalGenere) {
+    if (approuver && !this.numeroTerminalGenere) {
       this.showNotification('Veuillez générer le numéro de terminal', 'warning');
       return;
     }
 
     this.loading = true;
-    const formData = this.validationForm.getRawValue();
     
-    // Convertir la date au format ISO
     const validationData = {
       ...formData,
-      approuver: this.isInputerStep() ? true : formData.approuver,
-      numeroTerminal: this.numeroTerminalGenere,
-      valueDate: this.formatValueDate(formData.valueDate)
+      approuver,
+      numeroTerminal: this.numeroTerminalGenere || formData.numeroTerminal || null,
+      valueDate: this.normalizeValueDate(formData.valueDate)
     };
 
     this.demandeService.validerDemande(this.demande.id!, validationData).subscribe({
@@ -190,11 +184,11 @@ export class DemandeValidationComponent implements OnInit {
   }
 
   isTPEPhysique(): boolean {
-    return this.demande.typeDemande === TypeDemande.PHYSIQUE;
+    return this.demande.typeDemande === TypeDemande.TPE;
   }
 
   isECommerce(): boolean {
-    return this.demande.typeDemande === TypeDemande.ECOMMERCE;
+    return this.demande.typeDemande === TypeDemande.MOBILE;
   }
 
   hasPiecesJointes(): boolean {
@@ -246,6 +240,19 @@ export class DemandeValidationComponent implements OnInit {
     alert(message);
   }
 
+  canSubmit(): boolean {
+    if (this.loading) {
+      return false;
+    }
+
+    const approuver = this.validationForm.get('approuver')?.value !== false;
+    if (!approuver) {
+      return true;
+    }
+
+    return this.validationForm.valid && !!this.numeroTerminalGenere;
+  }
+
   private prefillForm(): void {
     this.validationForm.patchValue({
       approuver: true,
@@ -255,7 +262,7 @@ export class DemandeValidationComponent implements OnInit {
       tauxCommissionInter: this.demande.tauxCommissionInter || '',
       loyer: this.demande.loyer || '',
       serieTpe: this.demande.serieTpe || '',
-      valueDate: this.demande.valueDate ? new Date(this.demande.valueDate) : new Date(),
+      valueDate: this.normalizeValueDate(this.demande.valueDate),
       numeroTerminal: this.demande.numeroTerminal || ''
     });
 
@@ -264,22 +271,7 @@ export class DemandeValidationComponent implements OnInit {
     }
   }
 
-  private formatValueDate(value: unknown): string | null {
-    if (!value) {
-      return null;
-    }
-
-    if (value instanceof Date && !isNaN(value.getTime())) {
-      return value.toISOString().replace('Z', '').split('.')[0];
-    }
-
-    if (typeof value === 'string') {
-      if (value.includes('T')) {
-        return value.replace('Z', '').split('.')[0];
-      }
-      return `${value}T00:00:00`;
-    }
-
-    return null;
+  private normalizeValueDate(value: unknown): number {
+    return Number(value) === 2 ? 2 : 1;
   }
 }

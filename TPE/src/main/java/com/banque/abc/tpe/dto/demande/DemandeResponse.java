@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class DemandeResponse {
     private String commentaireValidation;
     private Urgence urgence;
     
-    // Champs de demande agence (TPE Physique)
+    // Champs de demande agence (TPE)
     private String raisonSociale;
     private String activite;
     private String numeroCompte;
@@ -43,18 +44,26 @@ public class DemandeResponse {
     private String codeAgence;
     private String telephone;
     private String rneFilePath;
-    private String emailNotification;
     
-    // Champs de validation Monétique (TPE Physique)
+    // Champs de validation Monétique (TPE)
     private String mcc;
     private Double tauxCommission;
     private Double tauxCommissionInter;
     private Double loyer;
     private String serieTpe;
     private String numeroTerminal;
-    private LocalDateTime valueDate;
+    private Integer valueDate;
+
+    // Affectation / remplacement TPE
+    private Long tpeAffecteId;
+    private String tpeAffecteNumeroSerie;
+    private String tpeAffecteStatut;
+    private LocalDate dateAffectation;
+    private Long tpeRemplacementId;
+    private String tpeRemplacementNumeroSerie;
+    private String nouvelleSerieTpe;
     
-    // Champs spécifiques E-commerce
+    // Champs spécifiques Mobile
     private String localite;
     private String rib;
     private String webmaster;

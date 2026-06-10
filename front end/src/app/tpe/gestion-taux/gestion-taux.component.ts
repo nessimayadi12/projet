@@ -209,11 +209,11 @@ export class GestionTauxComponent implements OnInit, OnDestroy {
   }
 
   canCreate(): boolean {
-    return this.authService.hasAnyRole([Role.INPUTER, Role.ADMIN]);
+    return this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
   }
 
   canValidate(): boolean {
-    return this.authService.hasAnyRole([Role.AUTHORIZER, Role.ADMIN]);
+    return this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
   }
 
   isBrouillon(taux: TauxTPE): boolean {
@@ -221,7 +221,7 @@ export class GestionTauxComponent implements OnInit, OnDestroy {
   }
 
   isInputerDifferent(taux: TauxTPE): boolean {
-    return !!this.currentUserId && taux.inputerId !== this.currentUserId;
+    return true;
   }
 
   private isCreateFormValid(): boolean {

@@ -16,10 +16,14 @@ import org.springframework.data.repository.query.Param;
 public interface CommercantRepository extends JpaRepository<Commercant, Long>, JpaSpecificationExecutor<Commercant> {
     
     Optional<Commercant> findByEmail(String email);
+
+    Optional<Commercant> findFirstByEmailOrderByLastModifiedDateDescIdDesc(String email);
     
     Optional<Commercant> findByRaisonSociale(String raisonSociale);
 
     Optional<Commercant> findFirstByRaisonSociale(String raisonSociale);
+
+    Optional<Commercant> findFirstByRaisonSocialeOrderByLastModifiedDateDescIdDesc(String raisonSociale);
     
     Optional<Commercant> findByNumeroCompte(String numeroCompte);
 
@@ -59,11 +63,12 @@ public interface CommercantRepository extends JpaRepository<Commercant, Long>, J
                     AND LOWER(TRIM(COALESCE(c.numeroCompte, ''))) = LOWER(TRIM(COALESCE(:numeroCompte, '')))
                     AND LOWER(TRIM(COALESCE(c.codeAgence, ''))) = LOWER(TRIM(COALESCE(:codeAgence, '')))
                     AND LOWER(TRIM(COALESCE(c.adresse, ''))) = LOWER(TRIM(COALESCE(:adresse, '')))
+                ORDER BY c.lastModifiedDate DESC, c.id DESC
                 """)
-        Optional<Commercant> findForImportExact(@Param("raisonSociale") String raisonSociale,
-                                                                                        @Param("numeroCompte") String numeroCompte,
-                                                                                        @Param("codeAgence") String codeAgence,
-                                                                                        @Param("adresse") String adresse);
+        List<Commercant> findForImportExact(@Param("raisonSociale") String raisonSociale,
+                                            @Param("numeroCompte") String numeroCompte,
+                                            @Param("codeAgence") String codeAgence,
+                                            @Param("adresse") String adresse);
     
     List<Commercant> findByStatut(StatutCommercant statut);
     

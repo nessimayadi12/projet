@@ -22,7 +22,7 @@
                   <div class="form-group">
                     <label>Type TPE *</label>
                     <select class="form-control" formControlName="typeCommerce">
-                      <option *ngFor="let type of typesTPE" [value]="type">{{ type }}</option>
+                      <option *ngFor="let type of typesTPE" [value]="type">{{ getTypeLabel(type) }}</option>
                     </select>
                   </div>
                 </div>
@@ -121,20 +121,12 @@
                     <div class="invalid-feedback">Email valide requis</div>
                   </div>
                 </div>
-                
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label>Email de Notification</label>
-                    <input type="email" class="form-control" formControlName="emailNotification"
-                           placeholder="Pour les notifications automatiques">
-                  </div>
-                </div>
               </div>
 
-              <!-- Champs spécifiques TPE PHYSIQUE -->
+              <!-- Champs spécifiques TPE -->
               <div *ngIf="isTypePhysique">
                 <hr>
-                <h6 class="text-info">Spécifique TPE Physique</h6>
+                <h6 class="text-info">Spécifique TPE</h6>
                 
                 <div class="row">
                   <div class="col-md-6">
@@ -158,7 +150,7 @@
               <!-- Champs spécifiques E-COMMERCE -->
               <div *ngIf="isTypeEcommerce">
                 <hr>
-                <h6 class="text-info">Spécifique E-commerce</h6>
+                <h6 class="text-info">Spécifique Mobile</h6>
                 
                 <div class="row">
                   <div class="col-md-6">
@@ -167,7 +159,7 @@
                       <input type="url" class="form-control" formControlName="urlSiteMarchand"
                              placeholder="https://exemple.com"
                              [class.is-invalid]="commercantForm.get('urlSiteMarchand')?.invalid && commercantForm.get('urlSiteMarchand')?.touched">
-                      <div class="invalid-feedback">URL du site obligatoire pour E-commerce</div>
+                      <div class="invalid-feedback">URL du site obligatoire pour Mobile</div>
                     </div>
                   </div>
                   

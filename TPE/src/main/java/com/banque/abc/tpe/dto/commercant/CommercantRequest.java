@@ -35,11 +35,10 @@ public class CommercantRequest {
     @Email(message = "L'email doit être valide")
     private String email;
     
-    // TPE Physique
+    // TPE
     private Double loyer;
-    private String emailNotification;
     
-    // E-commerce
+    // Mobile
     private TypeTPE typeCommerce;
     private String urlSiteMarchand;
     private String webhookUrl;

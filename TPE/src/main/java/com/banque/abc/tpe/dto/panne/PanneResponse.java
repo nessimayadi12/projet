@@ -1,6 +1,7 @@
 package com.banque.abc.tpe.dto.panne;
 
 import com.banque.abc.tpe.entity.enums.StatutPanne;
+import com.banque.abc.tpe.entity.enums.TypePanne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,8 +17,11 @@ public class PanneResponse {
     private String reference;
     private Long tpeId;
     private String tpeNumeroSerie;
+    private Long commercantId;
+    private String commercantNom;
     private StatutPanne statut;
     private String description;
+    private TypePanne typePanne;
     private LocalDateTime dateDeclaration;
     private LocalDateTime dateDiagnostic;
     private LocalDateTime dateReparation;

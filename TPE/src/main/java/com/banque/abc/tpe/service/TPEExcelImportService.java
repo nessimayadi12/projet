@@ -7,6 +7,7 @@ import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
 import com.banque.abc.tpe.entity.TPEImportRecord;
 import com.banque.abc.tpe.entity.TPE;
+import com.banque.abc.tpe.entity.User;
 import com.banque.abc.tpe.entity.enums.StatutCommercant;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
@@ -73,10 +74,11 @@ public class TPEExcelImportService {
                 throw new BusinessException("Le fichier Excel ne contient aucune ligne de données");
             }
 
-            Map<String, Integer> headers = readHeaders(sheet.getRow(sheet.getFirstRowNum()));
+            int headerRowIndex = findHeaderRowIndex(sheet);
+            Map<String, Integer> headers = readHeaders(sheet.getRow(headerRowIndex));
             DataFormatter formatter = new DataFormatter(Locale.FRANCE);
 
-            for (int rowIndex = sheet.getFirstRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            for (int rowIndex = headerRowIndex + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (row == null || isRowEmpty(row, formatter)) {
                     continue;
@@ -138,7 +140,7 @@ public class TPEExcelImportService {
         rawData.put("ADRESSE", readString(row, headers, formatter, "ADRESSE"));
         rawData.put("CODE_POSTAL", readString(row, headers, formatter, "CODE_POSTAL"));
         rawData.put("TELEPHONE", readString(row, headers, formatter, "TELEPHONE"));
-        rawData.put("EMAIL", firstNonBlank(readString(row, headers, formatter, "EMAIL"), readString(row, headers, formatter, "MAIL"), readString(row, headers, formatter, "EMAIL_NOTIFICATION")));
+        rawData.put("EMAIL", firstNonBlank(readString(row, headers, formatter, "EMAIL"), readString(row, headers, formatter, "MAIL")));
         rawData.put("OPERATEUR", readString(row, headers, formatter, "OPERATEUR"));
         rawData.put("PREVILEGE_SECTEUR", readString(row, headers, formatter, "PREVILEGE_SECTEUR"));
         rawData.put("TAUX_COMMISSION", tauxCommission);
@@ -148,7 +150,7 @@ public class TPEExcelImportService {
         rawData.put("GROUP", readString(row, headers, formatter, "GROUP"));
         rawData.put("NUM_SEQ", readString(row, headers, formatter, "NUM_SEQ"));
         Boolean active = resolveActiveStatus(row, headers, formatter,
-            readLocalDate(row, headers, formatter, "VALUE_DATE"),
+            readValueDate(row, headers, formatter),
             readLocalDate(row, headers, formatter, "DATE_AFFILIATION"),
             numeroTerminal);
         rawData.put("ACTIVE", active);
@@ -157,6 +159,8 @@ public class TPEExcelImportService {
 
         TPEImportRecord record = tpeImportRecordRepository
                 .findLatestByNAffiliation(numeroAffiliation)
+                .stream()
+                .findFirst()
                 .orElseGet(TPEImportRecord::new);
         record.setNAffiliation(numeroAffiliation);
         record.setSourceRowNumber(sourceRowNumber);
@@ -175,7 +179,7 @@ public class TPEExcelImportService {
         record.setAdresse(readString(row, headers, formatter, "ADRESSE"));
         record.setCodePostal(readString(row, headers, formatter, "CODE_POSTAL"));
         record.setTelephone(readString(row, headers, formatter, "TELEPHONE"));
-        record.setEmail(firstNonBlank(readString(row, headers, formatter, "EMAIL"), readString(row, headers, formatter, "MAIL"), readString(row, headers, formatter, "EMAIL_NOTIFICATION")));
+        record.setEmail(firstNonBlank(readString(row, headers, formatter, "EMAIL"), readString(row, headers, formatter, "MAIL")));
         record.setPrivilegeSecteur(readString(row, headers, formatter, "PREVILEGE_SECTEUR"));
         record.setTauxCommission(tauxCommission);
         record.setTauxCommissionInter(tauxCommissionInter);
@@ -184,7 +188,7 @@ public class TPEExcelImportService {
         record.setGroupe(readString(row, headers, formatter, "GROUP"));
         record.setNumSeq(readString(row, headers, formatter, "NUM_SEQ"));
         record.setActive(active);
-        record.setValueDate(readLocalDate(row, headers, formatter, "VALUE_DATE"));
+        record.setValueDate(null);
         record.setDateAffiliation(readLocalDate(row, headers, formatter, "DATE_AFFILIATION"));
         record.setRawDataJson(objectMapper.writeValueAsString(rawData));
 
@@ -210,8 +214,7 @@ public class TPEExcelImportService {
         String telephone = readString(row, headers, formatter, "TELEPHONE");
         String email = firstNonBlank(
                 readString(row, headers, formatter, "EMAIL"),
-                readString(row, headers, formatter, "MAIL"),
-                readString(row, headers, formatter, "EMAIL_NOTIFICATION")
+                readString(row, headers, formatter, "MAIL")
         );
         String previlegeSecteur = readString(row, headers, formatter, "PREVILEGE_SECTEUR");
         String operateur = readString(row, headers, formatter, "OPERATEUR");
@@ -221,13 +224,24 @@ public class TPEExcelImportService {
         String nCompteIntern = readString(row, headers, formatter, "N_COMPTE_INTERN");
         String groupe = readString(row, headers, formatter, "GROUP");
         String numSeq = readString(row, headers, formatter, "NUM_SEQ");
-        LocalDate valueDate = readLocalDate(row, headers, formatter, "VALUE_DATE");
+        Integer valueDate = readValueDate(row, headers, formatter);
         LocalDate dateAffiliation = readLocalDate(row, headers, formatter, "DATE_AFFILIATION");
-        LocalDate effectiveTpeDate = valueDate != null ? valueDate : dateAffiliation;
+        LocalDate effectiveTpeDate = dateAffiliation;
         Boolean active = resolveActiveStatus(row, headers, formatter, valueDate, dateAffiliation, numeroTerminal);
+        boolean terminated = isTerminatedActiveStatus(row, headers, formatter);
 
         if ((numeroSerie == null || numeroSerie.isBlank()) && (numeroTerminal == null || numeroTerminal.isBlank())) {
             throw new BusinessException("numéro de série et numéro terminal manquants");
+        }
+
+        TPE tpe = findOrCreateTPE(numeroSerie, numeroTerminal, numeroAffiliation);
+        boolean isNew = tpe.getId() == null;
+
+        if (shouldSkipStaleTerminatedRow(tpe, terminated, active, effectiveTpeDate)) {
+            result.setSkippedRows(result.getSkippedRows() + 1);
+            log.info("Ligne TERMINATED ignoree pour la serie {} car une affectation plus recente existe",
+                    firstNonBlank(numeroSerie, tpe.getNumeroSerie(), numeroTerminal, numeroAffiliation));
+            return;
         }
 
         String safeRaisonSociale = firstNonBlank(raisonSociale, numeroAffiliation, numeroSerie);
@@ -240,11 +254,8 @@ public class TPEExcelImportService {
 
         Commercant commercant = findOrCreateCommercant(safeRaisonSociale, safeActivite, safeNumeroCompte, numeroAffiliation, numeroTerminal, adresse, codePostal, safeCodeAgence, telephone, email, loyer, typeValue, !parcUpdate);
 
-        TPE tpe = findOrCreateTPE(numeroSerie, numeroTerminal);
-        boolean isNew = tpe.getId() == null;
-
         if (blankToNull(typeValue) != null || tpe.getTypeTPE() == null) {
-            tpe.setTypeTPE(parseTypeTPE(typeValue));
+            tpe.setTypeTPE(resolveTypeTPEValue(typeValue));
         }
 
         if (blankToNull(numeroSerie) != null || isNew) {
@@ -254,13 +265,15 @@ public class TPEExcelImportService {
         if (!parcUpdate && blankToNull(numeroAffiliation) != null) {
             tpe.setNumeroAffiliation(blankToNull(numeroAffiliation));
         }
-        if (Boolean.TRUE.equals(active)) {
+        if (terminated) {
+            tpe.setStatut(StatutTPE.HORS_SERVICE);
+        } else if (Boolean.TRUE.equals(active)) {
             tpe.setStatut(StatutTPE.AFFECTE);
         } else if (!parcUpdate) {
             tpe.setStatut(StatutTPE.DISPONIBLE);
         }
-        tpe.setMarque(firstNonBlank(marque, tpe.getMarque(), typeValue));
-        tpe.setModele(firstNonBlank(readString(row, headers, formatter, "CODE_TPE"), tpe.getModele()));
+        tpe.setMarque(firstNonBlank(marque, tpe.getMarque()));
+        tpe.setModele(firstNonBlank(readAnyString(row, headers, formatter, "CODE_TPE", "MODELE", "MODELE_TPE", "MODEL"), tpe.getModele()));
         if (effectiveTpeDate != null) {
             tpe.setDateAcquisition(effectiveTpeDate);
             tpe.setDateMiseEnService(effectiveTpeDate);
@@ -283,13 +296,13 @@ public class TPEExcelImportService {
             result.setUpdatedRows(result.getUpdatedRows() + 1);
         }
 
-        Demande demande = upsertDemande(row, headers, formatter, result, commercant, tpe, active, numeroAffiliation, valueDate, dateAffiliation, typeValue, safeRaisonSociale, safeActivite, safeNumeroCompte, addressOrNull(adresse), codePostal, safeCodeAgence, telephone, email, loyer, mcc, tauxCommission, tauxCommissionInter);
+        Demande demande = upsertDemande(row, headers, formatter, result, commercant, tpe, active, terminated, numeroAffiliation, valueDate, dateAffiliation, typeValue, safeRaisonSociale, safeActivite, safeNumeroCompte, addressOrNull(adresse), codePostal, safeCodeAgence, telephone, email, loyer, mcc, tauxCommission, tauxCommissionInter);
 
         if (Boolean.TRUE.equals(active)) {
-            upsertActiveAffectation(tpe, commercant, demande, dateAffiliation != null ? dateAffiliation : valueDate, result);
+            upsertActiveAffectation(tpe, commercant, demande, dateAffiliation, result);
         }
 
-        if (!parcUpdate && !Boolean.TRUE.equals(active)) {
+        if (terminated || (!parcUpdate && !Boolean.TRUE.equals(active))) {
             deactivateActiveAffectationIfNeeded(tpe);
         }
     }
@@ -310,10 +323,7 @@ public class TPEExcelImportService {
             tpe.setStatut(StatutTPE.AFFECTE);
             tpeRepository.save(tpe);
 
-            LocalDate effectiveDate = demande.getValueDate() != null
-                    ? demande.getValueDate().toLocalDate()
-                    : LocalDate.now();
-            upsertActiveAffectation(tpe, demande.getCommercant(), demande, effectiveDate, result);
+            upsertActiveAffectation(tpe, demande.getCommercant(), demande, LocalDate.now(), result);
 
             demande.setStatut(StatutDemande.AFFECTEE);
             demande.setDateCloture(LocalDateTime.now());
@@ -324,7 +334,7 @@ public class TPEExcelImportService {
     private TPE resolveTpeForDemande(Demande demande) {
         String numeroTerminal = normalizeTerminal(demande.getNumeroTerminal());
         if (numeroTerminal != null) {
-            Optional<TPE> byTerminal = tpeRepository.findByNumeroTerminal(numeroTerminal);
+            Optional<TPE> byTerminal = findTpeByNumeroTerminal(numeroTerminal);
             if (byTerminal.isPresent()) {
                 return byTerminal.get();
             }
@@ -337,7 +347,7 @@ public class TPEExcelImportService {
 
         String serie = blankToNull(demande.getSerieTpe());
         if (serie != null) {
-            Optional<TPE> bySerie = tpeRepository.findByNumeroSerie(serie);
+            Optional<TPE> bySerie = findTpeByNumeroSerie(serie);
             if (bySerie.isPresent()) {
                 return bySerie.get();
             }
@@ -358,8 +368,9 @@ public class TPEExcelImportService {
                                   Commercant commercant,
                                   TPE tpe,
                                   Boolean active,
+                                  boolean terminated,
                                   String numeroAffiliation,
-                                  LocalDate valueDate,
+                                  Integer valueDate,
                                   LocalDate dateAffiliation,
                                   String typeValue,
                                   String raisonSociale,
@@ -381,17 +392,24 @@ public class TPEExcelImportService {
                         "SANS_CLE"
                     ).replaceAll("[^A-Za-z0-9_-]", "_");
                     String reference = "IMP-" + numeroAffiliation + "-" + uniqueTpeKey;
-        Demande demande = demandeRepository.findByReference(reference).orElseGet(Demande::new);
+        Demande demande = demandeRepository.findFirstByReferenceOrderByLastModifiedDateDescIdDesc(reference).orElseGet(Demande::new);
+
+        User importUser = resolveImportUser();
 
         demande.setReference(reference);
-        demande.setTypeDemande(parseTypeTPE(typeValue));
+        demande.setTypeDemande(parseDemandeType(typeValue));
         demande.setCommercant(commercant);
-        demande.setDemandeur(resolveImportUser());
-        demande.setStatut(Boolean.TRUE.equals(active) ? StatutDemande.AFFECTEE : StatutDemande.VALIDEE_MONETIQUE);
+        demande.setDemandeur(importUser);
+        demande.setInputer(importUser);
+        demande.setStatut(terminated ? StatutDemande.CLOTUREE : (Boolean.TRUE.equals(active) ? StatutDemande.AFFECTEE : StatutDemande.VALIDEE_MONETIQUE));
+        demande.setDateSaisieTaux(LocalDateTime.now());
         demande.setDateValidation(LocalDateTime.now());
-        demande.setDateCloture(Boolean.TRUE.equals(active) ? LocalDateTime.now() : null);
+        demande.setDateCloture((terminated || Boolean.TRUE.equals(active)) ? LocalDateTime.now() : null);
         demande.setDescription("Import automatique depuis fichier Excel");
         demande.setCommentaireValidation(Boolean.TRUE.equals(active) ? "Affectation automatique après import" : "Demande préparée automatiquement depuis import");
+        if (terminated) {
+            demande.setCommentaireValidation("TPE cloture selon le statut ACTIVE du fichier import");
+        }
         demande.setUrgence(com.banque.abc.tpe.entity.enums.Urgence.NORMALE);
 
         demande.setRaisonSociale(raisonSociale);
@@ -401,17 +419,15 @@ public class TPEExcelImportService {
         demande.setCodePostal(codePostal);
         demande.setCodeAgence(codeAgence);
         demande.setTelephone(telephone);
-        demande.setEmailNotification(email);
         demande.setMcc(mcc);
         demande.setTauxCommission(parseDouble(tauxCommission));
         demande.setTauxCommissionInter(parseDouble(tauxCommissionInter));
         demande.setLoyer(parseDouble(loyer));
         demande.setSerieTpe(tpe.getNumeroSerie());
         demande.setNumeroTerminal(tpe.getNumeroTerminal());
-        LocalDate effectiveDate = valueDate != null ? valueDate : dateAffiliation;
-        demande.setValueDate(effectiveDate != null ? effectiveDate.atStartOfDay() : null);
+        demande.setValueDate(resolveValueDate(valueDate));
 
-        if (parseTypeTPE(typeValue) == TypeTPE.ECOMMERCE) {
+        if (parseDemandeType(typeValue) == TypeTPE.MOBILE) {
             demande.setRib(numeroCompte);
         }
 
@@ -450,10 +466,12 @@ public class TPEExcelImportService {
                 normalizedCodeAgence,
                 normalizedAdresse
             )
+            .stream()
+            .findFirst()
             .orElse(null);
 
         if (commercant == null && !"COMMERCANT_SANS_NOM".equals(normalizedRaisonSociale)) {
-            commercant = commercantRepository.findFirstByRaisonSociale(normalizedRaisonSociale).orElse(null);
+            commercant = commercantRepository.findFirstByRaisonSocialeOrderByLastModifiedDateDescIdDesc(normalizedRaisonSociale).orElse(null);
         }
 
         if (commercant == null) {
@@ -464,8 +482,9 @@ public class TPEExcelImportService {
             commercant.setStatut(StatutCommercant.ACTIF);
         }
 
-        commercant.setRaisonSociale(firstNonBlank(blankToNull(commercant.getRaisonSociale()), normalizedRaisonSociale));
-        commercant.setActivite(firstNonBlank(blankToNull(commercant.getActivite()), blankToNull(activite), "INCONNUE"));
+        String incomingRaisonSociale = "COMMERCANT_SANS_NOM".equals(normalizedRaisonSociale) ? null : normalizedRaisonSociale;
+        commercant.setRaisonSociale(firstNonBlank(incomingRaisonSociale, blankToNull(commercant.getRaisonSociale()), normalizedRaisonSociale));
+        commercant.setActivite(firstNonBlank(blankToNull(activite), blankToNull(commercant.getActivite()), "INCONNUE"));
         String existingNumeroCompte = blankToNull(commercant.getNumeroCompte());
         if (isTechnicalNumeroCompte(existingNumeroCompte, numeroTerminal, numeroAffiliation)) {
             commercant.setNumeroCompte(firstNonBlank(normalizedNumeroCompte, creationNumeroCompte));
@@ -474,20 +493,13 @@ public class TPEExcelImportService {
         }
         commercant.setCodeAgence(resolveStoredCodeAgence(commercant.getCodeAgence(), normalizedCodeAgence));
 
-        if (blankToNull(commercant.getAdresse()) == null) {
-            commercant.setAdresse(normalizedAdresse);
-        }
-        if (blankToNull(commercant.getCodePostal()) == null) {
-            commercant.setCodePostal(blankToNull(codePostal));
-        }
-        if (blankToNull(commercant.getTelephone()) == null) {
-            commercant.setTelephone(blankToNull(telephone));
-        }
+        commercant.setAdresse(firstNonBlank(normalizedAdresse, blankToNull(commercant.getAdresse())));
+        commercant.setCodePostal(firstNonBlank(blankToNull(codePostal), blankToNull(commercant.getCodePostal())));
+        commercant.setTelephone(firstNonBlank(blankToNull(telephone), blankToNull(commercant.getTelephone())));
 
         String safeEmail = resolveSafeMerchantEmail(commercant.getId(), blankToNull(email));
         if (safeEmail != null || commercant.getEmail() == null) {
             commercant.setEmail(safeEmail);
-            commercant.setEmailNotification(safeEmail);
         }
 
         Double parsedLoyer = parseDouble(loyer);
@@ -495,25 +507,25 @@ public class TPEExcelImportService {
             commercant.setLoyer(parsedLoyer);
         }
         if (blankToNull(typeValue) != null || commercant.getTypeCommerce() == null) {
-            commercant.setTypeCommerce(parseTypeTPE(typeValue));
+            commercant.setTypeCommerce(parseDemandeType(typeValue));
         }
         commercant.setStatut(StatutCommercant.ACTIF);
 
         return commercantRepository.save(commercant);
     }
 
-    private TPE findOrCreateTPE(String numeroSerie, String numeroTerminal) {
+    private TPE findOrCreateTPE(String numeroSerie, String numeroTerminal, String numeroAffiliation) {
         TPE tpe = null;
 
         if (numeroSerie != null && !numeroSerie.isBlank()) {
-            tpe = tpeRepository.findByNumeroSerie(numeroSerie).orElse(null);
+            tpe = findTpeByNumeroSerie(numeroSerie).orElse(null);
             if (tpe == null) {
                 tpe = findByCanonicalSerie(numeroSerie).orElse(null);
             }
         }
 
         if (tpe == null && numeroTerminal != null && !numeroTerminal.isBlank()) {
-            TPE terminalMatch = tpeRepository.findByNumeroTerminal(numeroTerminal).orElse(null);
+            TPE terminalMatch = findTpeByNumeroTerminal(numeroTerminal).orElse(null);
             if (terminalMatch == null) {
                 terminalMatch = findByCanonicalTerminal(numeroTerminal).orElse(null);
             }
@@ -522,7 +534,25 @@ public class TPEExcelImportService {
             }
         }
 
+        if (tpe == null && numeroAffiliation != null && !numeroAffiliation.isBlank()) {
+            tpe = findTpeByNumeroAffiliation(numeroAffiliation).orElse(null);
+        }
+
         return tpe != null ? tpe : new TPE();
+    }
+
+    private boolean shouldSkipStaleTerminatedRow(TPE tpe, boolean terminated, Boolean active, LocalDate incomingDate) {
+        if (!terminated || Boolean.TRUE.equals(active) || tpe == null || tpe.getId() == null) {
+            return false;
+        }
+
+        boolean currentIsActive = tpe.getStatut() == StatutTPE.AFFECTE || tpe.getCommercant() != null;
+        if (!currentIsActive) {
+            return false;
+        }
+
+        LocalDate currentDate = firstNonNull(tpe.getDateMiseEnService(), tpe.getDateAcquisition());
+        return incomingDate != null && currentDate != null && incomingDate.isBefore(currentDate);
     }
 
     private boolean canReuseTerminalMatch(TPE terminalMatch, String incomingNumeroSerie) {
@@ -545,7 +575,7 @@ public class TPEExcelImportService {
             return;
         }
 
-        Optional<TPE> existing = tpeRepository.findByNumeroTerminal(normalizedTerminal);
+        Optional<TPE> existing = findTpeByNumeroTerminal(normalizedTerminal);
         if (existing.isEmpty()) {
             existing = findByCanonicalTerminal(normalizedTerminal);
         }
@@ -579,7 +609,7 @@ public class TPEExcelImportService {
             return false;
         }
 
-        if (terminalOwner.getId() != null && affectationRepository.findActiveByTpeId(terminalOwner.getId()).isPresent()) {
+        if (terminalOwner.getId() != null && findLatestActiveAffectationByTpeId(terminalOwner.getId()).isPresent()) {
             return false;
         }
 
@@ -596,7 +626,7 @@ public class TPEExcelImportService {
             throw new BusinessException("numéro de série introuvable");
         }
 
-        Optional<TPE> existingBySerie = tpeRepository.findByNumeroSerie(baseSerie);
+        Optional<TPE> existingBySerie = findTpeByNumeroSerie(baseSerie);
         if (existingBySerie.isEmpty()) {
             return baseSerie;
         }
@@ -611,7 +641,7 @@ public class TPEExcelImportService {
                 baseSerie + "-IMP"
         );
 
-        Optional<TPE> existingByCandidate = tpeRepository.findByNumeroSerie(candidate);
+        Optional<TPE> existingByCandidate = findTpeByNumeroSerie(candidate);
         if (existingByCandidate.isEmpty()) {
             return candidate;
         }
@@ -635,7 +665,17 @@ public class TPEExcelImportService {
     }
 
     private void upsertActiveAffectation(TPE tpe, Commercant commercant, Demande demande, LocalDate dateAffectation, TPEImportResult result) {
-        Affectation affectation = affectationRepository.findActiveByTpeId(tpe.getId()).orElse(null);
+        Affectation affectation = demande != null && demande.getId() != null
+                ? affectationRepository.findByDemandeIdOrderByActifDescDateAffectationDescIdDesc(demande.getId())
+                    .stream()
+                    .findFirst()
+                    .orElse(null)
+                : null;
+
+        if (affectation == null) {
+            affectation = findLatestActiveAffectationByTpeId(tpe.getId()).orElse(null);
+        }
+
         if (affectation == null) {
             affectation = new Affectation();
             affectation.setTpe(tpe);
@@ -654,7 +694,7 @@ public class TPEExcelImportService {
     }
 
     private void deactivateActiveAffectationIfNeeded(TPE tpe) {
-        affectationRepository.findActiveByTpeId(tpe.getId()).ifPresent(affectation -> {
+        findLatestActiveAffectationByTpeId(tpe.getId()).ifPresent(affectation -> {
             affectation.setActif(false);
             affectation.setDateFin(LocalDate.now());
             affectationRepository.save(affectation);
@@ -704,10 +744,36 @@ public class TPEExcelImportService {
         for (Cell cell : headerRow) {
             String header = normalizeHeader(formatter.formatCellValue(cell));
             if (!header.isBlank()) {
-                headers.put(header, cell.getColumnIndex());
+                headers.putIfAbsent(header, cell.getColumnIndex());
             }
         }
         return headers;
+    }
+
+    private int findHeaderRowIndex(Sheet sheet) {
+        int firstRow = sheet.getFirstRowNum();
+        int maxProbeRow = Math.min(sheet.getLastRowNum(), firstRow + 20);
+        for (int rowIndex = firstRow; rowIndex <= maxProbeRow; rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
+            }
+
+            Map<String, Integer> headers = readHeaders(row);
+            if (looksLikeTpeImportHeader(headers)) {
+                return rowIndex;
+            }
+        }
+
+        throw new BusinessException("Impossible de trouver les en-tetes TPE dans le fichier Excel");
+    }
+
+    private boolean looksLikeTpeImportHeader(Map<String, Integer> headers) {
+        return headers.containsKey("N_AFFILIATION")
+                || headers.containsKey("N_TERMINAL")
+                || headers.containsKey("SERIE_TPE")
+                || headers.containsKey("NUMERO_SERIE")
+                || headers.containsKey("TYPE_TPE");
     }
 
     private String readString(Row row, Map<String, Integer> headers, DataFormatter formatter, String headerName) {
@@ -808,10 +874,22 @@ public class TPEExcelImportService {
                 || "ACTIF".equals(normalized);
     }
 
+    private boolean isTerminatedActiveStatus(Row row, Map<String, Integer> headers, DataFormatter formatter) {
+        String rawActive = readString(row, headers, formatter, "ACTIVE");
+        String normalized = rawActive == null ? "" : normalizeHeader(rawActive);
+        return "TERMINATED".equals(normalized)
+                || "TERMINETED".equals(normalized)
+                || "TERMIANTED".equals(normalized)
+                || "TERMINE".equals(normalized)
+                || "CLOTURE".equals(normalized)
+                || "CLOTUREE".equals(normalized)
+                || "RESILIE".equals(normalized);
+    }
+
     private Boolean resolveActiveStatus(Row row,
                                         Map<String, Integer> headers,
                                         DataFormatter formatter,
-                                        LocalDate valueDate,
+                                        Integer valueDate,
                                         LocalDate dateAffiliation,
                                         String numeroTerminal) {
         String rawActive = readString(row, headers, formatter, "ACTIVE");
@@ -828,6 +906,7 @@ public class TPEExcelImportService {
                     || "I".equals(normalized) || "INACTIVE".equals(normalized)
                     || "TERMINATED".equals(normalized) || "TERMINETED".equals(normalized)
                     || "TERMIANTED".equals(normalized) || "TERMINE".equals(normalized)
+                    || "CLOTURE".equals(normalized) || "CLOTUREE".equals(normalized)
                     || "RESILIE".equals(normalized)) {
                 return false;
             }
@@ -843,6 +922,27 @@ public class TPEExcelImportService {
         return false;
     }
 
+    private Integer readValueDate(Row row, Map<String, Integer> headers, DataFormatter formatter) {
+        String rawValueDate = readString(row, headers, formatter, "VALUE_DATE");
+        if (rawValueDate == null) {
+            return null;
+        }
+
+        try {
+            double parsed = Double.parseDouble(rawValueDate.replace(',', '.').trim());
+            return resolveValueDate((int) parsed);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Integer resolveValueDate(Integer valueDate) {
+        if (valueDate == null) {
+            return 1;
+        }
+        return valueDate == 2 ? 2 : 1;
+    }
+
     private LocalDate readLocalDate(Row row, Map<String, Integer> headers, DataFormatter formatter, String headerName) {
         Integer index = headers.get(normalizeHeader(headerName));
         if (index == null) {
@@ -854,8 +954,15 @@ public class TPEExcelImportService {
             return null;
         }
 
-        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-            return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        if (cell.getCellType() == CellType.NUMERIC) {
+            if (DateUtil.isCellDateFormatted(cell)) {
+                return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            }
+
+            double numericValue = cell.getNumericCellValue();
+            if (numericValue >= 20000 && numericValue <= 60000) {
+                return DateUtil.getJavaDate(numericValue).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            }
         }
 
         String value = formatter.formatCellValue(cell);
@@ -892,16 +999,21 @@ public class TPEExcelImportService {
         }
     }
 
-    private TypeTPE parseTypeTPE(String value) {
+    private String resolveTypeTPEValue(String value) {
+        String type = blankToNull(value);
+        return type != null ? type.trim().toUpperCase() : "TPE";
+    }
+
+    private TypeTPE parseDemandeType(String value) {
         if (value == null) {
-            return TypeTPE.PHYSIQUE;
+            return TypeTPE.TPE;
         }
 
         String normalized = normalizeHeader(value);
-        if (normalized.contains("ECOM") || normalized.contains("COMMERCE") || normalized.contains("ONLINE")) {
-            return TypeTPE.ECOMMERCE;
+        if (normalized.contains("MOBILE") || normalized.contains("ECOM") || normalized.contains("COMMERCE") || normalized.contains("ONLINE")) {
+            return TypeTPE.MOBILE;
         }
-        return TypeTPE.PHYSIQUE;
+        return TypeTPE.TPE;
     }
 
     private String buildCommentaire(String previlegeSecteur,
@@ -950,6 +1062,19 @@ public class TPEExcelImportService {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
                 return value.trim();
+            }
+        }
+        return null;
+    }
+
+    @SafeVarargs
+    private final <T> T firstNonNull(T... values) {
+        if (values == null) {
+            return null;
+        }
+        for (T value : values) {
+            if (value != null) {
+                return value;
             }
         }
         return null;
@@ -1051,6 +1176,11 @@ public class TPEExcelImportService {
                 .findFirst();
     }
 
+    private Optional<TPE> findTpeByNumeroTerminal(String terminal) {
+        return Optional.ofNullable(blankToNull(terminal))
+                .flatMap(tpeRepository::findFirstByNumeroTerminalOrderByLastModifiedDateDescIdDesc);
+    }
+
     private Optional<TPE> findByCanonicalSerie(String serie) {
         String canonicalSerie = canonicalizeKey(serie);
         if (canonicalSerie == null) {
@@ -1059,6 +1189,26 @@ public class TPEExcelImportService {
 
         return tpeRepository.findAll().stream()
                 .filter(tpe -> canonicalSerie.equals(canonicalizeKey(tpe.getNumeroSerie())))
+                .findFirst();
+    }
+
+    private Optional<TPE> findTpeByNumeroSerie(String serie) {
+        return Optional.ofNullable(blankToNull(serie))
+                .flatMap(tpeRepository::findFirstByNumeroSerieOrderByLastModifiedDateDescIdDesc);
+    }
+
+    private Optional<TPE> findTpeByNumeroAffiliation(String affiliation) {
+        return Optional.ofNullable(blankToNull(affiliation))
+                .flatMap(tpeRepository::findFirstByNumeroAffiliationOrderByLastModifiedDateDescIdDesc);
+    }
+
+    private Optional<Affectation> findLatestActiveAffectationByTpeId(Long tpeId) {
+        if (tpeId == null) {
+            return Optional.empty();
+        }
+
+        return affectationRepository.findActiveByTpeIdOrderByDateAffectationDescIdDesc(tpeId)
+                .stream()
                 .findFirst();
     }
 
@@ -1076,7 +1226,7 @@ public class TPEExcelImportService {
             return null;
         }
 
-        Optional<Commercant> existing = commercantRepository.findByEmail(email);
+        Optional<Commercant> existing = commercantRepository.findFirstByEmailOrderByLastModifiedDateDescIdDesc(email);
         if (existing.isEmpty()) {
             return email;
         }

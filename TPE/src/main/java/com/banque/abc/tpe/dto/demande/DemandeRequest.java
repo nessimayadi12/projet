@@ -2,13 +2,14 @@ package com.banque.abc.tpe.dto.demande;
 
 import com.banque.abc.tpe.entity.enums.TypeTPE;
 import com.banque.abc.tpe.entity.enums.Urgence;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -25,7 +26,7 @@ public class DemandeRequest {
     
     private Urgence urgence = Urgence.NORMALE;
     
-    // Champs de demande agence (TPE Physique)
+    // Champs de demande agence (TPE)
     private String raisonSociale;
     private String activite;
     private String numeroCompte;
@@ -33,9 +34,24 @@ public class DemandeRequest {
     private String codePostal;
     private String codeAgence;
     private String telephone;
-    private String emailNotification;
+
+    // Champs de validation Monetique (TPE)
+    private String mcc;
+    @DecimalMin(value = "0.0", message = "Le taux de commission doit etre positif")
+    @DecimalMax(value = "100.0", message = "Le taux de commission ne doit pas depasser 100")
+    private Double tauxCommission;
+    @DecimalMin(value = "0.0", message = "Le taux de commission inter doit etre positif")
+    @DecimalMax(value = "100.0", message = "Le taux de commission inter ne doit pas depasser 100")
+    private Double tauxCommissionInter;
+    @DecimalMin(value = "0.0", message = "Le loyer doit etre positif")
+    private Double loyer;
+    private String serieTpe;
+    private String numeroTerminal;
+    @Min(value = 1, message = "La value date doit etre 1 ou 2")
+    @Max(value = 2, message = "La value date doit etre 1 ou 2")
+    private Integer valueDate;
     
-    // Champs spécifiques E-commerce
+    // Champs spécifiques Mobile
     private String localite;
     private String rib;
     private String webmaster;

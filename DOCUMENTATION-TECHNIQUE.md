@@ -492,7 +492,6 @@ Comportement fonctionnel cote UI:
 ### 7.6 Audit et notifications
 
 - `AuditService` journalise les operations critiques.
-- `NotificationService` appele lors de creation/validation/rejet/affectation (canal a verifier selon implementation).
 
 ## 8. Modele de donnees
 
@@ -714,7 +713,6 @@ Frontend:
 - `FichierBancaireService.java` analyse le contenu du fichier bancaire et crée les écritures.
 - `RapportFichierBancaireService.java` génère les rapports PDF et texte.
 - `FileUploadService.java` encapsule le traitement de fichiers du workflow.
-- `NotificationService.java` centralise les notifications métier.
 - `AuditService.java` journalise les actions applicatives.
 
 ### 14.3 Backend: entités

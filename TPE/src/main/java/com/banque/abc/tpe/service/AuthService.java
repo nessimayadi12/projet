@@ -105,20 +105,17 @@ public class AuthService {
         } else {
             for (String roleName : registerRequest.getRoles()) {
                 String normalizedRoleName = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
-                Role role = roleRepository.findByName(RoleType.valueOf(normalizedRoleName))
+                RoleType roleType;
+                try {
+                    roleType = RoleType.valueOf(normalizedRoleName);
+                } catch (IllegalArgumentException e) {
+                    throw new BusinessException("Role non autorise: " + roleName);
+                }
+
+                Role role = roleRepository.findByName(roleType)
                         .orElseThrow(() -> new BusinessException("Rôle " + roleName + " non trouvé"));
                 roles.add(role);
             }
-        }
-
-        boolean hasMonetiqueSubRole = roles.stream()
-                .anyMatch(role -> role.getName() == RoleType.ROLE_INPUTER || role.getName() == RoleType.ROLE_AUTHORIZER);
-        boolean hasMonetiqueRole = roles.stream()
-                .anyMatch(role -> role.getName() == RoleType.ROLE_MONETIQUE);
-        if (hasMonetiqueSubRole && !hasMonetiqueRole) {
-            Role monetiqueRole = roleRepository.findByName(RoleType.ROLE_MONETIQUE)
-                    .orElseThrow(() -> new BusinessException("Role MONETIQUE non trouve"));
-            roles.add(monetiqueRole);
         }
 
         user.setRoles(roles);

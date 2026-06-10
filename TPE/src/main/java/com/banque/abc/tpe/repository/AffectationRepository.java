@@ -21,11 +21,14 @@ public interface AffectationRepository extends JpaRepository<Affectation, Long> 
     List<Affectation> findByActifTrue();
     
     boolean existsByDemandeIdAndActifTrue(Long demandeId);
-    
-    Optional<Affectation> findByDemandeId(Long demandeId);
+
+    List<Affectation> findByDemandeIdOrderByActifDescDateAffectationDescIdDesc(Long demandeId);
     
     @Query("SELECT a FROM Affectation a WHERE a.tpe.id = :tpeId AND a.actif = true")
     Optional<Affectation> findActiveByTpeId(Long tpeId);
+
+    @Query("SELECT a FROM Affectation a WHERE a.tpe.id = :tpeId AND a.actif = true ORDER BY a.dateAffectation DESC, a.id DESC")
+    List<Affectation> findActiveByTpeIdOrderByDateAffectationDescIdDesc(Long tpeId);
     
     @Query("SELECT a FROM Affectation a WHERE a.commercant.id = :commercantId AND a.actif = true")
     List<Affectation> findActiveByCommercantId(Long commercantId);

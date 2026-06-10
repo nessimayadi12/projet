@@ -36,7 +36,7 @@ export class CommercantFormComponent implements OnInit {
 
     this.commercantForm = this.fb.group({
       // Type de TPE (obligatoire)
-      typeCommerce: [TypeTPE.PHYSIQUE, [Validators.required]],
+      typeCommerce: [TypeTPE.TPE, [Validators.required]],
       
       // Données Administratives (AGENCE)
       raisonSociale: ['', [Validators.required]],
@@ -48,13 +48,12 @@ export class CommercantFormComponent implements OnInit {
       codeAgence: ['', [Validators.required]],
       telephone: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
-      emailNotification: ['', [Validators.email]],
       
-      // TPE Physique uniquement
+      // TPE uniquement
       loyer: [null],
       rneFilePath: [''],
       
-      // E-commerce uniquement
+      // Mobile uniquement
       urlSiteMarchand: [''],
       webhookUrl: [''],
       webmaster: [''],
@@ -92,13 +91,13 @@ export class CommercantFormComponent implements OnInit {
     const urlControl = this.commercantForm.get('urlSiteMarchand');
     const webmasterControl = this.commercantForm.get('webmaster');
 
-    if (type === TypeTPE.PHYSIQUE) {
-      // Pour TPE Physique, loyer peut être requis
+    if (type === TypeTPE.TPE || type === TypeTPE.PHYSIQUE) {
+      // Pour TPE, loyer peut être requis
       loyerControl?.setValidators([Validators.min(0)]);
       urlControl?.clearValidators();
       webmasterControl?.clearValidators();
-    } else if (type === TypeTPE.ECOMMERCE) {
-      // Pour E-commerce, URL et webmaster sont requis
+    } else if (type === TypeTPE.MOBILE) {
+      // Pour Mobile, URL et webmaster sont requis
       urlControl?.setValidators([Validators.required]);
       webmasterControl?.setValidators([Validators.required]);
       loyerControl?.clearValidators();
@@ -170,10 +169,18 @@ export class CommercantFormComponent implements OnInit {
   }
 
   get isTypePhysique(): boolean {
-    return this.commercantForm.get('typeCommerce')?.value === TypeTPE.PHYSIQUE;
+    const type = this.commercantForm.get('typeCommerce')?.value as TypeTPE | string | undefined;
+    return type === TypeTPE.TPE || type === TypeTPE.PHYSIQUE;
   }
 
   get isTypeEcommerce(): boolean {
-    return this.commercantForm.get('typeCommerce')?.value === TypeTPE.ECOMMERCE;
+    return this.commercantForm.get('typeCommerce')?.value === TypeTPE.MOBILE;
+  }
+
+  getTypeLabel(type: TypeTPE | string): string {
+    if (type === TypeTPE.MOBILE) {
+      return 'Mobile';
+    }
+    return 'TPE';
   }
 }

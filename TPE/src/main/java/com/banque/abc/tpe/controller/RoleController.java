@@ -41,9 +41,6 @@ public class RoleController {
             case "ROLE_ADMIN": return "Administrateur";
             case "ROLE_MONETIQUE": return "Monétique";
             case "ROLE_AGENCE": return "Agence";
-            case "ROLE_INPUTER": return "Saisisseur";
-            case "ROLE_AUTHORIZER": return "Valideur";
-            case "ROLE_COMMERCANT": return "Commerçant";
             default: return roleName;
         }
     }

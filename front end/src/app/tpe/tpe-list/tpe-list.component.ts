@@ -9,6 +9,7 @@ import { Observable } from 'rxjs';
 import * as XLSX from 'xlsx';
 
 interface ParcTpeRow {
+  typeTpe: string;
   modele: string;
   numeroSerie: string;
   statut: string;
@@ -79,7 +80,7 @@ export class TpeListComponent implements OnInit {
       },
       error: (err) => {
         console.error('Erreur lors du chargement des TPE:', err);
-        this.error = 'Impossible de charger la liste des TPE';
+        this.error = this.getLoadErrorMessage(err);
         this.loading = false;
       }
     });
@@ -92,6 +93,7 @@ export class TpeListComponent implements OnInit {
       const affiliation = (tpe.numeroAffiliation || '').toLowerCase();
       const marque = (tpe.marque || '').toLowerCase();
       const modele = (tpe.modele || '').toLowerCase();
+      const typeTpe = this.getTypeTpeLabel(tpe).toLowerCase();
       const commercant = (tpe.commercantActuelNom || '').toLowerCase();
       const raisonSociale = (tpe.raisonSociale || '').toLowerCase();
       const query = (this.searchTerm || '').toLowerCase();
@@ -103,6 +105,7 @@ export class TpeListComponent implements OnInit {
         affiliation.includes(query) ||
         marque.includes(query) ||
         modele.includes(query) ||
+        typeTpe.includes(query) ||
         commercant.includes(query) ||
         raisonSociale.includes(query) ||
         this.normalizeForSearch(serie).includes(normalizedQuery) ||
@@ -189,6 +192,7 @@ export class TpeListComponent implements OnInit {
     // Préparer les données pour l'export
     const dataToExport = this.filteredTpes.map(tpe => ({
       'N° Série': tpe.numeroSerie,
+      'Type TPE': this.getTypeTpeLabel(tpe),
       'Marque': tpe.marque,
       'Modèle': tpe.modele,
       'Statut': this.getStatutLabel(tpe.statut),
@@ -289,17 +293,45 @@ export class TpeListComponent implements OnInit {
   }
 
   getStatutLabel(statut: StatutTPE): string {
+    if (statut === StatutTPE.HORS_SERVICE) {
+      return 'Cloture';
+    }
     return (statut || '').replace(/_/g, ' ');
+  }
+
+  getTypeTpeLabel(tpe: TPE): string {
+    return tpe.typeTPE || tpe.typeTpe || '-';
   }
 
   private normalizeForSearch(value: string): string {
     return (value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
+  private getLoadErrorMessage(err: any): string {
+    if (err?.status === 401) {
+      return 'Session expiree. Veuillez vous reconnecter.';
+    }
+
+    if (err?.status === 403) {
+      return 'Vous n avez pas les droits necessaires pour consulter la liste des TPE.';
+    }
+
+    if (err?.status === 0) {
+      return 'Impossible de contacter le serveur backend sur localhost:8080.';
+    }
+
+    return 'Impossible de charger la liste des TPE';
+  }
+
   private async convertParcTpeFile(file: File): Promise<File> {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    if (this.isTpeReportWorkbook(firstSheet)) {
+      return file;
+    }
+
     const rows = XLSX.utils.sheet_to_json<any>(firstSheet, { defval: '' });
 
     if (!rows.length) {
@@ -353,11 +385,34 @@ export class TpeListComponent implements OnInit {
     return new File([outputBlob], `parc_${file.name}`, { type: outputBlob.type });
   }
 
+  private isTpeReportWorkbook(sheet: XLSX.WorkSheet): boolean {
+    const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
+    const maxProbeRows = Math.min(rows.length, 20);
+
+    for (let index = 0; index < maxProbeRows; index++) {
+      const normalizedHeaders = (rows[index] || [])
+        .map(value => this.normalizeHeader(this.cleanCell(value)))
+        .filter(value => !!value);
+
+      if (
+        normalizedHeaders.includes('N_AFFILIATION') ||
+        normalizedHeaders.includes('N_TERMINAL') ||
+        normalizedHeaders.includes('SERIE_TPE') ||
+        normalizedHeaders.includes('TYPE_TPE')
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   private mapParcTpeRow(row: any): any {
     const parcRow = this.readParcTpeRow(row);
     const numeroSerie = this.cleanCell(parcRow.numeroSerie);
     const terminal = this.cleanTerminal(parcRow.idTerminal);
     const modele = this.cleanCell(parcRow.modele);
+    const typeTpe = this.cleanCell(parcRow.typeTpe);
     const marchand = this.cleanCell(parcRow.idMarchand);
     const adresse = this.cleanAddress(parcRow.adresse, parcRow.cite);
     const dateInscription = this.toIsoDate(parcRow.dateInscription);
@@ -366,18 +421,18 @@ export class TpeListComponent implements OnInit {
     const numeroSerieSim = this.cleanCell(parcRow.numeroSerieSim);
     const banque = this.cleanCell(parcRow.banque);
     const importKey = this.buildParcImportKey(terminal, numeroSerie, marchand);
-    const active = this.isParcRowActive(parcRow.statut);
+    const activeValue = this.resolveParcActiveValue(parcRow.statut);
 
     return {
       IMPORT_MODE: 'PARC_TPE_MAJ',
-      TYPE_TPE: 'PHYSIQUE',
+      TYPE_TPE: typeTpe || 'TPE',
       MARQUE: this.resolveMarqueFromModele(modele),
       NUMERO_SERIE: numeroSerie,
       N_TERMINAL: terminal,
       RAISON_SOCIALE: marchand || terminal || numeroSerie,
-      ACTIVE: active ? 'OUI' : 'NON',
+      ACTIVE: activeValue,
       VALUE_DATE: dateInscription,
-      DATE_AFFILIATION: active ? dateInscription : '',
+      DATE_AFFILIATION: activeValue === 'OUI' ? dateInscription : '',
       CODE_TPE: modele,
       SERIE_PUCE: numeroSerieSim,
       N_AFFILIATION: importKey,
@@ -398,9 +453,10 @@ export class TpeListComponent implements OnInit {
 
   private readParcTpeRow(row: any): ParcTpeRow {
     return {
+      typeTpe: this.readColumn(row, ['TYPE TPE', 'TYPE_TPE', 'Type TPE', 'Type', 'Terminal Type']),
       modele: this.readColumn(row, ['Modele', 'MODELE']),
       numeroSerie: this.readColumn(row, ['Numero de serie TPE', 'N Serie']),
-      statut: this.readColumn(row, ['Statut', 'STATUT']),
+      statut: this.readColumn(row, ['Statut', 'STATUT', 'ACTIVE', 'Active']),
       dateInscription: this.readColumn(row, ['Date inscription', 'Date d inscription', 'DATE_INSCRIPTION']),
       derniereConnexion: this.readColumn(row, ['Derniere connexion', 'DERNIERE_CONNEXION']),
       banque: this.readColumn(row, ['Banque', 'BANQUE']),
@@ -464,9 +520,12 @@ export class TpeListComponent implements OnInit {
     return uniqueParts.join(' ');
   }
 
-  private isParcRowActive(value: any): boolean {
+  private resolveParcActiveValue(value: any): string {
     const status = this.normalizeHeader(this.cleanCell(value));
-    return ['ACTIVE', 'ACTIF', 'OUI', 'YES', '1', 'TRUE'].includes(status);
+    if (['TERMINATED', 'TERMINETED', 'TERMIANTED', 'TERMINE', 'CLOTURE', 'CLOTUREE', 'RESILIE'].includes(status)) {
+      return 'Termineted';
+    }
+    return ['ACTIVE', 'ACTIF', 'OUI', 'YES', '1', 'TRUE'].includes(status) ? 'OUI' : 'NON';
   }
 
   private resolveMarqueFromModele(modele: string): string {

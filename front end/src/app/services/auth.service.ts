@@ -13,11 +13,6 @@ export class AuthService {
   public currentUser: Observable<Utilisateur | null>;
 
   constructor(private http: HttpClient) {
-    // Nettoyer la session si aucun onglet n'est actif
-    if (!sessionStorage.getItem('tabOpen')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('currentUser');
-    }
     sessionStorage.setItem('tabOpen', 'true');
     
     const storedUser = localStorage.getItem('currentUser');
@@ -32,7 +27,8 @@ export class AuthService {
   }
 
   public get token(): string | null {
-    return localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    return token && token !== 'undefined' && token !== 'null' ? token : null;
   }
 
   public getCurrentUser(): Utilisateur | null {
@@ -110,11 +106,8 @@ export class AuthService {
   private resolvePrimaryRole(roles: Role[]): Role {
     const priority = [
       Role.ADMIN,
-      Role.AUTHORIZER,
-      Role.INPUTER,
       Role.MONETIQUE,
-      Role.AGENCE,
-      Role.COMMERCANT
+      Role.AGENCE
     ];
 
     return priority.find(role => roles.includes(role)) || roles[0] || Role.AGENCE;

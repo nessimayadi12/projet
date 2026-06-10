@@ -11,8 +11,8 @@
           </div>
           <div class="card-body">
             <div *ngIf="showReworkflowNotice" class="alert alert-warning">
-              <strong>Attention:</strong> Cette demande est deja affectee. Toute modification relance le workflow
-              (statut repasse a NOUVELLE) et necessite une nouvelle saisie/validation des taux.
+              <strong>Attention:</strong> Cette demande est deja affectee. Les corrections monetiques sont enregistrees directement.
+              Si les informations agence ou commercant changent, le workflow sera relance.
             </div>
             <form [formGroup]="demandeForm" (ngSubmit)="onSubmit()">
               
@@ -25,7 +25,7 @@
                     <label>Type de demande *</label>
                     <select class="form-control" formControlName="typeDemande">
                       <option *ngFor="let type of typesDemande" [value]="type">
-                        {{ type === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}
+                        {{ type === 'TPE' ? 'TPE' : 'Mobile' }}
                       </option>
                     </select>
                   </div>
@@ -43,12 +43,12 @@
                 </div>
               </div>
 
-              <!-- TPE Physique uniquement -->
-              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.PHYSIQUE">
+              <!-- TPE uniquement -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.TPE">
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label class="bmd-label-floating">Type de TPE *</label>
+                      <label class="bmd-label-floating">Type de TPE {{ isEditMode ? '' : '*' }}</label>
                       <input type="text" class="form-control" formControlName="typeTpeRequis" 
                         placeholder="Ex: TPE mobile, TPE fixe">
                       <div class="text-danger small mt-1" 
@@ -158,12 +158,12 @@
                 </div>
               </div>
 
-              <!-- TPE Physique: Numero compte -->
-              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.PHYSIQUE">
+              <!-- TPE: Numero compte -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.TPE">
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label class="bmd-label-floating">Numéro de Compte *</label>
+                      <label class="bmd-label-floating">Numéro de Compte {{ isEditMode ? '' : '*' }}</label>
                       <input type="text" class="form-control" formControlName="numeroCompte">
                       <div class="text-danger small mt-1" 
                         *ngIf="demandeForm.get('numeroCompte')?.invalid && demandeForm.get('numeroCompte')?.touched">
@@ -174,12 +174,12 @@
                 </div>
               </div>
 
-              <!-- E-commerce: RIB et Localité -->
-              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.ECOMMERCE">
+              <!-- Mobile: RIB et Localité -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.MOBILE">
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label class="bmd-label-floating">RIB *</label>
+                      <label class="bmd-label-floating">RIB {{ isEditMode ? '' : '*' }}</label>
                       <input type="text" class="form-control" formControlName="rib">
                       <div class="text-danger small mt-1" 
                         *ngIf="demandeForm.get('rib')?.invalid && demandeForm.get('rib')?.touched">
@@ -190,7 +190,7 @@
 
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label class="bmd-label-floating">Localité *</label>
+                      <label class="bmd-label-floating">Localité {{ isEditMode ? '' : '*' }}</label>
                       <input type="text" class="form-control" formControlName="localite">
                       <div class="text-danger small mt-1" 
                         *ngIf="demandeForm.get('localite')?.invalid && demandeForm.get('localite')?.touched">
@@ -250,26 +250,16 @@
                   </div>
                 </div>
 
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label class="bmd-label-floating">Email Notification *</label>
-                    <input type="email" class="form-control" formControlName="emailNotification">
-                    <div class="text-danger small mt-1" 
-                      *ngIf="demandeForm.get('emailNotification')?.invalid && demandeForm.get('emailNotification')?.touched">
-                      L'email est obligatoire et doit être valide
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              <!-- E-commerce: Champs supplémentaires -->
-              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.ECOMMERCE">
-                <h5 class="card-title mt-4">Informations E-commerce</h5>
+              <!-- Mobile: Champs supplémentaires -->
+              <div *ngIf="demandeForm.get('typeDemande')?.value === TypeDemande.MOBILE">
+                <h5 class="card-title mt-4">Informations Mobile</h5>
                 <hr>
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label class="bmd-label-floating">Webmaster / Contact Technique *</label>
+                      <label class="bmd-label-floating">Webmaster / Contact Technique {{ isEditMode ? '' : '*' }}</label>
                       <input type="text" class="form-control" formControlName="webmaster">
                       <div class="text-danger small mt-1" 
                         *ngIf="demandeForm.get('webmaster')?.invalid && demandeForm.get('webmaster')?.touched">
@@ -280,7 +270,7 @@
 
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label class="bmd-label-floating">Contact Technique *</label>
+                      <label class="bmd-label-floating">Contact Technique {{ isEditMode ? '' : '*' }}</label>
                       <input type="text" class="form-control" formControlName="contactTechnique">
                       <div class="text-danger small mt-1" 
                         *ngIf="demandeForm.get('contactTechnique')?.invalid && demandeForm.get('contactTechnique')?.touched">
@@ -293,12 +283,86 @@
                 <div class="row">
                   <div class="col-md-12">
                     <div class="form-group">
-                      <label class="bmd-label-floating">URL du site Marchand *</label>
+                      <label class="bmd-label-floating">URL du site Marchand {{ isEditMode ? '' : '*' }}</label>
                       <input type="url" class="form-control" formControlName="urlSiteMarchand" 
                         placeholder="https://exemple.com">
                       <div class="text-danger small mt-1" 
                         *ngIf="demandeForm.get('urlSiteMarchand')?.invalid && demandeForm.get('urlSiteMarchand')?.touched">
-                        L'URL du site est obligatoire et doit être valide
+                        L'URL du site doit être valide
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Donnees monetiques -->
+              <div *ngIf="isEditMode && isMonetique">
+                <h5 class="card-title mt-4">Donnees monetiques</h5>
+                <hr>
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">MCC</label>
+                      <input type="text" class="form-control" formControlName="mcc" maxlength="4">
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Numero terminal</label>
+                      <input type="text" class="form-control" formControlName="numeroTerminal">
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Serie TPE</label>
+                      <input type="text" class="form-control" formControlName="serieTpe">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Taux commission (%)</label>
+                      <input type="number" class="form-control" formControlName="tauxCommission" min="0" max="100" step="0.01">
+                      <div class="text-danger small mt-1"
+                        *ngIf="demandeForm.get('tauxCommission')?.invalid && demandeForm.get('tauxCommission')?.touched">
+                        Le taux doit etre entre 0 et 100
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Taux commission inter (%)</label>
+                      <input type="number" class="form-control" formControlName="tauxCommissionInter" min="0" max="100" step="0.01">
+                      <div class="text-danger small mt-1"
+                        *ngIf="demandeForm.get('tauxCommissionInter')?.invalid && demandeForm.get('tauxCommissionInter')?.touched">
+                        Le taux inter doit etre entre 0 et 100
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Loyer</label>
+                      <input type="number" class="form-control" formControlName="loyer" min="0" step="0.01">
+                      <div class="text-danger small mt-1"
+                        *ngIf="demandeForm.get('loyer')?.invalid && demandeForm.get('loyer')?.touched">
+                        Le loyer doit etre positif
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label class="bmd-label-floating">Value date</label>
+                      <input type="number" class="form-control" formControlName="valueDate" min="1" max="2" step="1">
+                      <div class="text-danger small mt-1"
+                        *ngIf="demandeForm.get('valueDate')?.invalid && demandeForm.get('valueDate')?.touched">
+                        La value date doit etre 1 ou 2
                       </div>
                     </div>
                   </div>

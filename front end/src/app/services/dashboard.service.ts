@@ -40,7 +40,7 @@ export class DashboardService {
     return this.http.get(`${this.apiUrl}/repartition-statut`);
   }
 
-  // R\u00e9partition par type (Physique/E-commerce)
+  // R\u00e9partition par type (TPE/Mobile)
   getRepartitionParType(): Observable<any> {
     return this.http.get(`${this.apiUrl}/repartition-type`);
   }

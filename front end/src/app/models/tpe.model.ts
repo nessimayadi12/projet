@@ -9,7 +9,13 @@ export enum StatutTPE {
 
 export enum TypeTPE {
   PHYSIQUE = 'PHYSIQUE',
-  ECOMMERCE = 'ECOMMERCE'
+  TPE = 'TPE',
+  MOBILE = 'MOBILE',
+  MPOS = 'MPOS',
+  FIXE_GPRS = 'FIXE GPRS',
+  E_COMMERCE = 'E COMMERCE',
+  CASH_ADVANCE = 'CASH ADVANCE',
+  PAX = 'PAX'
 }
 
 export interface TPE {
@@ -18,8 +24,8 @@ export interface TPE {
   marque?: string;
   modele?: string;
   statut: StatutTPE;
-  typeTpe: TypeTPE;
-  typeTPE?: TypeTPE;
+  typeTpe: string;
+  typeTPE?: string;
   dateAcquisition: Date | string;
   dateMiseEnService?: Date | string;
   commercantId?: number;
@@ -37,10 +43,10 @@ export interface TPE {
   rib?: string;
   codeAgence?: string;
   serieTpe?: string;
-  valueDate?: Date | string;
+  valueDate?: number;
   numeroTerminal?: string; // TID
 
-  // Champs E-commerce
+  // Champs Mobile
   urlSiteMarchand?: string;
   webhookUrl?: string;
   cleApi?: string;

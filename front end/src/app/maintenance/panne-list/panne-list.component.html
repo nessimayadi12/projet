@@ -2,162 +2,382 @@
   <div class="container-fluid">
     <div class="row">
       <div class="col-md-12">
-        <div class="card">
+        <div class="card maintenance-card">
           <div class="card-header card-header-danger">
             <h4 class="card-title">Gestion des Pannes TPE</h4>
-            <p class="card-category">Déclaration et suivi des pannes</p>
+            <p class="card-category">Déclaration, diagnostic, réparation et remplacement</p>
           </div>
+
           <div class="card-body">
-            
-            <!-- Boutons d'action -->
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <button mat-raised-button color="accent" (click)="toggleDeclarationForm()">
-                  <mat-icon>report_problem</mat-icon>
-                  {{ showDeclarationForm ? 'Annuler' : 'Déclarer une Panne' }}
-                </button>
+            <div class="stats-grid">
+              <div class="stat-tile">
+                <span>Total</span>
+                <strong>{{ pannes.length }}</strong>
               </div>
-              <div class="col-md-6 text-right">
-                <button mat-raised-button color="primary" (click)="exportToExcel()" 
-                        class="mr-2" [disabled]="pannesFiltrees.length === 0">
-                  <mat-icon>get_app</mat-icon>
-                  Exporter Excel
+              <div class="stat-tile warning">
+                <span>En cours</span>
+                <strong>{{ getEnCoursCount() }}</strong>
+              </div>
+              <div class="stat-tile">
+                <span>Déclarées</span>
+                <strong>{{ getStatCount(StatutPanne.DECLAREE) }}</strong>
+              </div>
+              <div class="stat-tile">
+                <span>En réparation</span>
+                <strong>{{ getStatCount(StatutPanne.EN_REPARATION) }}</strong>
+              </div>
+              <div class="stat-tile success">
+                <span>Résolues</span>
+                <strong>{{ getStatCount(StatutPanne.REPAREE) }}</strong>
+              </div>
+              <div class="stat-tile muted">
+                <span>Irrécupérables</span>
+                <strong>{{ getStatCount(StatutPanne.IRRECUPERABLE) }}</strong>
+              </div>
+            </div>
+
+            <div class="maintenance-toolbar">
+              <div class="toolbar-left">
+                <button *ngIf="canDeclarerPanne()" mat-raised-button color="accent" (click)="toggleDeclarationForm()">
+                  <mat-icon>{{ showDeclarationForm ? 'close' : 'report_problem' }}</mat-icon>
+                  {{ showDeclarationForm ? 'Annuler' : 'Déclarer une panne' }}
                 </button>
-                <button mat-raised-button (click)="exportToPDF()" 
-                        [disabled]="pannesFiltrees.length === 0">
+                <span *ngIf="canShowDeclarationHint()" class="toolbar-hint">
+                  Aucun TPE éligible. Le TPE doit être affecté, en panne ou en maintenance.
+                </span>
+              </div>
+
+              <div class="toolbar-right">
+                <button mat-raised-button color="primary" (click)="exportToExcel()"
+                        [disabled]="pannes.length === 0 || exportingExcel">
+                  <mat-icon>download</mat-icon>
+                  {{ exportingExcel ? 'Export...' : 'Exporter Excel' }}
+                </button>
+                <button mat-raised-button (click)="exportToPDF()"
+                        [disabled]="pannes.length === 0 || exportingPdf">
                   <mat-icon>picture_as_pdf</mat-icon>
-                  Exporter PDF
+                  {{ exportingPdf ? 'Export...' : 'Exporter PDF' }}
                 </button>
               </div>
             </div>
 
-            <!-- Formulaire Déclaration -->
             <div *ngIf="showDeclarationForm" class="declaration-form">
-              <h4>Nouvelle Déclaration de Panne</h4>
+              <div class="section-title">
+                <h4>Nouvelle déclaration de panne</h4>
+                <p>Le TPE doit déjà être affecté, en panne ou en maintenance.</p>
+              </div>
+
               <form [formGroup]="declarationForm">
-                <div class="row">
-                  <div class="col-md-12">
-                    <mat-form-field class="full-width" *ngIf="tpes.length > 0">
-                      <mat-label>Sélectionner le TPE</mat-label>
-                      <mat-select formControlName="tpeId">
-                        <mat-option *ngFor="let tpe of tpes" [value]="tpe.id">
-                          {{ tpe.numeroSerie }} - {{ tpe.marque }} {{ tpe.modele }} ({{ tpe.statut }})
-                        </mat-option>
-                      </mat-select>
-                      <mat-error *ngIf="declarationForm.get('tpeId')?.hasError('required')">
-                        TPE obligatoire
-                      </mat-error>
-                    </mat-form-field>
-                    <mat-form-field class="full-width" *ngIf="tpes.length === 0">
-                      <mat-label>ID du TPE</mat-label>
-                      <input matInput type="number" formControlName="tpeId" placeholder="Entrez l'ID du TPE">
-                      <mat-hint>Aucun TPE affecté. Créez d'abord une demande et faites-la accepter par le monétique.</mat-hint>
-                      <mat-error *ngIf="declarationForm.get('tpeId')?.hasError('required')">
-                        TPE obligatoire
-                      </mat-error>
-                    </mat-form-field>
-                    <button mat-button type="button" color="accent" (click)="afficherAideTPE()" *ngIf="tpes.length > 0">
-                      <mat-icon>help</mat-icon>
-                      Voir les 10 premiers TPE
+                <div class="tpe-search-panel" *ngIf="tpes.length > 0">
+                  <mat-form-field class="full-width tpe-search-field">
+                    <mat-label>Rechercher un TPE</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput #tpeSearchInput [value]="tpeSearchTerm"
+                           (input)="onTpeSearchChange(tpeSearchInput.value)"
+                           placeholder="Numero serie, TID, marque, modele, commercant">
+                    <button *ngIf="tpeSearchTerm" mat-icon-button matSuffix type="button"
+                            matTooltip="Effacer la recherche"
+                            (click)="clearTpeSearch(); tpeSearchInput.focus()">
+                      <mat-icon>close</mat-icon>
                     </button>
-                  </div>
+                    <mat-hint>{{ tpesFiltrees.length }} TPE trouve(s) sur {{ tpes.length }}</mat-hint>
+                  </mat-form-field>
                 </div>
-                <div class="row">
-                  <div class="col-md-12">
-                    <mat-form-field class="full-width">
-                      <mat-label>Description</mat-label>
-                      <textarea matInput formControlName="description" rows="4" 
-                                placeholder="Décrivez la panne en détail"></textarea>
-                      <mat-error *ngIf="declarationForm.get('description')?.hasError('required')">
-                        Description obligatoire
-                      </mat-error>
-                      <mat-error *ngIf="declarationForm.get('description')?.hasError('minlength')">
-                        Minimum 10 caractères
-                      </mat-error>
-                    </mat-form-field>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-md-12 text-right">
-                    <button mat-raised-button color="primary" (click)="declarerPanne()"
-                            [disabled]="declarationForm.invalid">
-                      <mat-icon>send</mat-icon>
-                      Déclarer
-                    </button>
-                  </div>
+
+                <mat-form-field class="full-width" *ngIf="tpes.length > 0">
+                  <mat-label>Sélectionner le TPE</mat-label>
+                  <mat-select formControlName="tpeId">
+                    <mat-option *ngIf="tpesFiltrees.length === 0" disabled>
+                      Aucun TPE trouve pour cette recherche
+                    </mat-option>
+                    <mat-option *ngFor="let tpe of tpesFiltrees" [value]="tpe.id">
+                      {{ getTpeDisplayLabel(tpe) }}
+                    </mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="declarationForm.get('tpeId')?.hasError('required')">
+                    TPE obligatoire
+                  </mat-error>
+                </mat-form-field>
+
+                <mat-form-field class="full-width" *ngIf="tpes.length === 0">
+                  <mat-label>ID du TPE</mat-label>
+                  <input matInput type="number" formControlName="tpeId">
+                  <mat-hint>Le TPE sera vérifié par le backend.</mat-hint>
+                </mat-form-field>
+
+                <button mat-button type="button" color="accent" (click)="afficherAideTPE()" *ngIf="tpes.length > 0">
+                  <mat-icon>help</mat-icon>
+                  Voir les premiers TPE éligibles
+                </button>
+
+                <mat-form-field class="full-width">
+                  <mat-label>Type de panne reconnue</mat-label>
+                  <mat-select formControlName="typePanne">
+                    <mat-option [value]="''">Non précisé</mat-option>
+                    <mat-option *ngFor="let panneType of panneTypes" [value]="panneType.value">
+                      {{ panneType.label }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field class="full-width">
+                  <mat-label>Description</mat-label>
+                  <textarea matInput formControlName="description" rows="4"></textarea>
+                  <mat-error *ngIf="declarationForm.hasError('typeOrDescriptionRequired')">
+                    Renseignez une description ou un type de panne.
+                  </mat-error>
+                  <mat-error *ngIf="declarationForm.get('description')?.hasError('minlength')">
+                    Minimum 5 caractères
+                  </mat-error>
+                </mat-form-field>
+
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="button" (click)="declarerPanne()"
+                          [disabled]="declarationForm.invalid">
+                    <mat-icon>send</mat-icon>
+                    Déclarer
+                  </button>
                 </div>
               </form>
             </div>
 
-            <!-- Filtres -->
-            <div class="row filters-row">
-              <div class="col-md-6">
-                <mat-form-field class="full-width">
-                  <mat-label>Filtrer par Statut</mat-label>
-                  <mat-select [(ngModel)]="filtreStatut" (selectionChange)="onFiltreChange()">
-                    <mat-option *ngFor="let statut of statuts" [value]="statut">
-                      {{ statut }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
+            <div *ngIf="selectedPanne" class="panne-panel">
+              <div class="panel-header">
+                <div>
+                  <h4>{{ workflowAction === 'DETAIL' ? 'Détail de la panne' : 'Traitement de la panne' }}</h4>
+                  <p>
+                    {{ selectedPanne.reference || 'Panne #' + selectedPanne.id }}
+                    <span class="badge" [ngClass]="getStatutClass(selectedPanne.statut)">
+                      {{ getStatutLabel(selectedPanne.statut) }}
+                    </span>
+                  </p>
+                </div>
+                <button mat-icon-button type="button" matTooltip="Fermer" (click)="closeWorkflowPanel()">
+                  <mat-icon>close</mat-icon>
+                </button>
               </div>
+
+              <div class="detail-grid">
+                <div>
+                  <span>TPE</span>
+                  <strong>{{ selectedPanne.tpeNumeroSerie || '-' }}</strong>
+                </div>
+                <div>
+                  <span>Commerçant</span>
+                  <strong>{{ selectedPanne.commercantNom || 'Non affecté' }}</strong>
+                </div>
+                <div>
+                  <span>Type</span>
+                  <strong>{{ getTypePanneLabel(selectedPanne.typePanne) }}</strong>
+                </div>
+                <div>
+                  <span>Date déclaration</span>
+                  <strong>{{ selectedPanne.dateDeclaration | date:'dd/MM/yyyy HH:mm' }}</strong>
+                </div>
+                <div class="detail-wide">
+                  <span>Description</span>
+                  <strong>{{ selectedPanne.description || '-' }}</strong>
+                </div>
+                <div class="detail-wide" *ngIf="selectedPanne.diagnostic">
+                  <span>Diagnostic</span>
+                  <strong>{{ selectedPanne.diagnostic }}</strong>
+                </div>
+                <div class="detail-wide" *ngIf="selectedPanne.actionCorrective || selectedPanne.solution">
+                  <span>Solution</span>
+                  <strong>{{ selectedPanne.actionCorrective || selectedPanne.solution }}</strong>
+                </div>
+                <div *ngIf="selectedPanne.tpeRemplacementNumero || selectedPanne.tpeRemplacementNumeroSerie">
+                  <span>TPE remplacement</span>
+                  <strong>{{ selectedPanne.tpeRemplacementNumero || selectedPanne.tpeRemplacementNumeroSerie }}</strong>
+                </div>
+              </div>
+
+              <form *ngIf="workflowAction !== 'DETAIL'" [formGroup]="workflowForm" class="workflow-form">
+                <mat-form-field class="full-width" *ngIf="workflowAction === 'DIAGNOSTIC'">
+                  <mat-label>Diagnostic</mat-label>
+                  <textarea matInput rows="4" formControlName="diagnostic"></textarea>
+                </mat-form-field>
+
+                <mat-form-field class="full-width" *ngIf="workflowAction === 'RESOLUTION'">
+                  <mat-label>Solution / action corrective</mat-label>
+                  <textarea matInput rows="4" formControlName="solution"></textarea>
+                </mat-form-field>
+
+                <ng-container *ngIf="workflowAction === 'IRRECUPERABLE'">
+                  <div class="replacement-flow" aria-label="Workflow de remplacement TPE">
+                    <div class="replacement-step">
+                      <span>1</span>
+                      <strong>Ancien TPE</strong>
+                      <small>{{ selectedPanne.tpeNumeroSerie || '-' }} passera HORS_SERVICE</small>
+                    </div>
+                    <mat-icon>chevron_right</mat-icon>
+                    <div class="replacement-step">
+                      <span>2</span>
+                      <strong>Nouveau TPE</strong>
+                      <small>N° série, type, marque et modèle obligatoires</small>
+                    </div>
+                    <mat-icon>chevron_right</mat-icon>
+                    <div class="replacement-step">
+                      <span>3</span>
+                      <strong>Affectation</strong>
+                      <small>Le commerçant est conservé si le TPE était affecté</small>
+                    </div>
+                    <mat-icon>chevron_right</mat-icon>
+                    <div class="replacement-step">
+                      <span>4</span>
+                      <strong>Panne clôturée</strong>
+                      <small>Statut IRRECUPERABLE</small>
+                    </div>
+                  </div>
+
+                  <div class="replacement-impact">
+                    <strong>Validation du remplacement</strong>
+                    <p>
+                      Le système va clôturer l'affectation active de l'ancien TPE, créer le TPE de remplacement,
+                      réaffecter le commerçant si nécessaire, puis clôturer cette panne en irrécupérable.
+                    </p>
+                  </div>
+
+                  <div class="replacement-fields">
+                    <mat-form-field>
+                      <mat-label>N° Série</mat-label>
+                      <input matInput formControlName="nouveauNumeroSerie">
+                      <mat-hint>Unique</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field>
+                      <mat-label>Type TPE</mat-label>
+                      <input matInput formControlName="nouveauTypeTPE" list="type-tpe-suggestions">
+                      <mat-hint>Libre: MOBILE, MPOS, FIXE GPRS, PAX...</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field>
+                      <mat-label>Marque</mat-label>
+                      <input matInput formControlName="nouvelleMarque">
+                      <mat-hint>Exemple: Verifone</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field>
+                      <mat-label>Modèle</mat-label>
+                      <input matInput formControlName="nouveauModele">
+                      <mat-hint>Exemple: VX675</mat-hint>
+                    </mat-form-field>
+                  </div>
+
+                  <datalist id="type-tpe-suggestions">
+                    <option value="MOBILE"></option>
+                    <option value="MPOS"></option>
+                    <option value="FIXE GPRS"></option>
+                    <option value="E COMMERCE"></option>
+                    <option value="CASH ADVANCE"></option>
+                    <option value="PAX"></option>
+                  </datalist>
+
+                  <mat-form-field class="full-width">
+                    <mat-label>Commentaire de remplacement</mat-label>
+                    <textarea matInput rows="3" formControlName="commentaire"></textarea>
+                  </mat-form-field>
+
+                  <label class="confirm-line">
+                    <input type="checkbox" formControlName="confirmationIrrecuperable">
+                    <span>Je confirme que le TPE est irrécupérable et qu'un remplacement doit être créé.</span>
+                  </label>
+                </ng-container>
+
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="button" (click)="submitWorkflowAction()"
+                          [disabled]="savingAction || (workflowAction === 'IRRECUPERABLE' && !isIrrecuperableReady())">
+                    <mat-icon>save</mat-icon>
+                    {{ savingAction ? 'Enregistrement...' : 'Valider' }}
+                  </button>
+                </div>
+              </form>
             </div>
 
-            <!-- Table -->
-            <div class="table-responsive">
-              <table class="table table-hover">
+            <div class="filters-row">
+              <mat-form-field class="filter-field">
+                <mat-label>Filtrer par statut</mat-label>
+                <mat-select [(ngModel)]="filtreStatut" (selectionChange)="onFiltreChange()">
+                  <mat-option *ngFor="let statut of statuts" [value]="statut">
+                    {{ statut === 'TOUS' ? 'Tous' : getStatutLabel(statut) }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="table-responsive panne-table-wrapper">
+              <table class="table table-hover panne-table">
                 <thead class="text-danger">
                   <tr>
+                    <th>Référence</th>
                     <th>TPE</th>
+                    <th>Commerçant</th>
+                    <th>Type</th>
                     <th>Description</th>
                     <th>Statut</th>
-                    <th>Date Déclaration</th>
-                    <th>Technicien</th>
+                    <th>Date déclaration</th>
                     <th class="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr *ngFor="let panne of pannesFiltrees">
-                    <td>{{ panne.tpeNumeroSerie }}</td>
-                    <td>{{ panne.description }}</td>
+                    <td>{{ panne.reference || '-' }}</td>
+                    <td>{{ panne.tpeNumeroSerie || '-' }}</td>
+                    <td>{{ panne.commercantNom || 'Non affecté' }}</td>
+                    <td>{{ getTypePanneLabel(panne.typePanne) }}</td>
+                    <td class="description-cell">{{ panne.description || '-' }}</td>
                     <td>
                       <span class="badge" [ngClass]="getStatutClass(panne.statut)">
-                        {{ panne.statut }}
+                        {{ getStatutLabel(panne.statut) }}
                       </span>
                     </td>
                     <td>{{ panne.dateDeclaration | date:'dd/MM/yyyy HH:mm' }}</td>
-                    <td>{{ panne.technicienNom || 'Non assigné' }}</td>
-                    <td class="td-actions text-right">
-                      <button *ngIf="canAssigner() && panne.statut === 'DECLAREE'" 
-                              type="button" mat-icon-button matTooltip="Assigner Technicien" 
-                              color="primary" (click)="assignerTechnicien(panne)">
-                        <mat-icon>person_add</mat-icon>
+                    <td class="td-actions action-cell text-right">
+                      <button type="button" mat-stroked-button matTooltip="Voir le détail"
+                              (click)="ouvrirDetails(panne)">
+                        <mat-icon>visibility</mat-icon>
+                        Détail
                       </button>
-                      <button *ngIf="canResoudre() && panne.statut === 'DECLAREE'"
-                              type="button" mat-icon-button matTooltip="Diagnostiquer"
-                              color="primary" (click)="diagnostiquerPanne(panne)">
+
+                      <button *ngIf="canTraiterPanne() && panne.statut === StatutPanne.DECLAREE"
+                              type="button" mat-raised-button color="primary"
+                              (click)="diagnostiquerPanne(panne)">
                         <mat-icon>search</mat-icon>
+                        Diagnostiquer
                       </button>
-                      <button *ngIf="canResoudre() && panne.statut === 'DIAGNOSTIQUEE'"
-                              type="button" mat-icon-button matTooltip="Demarrer la reparation"
-                              color="primary" (click)="demarrerReparation(panne)">
+
+                      <button *ngIf="canTraiterPanne() && panne.statut === StatutPanne.DIAGNOSTIQUEE"
+                              type="button" mat-raised-button color="primary"
+                              (click)="demarrerReparation(panne)">
                         <mat-icon>build</mat-icon>
+                        Démarrer
                       </button>
-                      <button *ngIf="canResoudre() && (panne.statut === 'EN_REPARATION' || panne.statut === 'REPAREE')" 
-                              type="button" mat-icon-button matTooltip="Résoudre" 
-                              color="accent" (click)="resoudrePanne(panne)">
+
+                      <button *ngIf="canTraiterPanne() && panne.statut === StatutPanne.EN_REPARATION"
+                              type="button" mat-raised-button color="accent"
+                              (click)="resoudrePanne(panne)">
                         <mat-icon>check_circle</mat-icon>
+                        Réparée
                       </button>
-                      <button *ngIf="canResoudre() && (panne.statut === 'DIAGNOSTIQUEE' || panne.statut === 'EN_REPARATION')"
-                              type="button" mat-icon-button matTooltip="Irrecuperable"
-                              color="warn" (click)="marquerIrrecuperable(panne)">
+
+                      <button *ngIf="canTraiterPanne() && panne.statut === StatutPanne.EN_REPARATION"
+                              type="button" mat-raised-button color="warn"
+                              (click)="marquerIrrecuperable(panne)">
                         <mat-icon>block</mat-icon>
+                        Irrécupérable
                       </button>
                     </td>
                   </tr>
-                  <tr *ngIf="pannesFiltrees.length === 0">
-                    <td colspan="6" class="text-center">
-                      <em>Aucune panne trouvée</em>
+
+                  <tr *ngIf="!loading && pannesFiltrees.length === 0">
+                    <td colspan="8" class="empty-state">
+                      Aucune panne trouvée
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="loading">
+                    <td colspan="8" class="empty-state">
+                      Chargement des pannes...
                     </td>
                   </tr>
                 </tbody>

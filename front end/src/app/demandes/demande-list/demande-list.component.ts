@@ -99,15 +99,12 @@ export class DemandeListComponent implements OnInit {
   }
 
   canSaisirDonneesMonetiques(demande: DemandeTPE): boolean {
-    return demande.statut === StatutDemande.NOUVELLE &&
-      this.authService.hasAnyRole([Role.INPUTER, Role.ADMIN]);
+    return false;
   }
 
   canValiderDonneesMonetiques(demande: DemandeTPE): boolean {
-    return demande.statut === StatutDemande.EN_COURS &&
-      this.authService.hasAnyRole([Role.AUTHORIZER, Role.ADMIN]) &&
-      !!this.currentUserId &&
-      (!demande.inputerId || demande.inputerId !== this.currentUserId);
+    return (demande.statut === StatutDemande.NOUVELLE || demande.statut === StatutDemande.EN_COURS) &&
+      this.authService.hasAnyRole([Role.MONETIQUE, Role.ADMIN]);
   }
 
   canRejeterDonneesMonetiques(demande: DemandeTPE): boolean {
@@ -138,7 +135,10 @@ export class DemandeListComponent implements OnInit {
       const query = (this.rechercheText || '').toLowerCase();
       const matchRecherche = !this.rechercheText || 
         (demande.reference || '').toLowerCase().includes(query) ||
-        (demande.commercantNom || '').toLowerCase().includes(query);
+        (demande.commercantNom || '').toLowerCase().includes(query) ||
+        (demande.serieTpe || '').toLowerCase().includes(query) ||
+        (demande.tpeAffecteNumeroSerie || '').toLowerCase().includes(query) ||
+        (demande.nouvelleSerieTpe || demande.tpeRemplacementNumeroSerie || '').toLowerCase().includes(query);
 
       return matchStatut && matchType && matchUrgence && matchRecherche;
     });
@@ -360,7 +360,7 @@ export class DemandeListComponent implements OnInit {
           <div class="section-title">Informations Générales</div>
           <div class="info-row">
             <div class="info-label">Type de demande:</div>
-            <div class="info-value">${demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce'}</div>
+            <div class="info-value">${demande.typeDemande === 'TPE' ? 'TPE' : 'Mobile'}</div>
           </div>
           <div class="info-row">
             <div class="info-label">Statut:</div>
@@ -398,11 +398,7 @@ export class DemandeListComponent implements OnInit {
             <div class="info-label">Téléphone:</div>
             <div class="info-value">${demande.telephone || '-'}</div>
           </div>
-          <div class="info-row">
-            <div class="info-label">Email:</div>
-            <div class="info-value">${demande.emailNotification || '-'}</div>
-          </div>
-          ${demande.typeDemande === 'PHYSIQUE' ? `
+          ${demande.typeDemande === 'TPE' ? `
           <div class="info-row">
             <div class="info-label">N° Compte:</div>
             <div class="info-value">${demande.numeroCompte || '-'}</div>
@@ -501,7 +497,7 @@ export class DemandeListComponent implements OnInit {
           ${this.generatePrintRows([
             ['ID demande', demande.id],
             ['Reference', demande.reference],
-            ['Type de demande', demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce'],
+            ['Type de demande', demande.typeDemande === 'TPE' ? 'TPE' : 'Mobile'],
             ['Statut', `<span class="badge ${this.getStatutClass(demande.statut)}">${this.escapeHtml(this.getStatutLabel(demande.statut))}</span>`],
             ['Urgence', demande.urgence],
             ['Description', demande.description],
@@ -523,7 +519,6 @@ export class DemandeListComponent implements OnInit {
             ['Localite', demande.localite],
             ['Code postal', demande.codePostal],
             ['Telephone', demande.telephone],
-            ['Email notification', demande.emailNotification],
             ['Fichier RNE', demande.rneFilePath || demande.rneFile]
           ])}
         </div>
@@ -537,14 +532,14 @@ export class DemandeListComponent implements OnInit {
             ['Loyer', demande.loyer],
             ['Serie TPE', demande.serieTpe],
             ['Numero terminal', demande.numeroTerminal],
-            ['Value date', this.formatPrintDate(demande.valueDate)],
+            ['Value date', demande.valueDate || 1],
             ['Date saisie taux', this.formatPrintDate(demande.dateSaisieTaux)],
             ['Commentaire validation', demande.commentaireValidation]
           ])}
         </div>
 
         <div class="section">
-          <div class="section-title">E-commerce</div>
+          <div class="section-title">Mobile</div>
           ${this.generatePrintRows([
             ['RIB', demande.rib],
             ['Webmaster', demande.webmaster],
@@ -557,8 +552,7 @@ export class DemandeListComponent implements OnInit {
           <div class="section-title">Workflow</div>
           ${this.generatePrintRows([
             ['Demandeur', demande.demandeurNom],
-            ['Inputer', demande.inputerNom],
-            ['Valideur', demande.valideurNom || demande.monetiqueValideurNom],
+            ['Monetique', demande.valideurNom || demande.monetiqueValideurNom],
             ['Date validation', this.formatPrintDate(demande.dateValidation)],
             ['Date affectation', this.formatPrintDate(demande.dateAffectation)],
             ['Date cloture', this.formatPrintDate(demande.dateCloture)],
@@ -693,8 +687,8 @@ export class DemandeListComponent implements OnInit {
     const dataToExport = this.demandesFiltrees.map(demande => ({
       'Référence': demande.reference,
       'Commerçant': demande.commercantNom,
-      'Type Demande': demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 
-                       demande.typeDemande === 'ECOMMERCE' ? 'E-Commerce' : demande.typeDemande,
+      'Type Demande': demande.typeDemande === 'TPE' ? 'TPE' : 
+                       demande.typeDemande === 'MOBILE' ? 'Mobile' : demande.typeDemande,
       'Statut': demande.statut,
       'Urgence': demande.urgence,
       'Date Création': demande.createdAt ? new Date(demande.createdAt).toLocaleDateString('fr-FR') : '-',

@@ -39,9 +39,6 @@ export class LoginComponent implements OnInit {
   getDefaultRoute(): string {
     const user = this.authService.getCurrentUser();
     if (user) {
-      if (this.authService.hasAnyRole([Role.INPUTER, Role.AUTHORIZER])) {
-        return '/taux';
-      }
       // ADMIN et MONETIQUE vont au dashboard
       if (this.authService.hasAnyRole([Role.ADMIN, Role.MONETIQUE])) {
         return '/dashboard';

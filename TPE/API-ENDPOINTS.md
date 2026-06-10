@@ -238,6 +238,113 @@ Clôturer une demande
 
 ---
 
+## Pannes / Maintenance Endpoints
+
+### Workflow obligatoire
+
+```text
+Agence/Admin:
+DECLAREE
+
+Monetique/Admin:
+DECLAREE -> DIAGNOSTIQUEE -> EN_REPARATION
+
+Depuis EN_REPARATION:
+EN_REPARATION -> REPAREE
+EN_REPARATION -> IRRECUPERABLE + nouveauNumeroSerie
+```
+
+**Regles metier:**
+- La declaration est autorisee uniquement si le TPE est deja `AFFECTE`, `EN_PANNE` ou `MAINTENANCE`.
+- Une panne creee passe toujours au statut `DECLAREE`.
+- Les transitions directes hors workflow sont refusees.
+- Le passage a `IRRECUPERABLE` exige la saisie d'un nouveau numero de serie pour creer le TPE de remplacement.
+- Une panne `REPAREE` remet le TPE en service: `AFFECTE` si une affectation active existe, sinon `DISPONIBLE`.
+
+### POST /pannes
+Declarer une panne depuis Maintenance.
+
+**Permissions:** AGENCE, ADMIN
+
+**Request Body:**
+```json
+{
+    "tpeId": 1,
+    "typePanne": "HARDWARE",
+    "description": "Ecran noir au demarrage"
+}
+```
+
+**Response:** statut `DECLAREE`.
+
+### POST /pannes/{id}/diagnostiquer
+Faire le diagnostic d'une panne.
+
+**Permissions:** MONETIQUE, ADMIN
+
+**Transition:** `DECLAREE -> DIAGNOSTIQUEE`
+
+**Request Body:**
+```json
+{
+    "diagnostic": "Carte mere defectueuse"
+}
+```
+
+### POST /pannes/{id}/en-reparation
+Demarrer la reparation.
+
+**Permissions:** MONETIQUE, ADMIN
+
+**Transition:** `DIAGNOSTIQUEE -> EN_REPARATION`
+
+### POST /pannes/{id}/reparee
+Marquer la panne comme resolue.
+
+**Permissions:** MONETIQUE, ADMIN
+
+**Transition:** `EN_REPARATION -> REPAREE`
+
+**Request Body:**
+```json
+{
+    "solution": "Carte mere remplacee et tests OK"
+}
+```
+
+### POST /pannes/{id}/irrecuperable
+Marquer le TPE comme irrecuperable et creer un TPE de remplacement.
+
+**Permissions:** MONETIQUE, ADMIN
+
+**Transition:** `EN_REPARATION -> IRRECUPERABLE`
+
+**Request Body:**
+```json
+{
+    "nouveauNumeroSerie": "TPE-2026-REM-001",
+    "commentaire": "Remplacement suite a panne irreparable"
+}
+```
+
+### GET /pannes/export/excel
+Exporter le suivi des pannes au format Excel.
+
+**Permissions:** AGENCE, MONETIQUE, ADMIN
+
+**Query Params optionnels:**
+- `debut`: date ISO, ex: `2026-06-01T00:00:00`
+- `fin`: date ISO, ex: `2026-06-30T23:59:59`
+
+### GET /pannes/export/pdf
+Exporter le suivi des pannes au format PDF.
+
+**Permissions:** AGENCE, MONETIQUE, ADMIN
+
+**Query Params optionnels:** identiques a `/pannes/export/excel`.
+
+---
+
 ## Taux Endpoints (4 Yeux)
 
 ### POST /taux

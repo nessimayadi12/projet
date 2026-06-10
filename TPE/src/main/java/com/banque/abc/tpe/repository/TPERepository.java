@@ -2,7 +2,6 @@ package com.banque.abc.tpe.repository;
 
 import com.banque.abc.tpe.entity.TPE;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
-import com.banque.abc.tpe.entity.enums.TypeTPE;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -15,10 +14,16 @@ import java.util.Optional;
 public interface TPERepository extends JpaRepository<TPE, Long>, JpaSpecificationExecutor<TPE> {
     
     Optional<TPE> findByNumeroSerie(String numeroSerie);
+
+    Optional<TPE> findFirstByNumeroSerieOrderByLastModifiedDateDescIdDesc(String numeroSerie);
     
     Optional<TPE> findByNumeroTerminal(String numeroTerminal);
 
+    Optional<TPE> findFirstByNumeroTerminalOrderByLastModifiedDateDescIdDesc(String numeroTerminal);
+
     Optional<TPE> findByNumeroAffiliation(String numeroAffiliation);
+
+    Optional<TPE> findFirstByNumeroAffiliationOrderByLastModifiedDateDescIdDesc(String numeroAffiliation);
     
     boolean existsByNumeroSerie(String numeroSerie);
     
@@ -31,9 +36,9 @@ public interface TPERepository extends JpaRepository<TPE, Long>, JpaSpecificatio
     
     List<TPE> findByStatut(StatutTPE statut);
     
-    List<TPE> findByStatutAndTypeTPE(StatutTPE statut, TypeTPE typeTPE);
+    List<TPE> findByStatutAndTypeTPE(StatutTPE statut, String typeTPE);
     
-    List<TPE> findByTypeTPE(TypeTPE typeTPE);
+    List<TPE> findByTypeTPE(String typeTPE);
     
     List<TPE> findByCommercantId(Long commercantId);
 
@@ -43,7 +48,7 @@ public interface TPERepository extends JpaRepository<TPE, Long>, JpaSpecificatio
     Long countByStatut(StatutTPE statut);
     
     @Query("SELECT t FROM TPE t WHERE t.statut = 'DISPONIBLE' AND t.typeTPE = :typeTPE")
-    List<TPE> findDisponiblesByType(TypeTPE typeTPE);
+    List<TPE> findDisponiblesByType(String typeTPE);
     
     @Query("SELECT t.statut, COUNT(t) FROM TPE t GROUP BY t.statut")
     List<Object[]> countByStatutGrouped();

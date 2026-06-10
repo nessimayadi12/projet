@@ -22,28 +22,28 @@ public class TauxController {
     private final TauxService tauxService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('INPUTER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<TauxResponse> createTaux(@Valid @RequestBody TauxRequest request) {
         TauxResponse response = tauxService.createTaux(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MONETIQUE', 'INPUTER', 'AUTHORIZER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<TauxResponse> getTauxById(@PathVariable Long id) {
         TauxResponse response = tauxService.getTauxById(id);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/soumettre")
-    @PreAuthorize("hasAnyRole('INPUTER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<TauxResponse> soumettreValidation(@PathVariable Long id) {
         TauxResponse response = tauxService.soumettreValidation(id);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/valider")
-    @PreAuthorize("hasAnyRole('AUTHORIZER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<TauxResponse> validerTaux(@PathVariable Long id,
                                                      @Valid @RequestBody ValiderTauxRequest request) {
         TauxResponse response = tauxService.validerTaux(id, request);
@@ -51,14 +51,14 @@ public class TauxController {
     }
 
     @GetMapping("/en-attente")
-    @PreAuthorize("hasAnyRole('MONETIQUE', 'AUTHORIZER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<List<TauxResponse>> getTauxEnAttenteValidation() {
         List<TauxResponse> taux = tauxService.getTauxEnAttenteValidation();
         return ResponseEntity.ok(taux);
     }
 
     @GetMapping("/commercant/{commercantId}")
-    @PreAuthorize("hasAnyRole('MONETIQUE', 'INPUTER', 'AUTHORIZER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<List<TauxResponse>> getTauxByCommercant(@PathVariable Long commercantId) {
         List<TauxResponse> taux = tauxService.getTauxByCommercant(commercantId);
         return ResponseEntity.ok(taux);

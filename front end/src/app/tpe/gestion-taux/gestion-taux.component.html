@@ -5,11 +5,11 @@
         <div class="card">
           <div class="card-header card-header-primary">
             <h4 class="card-title">Creation / Soumission de taux</h4>
-            <p class="card-category">Inputer cree, puis soumet pour validation</p>
+            <p class="card-category">Monetique cree, puis soumet pour validation</p>
           </div>
           <div class="card-body">
             <div class="alert alert-info" *ngIf="!canCreate()">
-              <strong>Information:</strong> Seuls INPUTER ou ADMIN peuvent creer/soumettre.
+              <strong>Information:</strong> Seuls MONETIQUE ou ADMIN peuvent creer/soumettre.
             </div>
 
             <form *ngIf="canCreate()" (ngSubmit)="createTaux()" class="mb-3">
@@ -159,11 +159,11 @@
         <div class="card">
           <div class="card-header card-header-primary">
             <h4 class="card-title">Gestion des Taux TPE - Validation</h4>
-            <p class="card-category">Liste des taux en attente de validation (Authorizer)</p>
+            <p class="card-category">Liste des taux en attente de validation Monetique</p>
           </div>
           <div class="card-body">
             <div class="alert alert-info" *ngIf="!canValidate()">
-              <strong>Information:</strong> Vous devez avoir le rôle AUTHORIZER pour valider les taux.
+              <strong>Information:</strong> Vous devez avoir le role MONETIQUE pour valider les taux.
             </div>
 
             <div *ngIf="loading" class="text-center">
@@ -179,7 +179,7 @@
                     <th>Nouveau Taux Commission</th>
                     <th>Ancien Taux Inter</th>
                     <th>Nouveau Taux Inter</th>
-                    <th>Inputer</th>
+                    <th>Createur</th>
                     <th>Date Saisie</th>
                     <th>Statut</th>
                     <th class="text-right" *ngIf="canValidate()">Actions</th>
@@ -208,7 +208,7 @@
                         color="primary" 
                         class="btn btn-sm btn-success"
                         (click)="validerTaux(taux)"
-                        [disabled]="!isInputerDifferent(taux)"
+                        [disabled]="false"
                         matTooltip="Valider les taux">
                         <mat-icon>check</mat-icon>
                         Valider
@@ -219,7 +219,7 @@
                         color="warn" 
                         class="btn btn-sm btn-danger ml-2"
                         (click)="rejeterTaux(taux)"
-                        [disabled]="!isInputerDifferent(taux)"
+                        [disabled]="false"
                         matTooltip="Rejeter les taux">
                         <mat-icon>close</mat-icon>
                         Rejeter

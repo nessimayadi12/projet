@@ -39,7 +39,7 @@
                   <mat-label>Type</mat-label>
                   <mat-select [(ngModel)]="filtreType" (selectionChange)="onFiltreChange()">
                     <mat-option *ngFor="let type of types" [value]="type">
-                      {{ type === 'PHYSIQUE' ? 'TPE Physique' : type === 'ECOMMERCE' ? 'E-Commerce' : type }}
+                      {{ type === 'TPE' ? 'TPE' : type === 'MOBILE' ? 'Mobile' : type }}
                     </mat-option>
                   </mat-select>
                 </mat-form-field>
@@ -93,7 +93,7 @@
                     <td><strong>{{ demande.reference }}</strong></td>
                     <td>{{ demande.commercantNom }}</td>
                     <td>
-                      <span class="badge badge-info">{{ demande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}</span>
+                      <span class="badge badge-info">{{ demande.typeDemande === 'TPE' ? 'TPE' : 'Mobile' }}</span>
                     </td>
                     <td>
                       <span class="badge" [ngClass]="getStatutClass(demande.statut)">
@@ -228,7 +228,7 @@
         <h4>Informations generales</h4>
         <div class="details-grid">
           <div class="detail-item"><span>Reference</span><strong>{{ selectedDemande.reference || '-' }}</strong></div>
-          <div class="detail-item"><span>Type</span><strong>{{ selectedDemande.typeDemande === 'PHYSIQUE' ? 'TPE Physique' : 'E-Commerce' }}</strong></div>
+          <div class="detail-item"><span>Type</span><strong>{{ selectedDemande.typeDemande === 'TPE' ? 'TPE' : 'Mobile' }}</strong></div>
           <div class="detail-item"><span>Statut</span><strong>{{ getStatutLabel(selectedDemande.statut) }}</strong></div>
           <div class="detail-item"><span>Urgence</span><strong>{{ selectedDemande.urgence || '-' }}</strong></div>
           <div class="detail-item detail-wide"><span>Description</span><strong>{{ selectedDemande.description || '-' }}</strong></div>
@@ -246,7 +246,6 @@
           <div class="detail-item"><span>N compte</span><strong>{{ selectedDemande.numeroCompte || '-' }}</strong></div>
           <div class="detail-item"><span>Code agence</span><strong>{{ selectedDemande.codeAgence || '-' }}</strong></div>
           <div class="detail-item"><span>Telephone</span><strong>{{ selectedDemande.telephone || '-' }}</strong></div>
-          <div class="detail-item"><span>Email notification</span><strong>{{ selectedDemande.emailNotification || '-' }}</strong></div>
           <div class="detail-item"><span>Code postal</span><strong>{{ selectedDemande.codePostal || '-' }}</strong></div>
           <div class="detail-item detail-wide"><span>Adresse</span><strong>{{ selectedDemande.adresse || '-' }}</strong></div>
           <div class="detail-item"><span>Localite</span><strong>{{ selectedDemande.localite || '-' }}</strong></div>
@@ -263,14 +262,14 @@
           <div class="detail-item"><span>Loyer</span><strong>{{ selectedDemande.loyer !== undefined && selectedDemande.loyer !== null ? selectedDemande.loyer : '-' }}</strong></div>
           <div class="detail-item"><span>Serie TPE</span><strong>{{ selectedDemande.serieTpe || '-' }}</strong></div>
           <div class="detail-item"><span>N terminal</span><strong>{{ selectedDemande.numeroTerminal || '-' }}</strong></div>
-          <div class="detail-item"><span>Value date</span><strong>{{ selectedDemande.valueDate | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="detail-item"><span>Value date</span><strong>{{ selectedDemande.valueDate || 1 }}</strong></div>
           <div class="detail-item"><span>Date saisie taux</span><strong>{{ selectedDemande.dateSaisieTaux | date:'dd/MM/yyyy HH:mm' }}</strong></div>
           <div class="detail-item detail-wide"><span>Commentaire validation</span><strong>{{ selectedDemande.commentaireValidation || '-' }}</strong></div>
         </div>
       </div>
 
       <div class="details-section">
-        <h4>E-commerce</h4>
+        <h4>Mobile</h4>
         <div class="details-grid">
           <div class="detail-item"><span>RIB</span><strong>{{ selectedDemande.rib || '-' }}</strong></div>
           <div class="detail-item"><span>Webmaster</span><strong>{{ selectedDemande.webmaster || '-' }}</strong></div>
@@ -283,8 +282,7 @@
         <h4>Workflow</h4>
         <div class="details-grid">
           <div class="detail-item"><span>Demandeur</span><strong>{{ selectedDemande.demandeurNom || '-' }}</strong></div>
-          <div class="detail-item"><span>Inputer</span><strong>{{ selectedDemande.inputerNom || '-' }}</strong></div>
-          <div class="detail-item"><span>Valideur</span><strong>{{ selectedDemande.valideurNom || selectedDemande.monetiqueValideurNom || '-' }}</strong></div>
+          <div class="detail-item"><span>Monetique</span><strong>{{ selectedDemande.valideurNom || selectedDemande.monetiqueValideurNom || '-' }}</strong></div>
           <div class="detail-item"><span>Date validation</span><strong>{{ selectedDemande.dateValidation | date:'dd/MM/yyyy HH:mm' }}</strong></div>
           <div class="detail-item"><span>Date affectation</span><strong>{{ selectedDemande.dateAffectation | date:'dd/MM/yyyy HH:mm' }}</strong></div>
           <div class="detail-item"><span>Date cloture</span><strong>{{ selectedDemande.dateCloture | date:'dd/MM/yyyy HH:mm' }}</strong></div>

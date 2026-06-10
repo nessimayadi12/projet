@@ -19,11 +19,11 @@ export class TpeFormComponent implements OnInit {
   tpeId: number | null = null;
   loading = false;
   statuts = Object.values(StatutTPE);
-  typesTPE = Object.values(TypeTPE);
+  typeSuggestions = Object.values(TypeTPE);
   commercants: Commercant[] = [];
   isMonetique = false;
   isAgence = false;
-  selectedType: TypeTPE = TypeTPE.PHYSIQUE;
+  selectedType: string = TypeTPE.TPE;
 
   constructor(
     private fb: FormBuilder,
@@ -43,7 +43,7 @@ export class TpeFormComponent implements OnInit {
       marque: [''],
       modele: [''],
       statut: [StatutTPE.DISPONIBLE, [Validators.required]],
-      typeTpe: [TypeTPE.PHYSIQUE, [Validators.required]],
+      typeTpe: [TypeTPE.TPE, [Validators.required]],
       dateAcquisition: ['', [Validators.required]],
       dateMiseEnService: [''],
       commercantActuelId: [''],
@@ -57,10 +57,10 @@ export class TpeFormComponent implements OnInit {
       numeroCompte: [''],
       codeAgence: [''],
       serieTpe: [''],
-      valueDate: [''],
+      valueDate: [1, [Validators.required, Validators.min(1), Validators.max(2), Validators.pattern(/^[12]$/)]],
       numeroTerminal: [{ value: '', disabled: true }], // TID auto-g\u00e9n\u00e9r\u00e9
       
-      // Champs E-commerce sp\u00e9cifiques
+      // Champs Mobile sp\u00e9cifiques
       urlSiteMarchand: [''],
       webhookUrl: [''],
       cleApi: [''],
@@ -116,7 +116,7 @@ export class TpeFormComponent implements OnInit {
     this.loading = true;
     this.tpeService.getTPEById(id).subscribe({
       next: (tpe) => {
-        this.selectedType = tpe.typeTpe;
+        this.selectedType = tpe.typeTpe || TypeTPE.TPE;
         this.tpeForm.patchValue({
           numeroSerie: tpe.numeroSerie,
           marque: tpe.marque,
@@ -134,7 +134,7 @@ export class TpeFormComponent implements OnInit {
           numeroCompte: tpe.numeroCompte || tpe.rib || '',
           codeAgence: tpe.codeAgence || '',
           serieTpe: tpe.serieTpe || tpe.numeroSerie,
-          valueDate: this.formatDateForInput(tpe.valueDate),
+          valueDate: this.normalizeValueDate(tpe.valueDate),
           numeroTerminal: tpe.numeroTerminal || '',
           urlSiteMarchand: tpe.urlSiteMarchand || '',
           webhookUrl: tpe.webhookUrl || '',
@@ -160,8 +160,8 @@ export class TpeFormComponent implements OnInit {
     // R\u00e9initialiser les validateurs
     const urlField = this.tpeForm.get('urlSiteMarchand');
     
-    if (this.selectedType === TypeTPE.ECOMMERCE) {
-      // Champs obligatoires pour E-commerce
+    if (this.isMobileType(this.selectedType)) {
+      // Champs obligatoires pour Mobile
       urlField?.setValidators([Validators.required]);
     } else {
       // Retirer les validateurs pour TPE physique
@@ -182,7 +182,7 @@ export class TpeFormComponent implements OnInit {
       return;
     }
 
-    const requestData = { rib: numeroCompte, codeAgence: codeAgence, typeTPE: this.tpeForm.get('typeTpe')?.value || 'PHYSIQUE', numeroSerie: this.tpeForm.get('numeroSerie')?.value || 'TEMP-' + Date.now() }; this.tpeService.genererNumeroTerminal(requestData).subscribe({
+    const requestData = { rib: numeroCompte, codeAgence: codeAgence, typeTPE: this.tpeForm.get('typeTpe')?.value || 'TPE', numeroSerie: this.tpeForm.get('numeroSerie')?.value || 'TEMP-' + Date.now() }; this.tpeService.genererNumeroTerminal(requestData).subscribe({
       next: (tid) => {
         this.tpeForm.patchValue({ numeroTerminal: tid });
         this.showNotification('TID g\u00e9n\u00e9r\u00e9 avec succ\u00e8s : ' + tid, 'success');
@@ -212,6 +212,10 @@ export class TpeFormComponent implements OnInit {
     return Number.isNaN(numericValue) ? 0 : numericValue;
   }
 
+  normalizeValueDate(value: unknown): number {
+    return Number(value) === 2 ? 2 : 1;
+  }
+
   onSubmit(): void {
     if (this.tpeForm.invalid) {
       Object.keys(this.tpeForm.controls).forEach(key => {
@@ -226,7 +230,7 @@ export class TpeFormComponent implements OnInit {
     
     // Mapper les données vers le format backend
     const tpeData = {
-      typeTPE: formValue.typeTpe || 'PHYSIQUE',
+      typeTPE: formValue.typeTpe || 'TPE',
       numeroSerie: formValue.numeroSerie || 'SERIE-' + Date.now(),
       marque: formValue.marque,
       modele: formValue.modele,
@@ -243,7 +247,7 @@ export class TpeFormComponent implements OnInit {
       rib: formValue.numeroCompte,
       codeAgence: formValue.codeAgence,
       serieTpe: formValue.serieTpe,
-      valueDate: formValue.valueDate,
+      valueDate: this.normalizeValueDate(formValue.valueDate),
       loyer: formValue.loyer,
       urlSiteMarchand: formValue.urlSiteMarchand,
       webhookUrl: formValue.webhookUrl,
@@ -281,6 +285,22 @@ export class TpeFormComponent implements OnInit {
 
   getStatutLabel(statut: StatutTPE): string {
     return statut.replace(/_/g, ' ');
+  }
+
+  isPhysiqueType(type: TypeTPE | string | null | undefined): boolean {
+    return !this.isMobileType(type);
+  }
+
+  getTypeLabel(type: TypeTPE | string): string {
+    return type || 'TPE';
+  }
+
+  isMobileType(type: TypeTPE | string | null | undefined): boolean {
+    const normalized = String(type || '').toUpperCase();
+    return normalized.includes('MOBILE')
+      || normalized.includes('MPOS')
+      || normalized.includes('E COMMERCE')
+      || normalized.includes('ECOMMERCE');
   }
 
   showNotification(message: string, type: string): void {

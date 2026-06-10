@@ -43,9 +43,6 @@ spring.datasource.password=YOUR_PASSWORD
 # JWT Configuration
 jwt.secret=YOUR_SECRET_KEY_MINIMUM_32_CHARACTERS
 
-# Email Configuration (optionnel)
-spring.mail.username=your-email@gmail.com
-spring.mail.password=your-app-password
 ```
 
 ## 📦 Installation
@@ -150,7 +147,6 @@ src/main/java/com/banque/abc/tpe/
 ### 3. Gestion des Demandes
 - ✅ Workflow complet : Nouvelle → En cours → Validée → Affectée → Clôturée
 - ✅ Validation par la Monétique
-- ✅ Notifications email automatiques
 - ✅ Gestion des pièces jointes
 - ✅ Commentaires et suivi
 
@@ -375,7 +371,6 @@ Le secret JWT doit faire au moins 32 caractères
 2. **TID unique** : Chaque TID doit être unique dans tout le système
 3. **Affectation** : Un TPE ne peut être affecté que s'il est DISPONIBLE
 4. **Audit** : Toutes les actions critiques sont loggées
-5. **Notifications** : Les emails sont envoyés automatiquement (configurer SMTP)
 
 ## 🔄 Workflow complet
 

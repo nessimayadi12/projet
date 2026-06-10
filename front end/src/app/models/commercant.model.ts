@@ -6,7 +6,8 @@ export enum StatutCommercant {
 
 export enum TypeTPE {
   PHYSIQUE = 'PHYSIQUE',
-  ECOMMERCE = 'ECOMMERCE'
+  TPE = 'TPE',
+  MOBILE = 'MOBILE'
 }
 
 export interface Commercant {
@@ -27,7 +28,6 @@ export interface Commercant {
   loyer?: number;
   mcc?: string;
   webmaster?: string;
-  emailNotification?: string;
   typeCommerce?: TypeTPE;
   statut: StatutCommercant;
   nomContact?: string;

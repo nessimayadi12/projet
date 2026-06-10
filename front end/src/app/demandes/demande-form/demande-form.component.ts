@@ -43,7 +43,7 @@ export class DemandeFormComponent implements OnInit {
   ) {
     this.demandeForm = this.fb.group({
       // Champs communs
-      typeDemande: [TypeDemande.PHYSIQUE, [Validators.required]],
+      typeDemande: [TypeDemande.TPE, [Validators.required]],
       urgence: [Urgence.NORMALE, [Validators.required]],
       description: [''],
       
@@ -54,13 +54,21 @@ export class DemandeFormComponent implements OnInit {
       codePostal: ['', [Validators.required]],
       codeAgence: ['', [Validators.required]],
       telephone: ['', [Validators.required]],
-      emailNotification: ['', [Validators.required, Validators.email]],
       
-      // TPE Physique uniquement
+      // TPE uniquement
       typeTpeRequis: [''],
       numeroCompte: [''],
+
+      // Donnees monetiques, modifiables en update par Monetique/Admin
+      mcc: [''],
+      tauxCommission: [null, [Validators.min(0), Validators.max(100)]],
+      tauxCommissionInter: [null, [Validators.min(0), Validators.max(100)]],
+      loyer: [null, [Validators.min(0)]],
+      serieTpe: [''],
+      numeroTerminal: [''],
+      valueDate: [1, [Validators.min(1), Validators.max(2), Validators.pattern(/^[12]$/)]],
       
-      // E-commerce uniquement
+      // Mobile uniquement
       localite: [''],
       rib: [''],
       webmaster: [''],
@@ -83,7 +91,7 @@ export class DemandeFormComponent implements OnInit {
     });
 
     // Initialiser les validateurs pour le type par défaut
-    this.updateFormValidators(TypeDemande.PHYSIQUE);
+    this.updateFormValidators(TypeDemande.TPE);
 
     // Mode édition
     const id = this.route.snapshot.paramMap.get('id');
@@ -122,8 +130,7 @@ export class DemandeFormComponent implements OnInit {
       activite: commercant.activite || '',
       adresse: commercant.adresse,
       codePostal: commercant.codePostal,
-      telephone: commercant.telephone,
-      emailNotification: commercant.email
+      telephone: commercant.telephone
     });
     
     this.searchCommercant = commercant.raisonSociale;
@@ -141,8 +148,7 @@ export class DemandeFormComponent implements OnInit {
       activite: '',
       adresse: '',
       codePostal: '',
-      telephone: '',
-      emailNotification: ''
+      telephone: ''
     });
   }
 
@@ -154,26 +160,32 @@ export class DemandeFormComponent implements OnInit {
   }
 
   updateFormValidators(typeDemande: TypeDemande): void {
-    if (typeDemande === TypeDemande.PHYSIQUE) {
-      // TPE Physique: numeroCompte et typeTpeRequis requis
-      this.demandeForm.get('typeTpeRequis')?.setValidators([Validators.required]);
-      this.demandeForm.get('numeroCompte')?.setValidators([Validators.required]);
+    const requireTypeSpecificFields = !this.isEditMode;
+
+    if (typeDemande === TypeDemande.TPE) {
+      // TPE: numeroCompte et typeTpeRequis requis
+      this.demandeForm.get('typeTpeRequis')?.setValidators(requireTypeSpecificFields ? [Validators.required] : []);
+      this.demandeForm.get('numeroCompte')?.setValidators(requireTypeSpecificFields ? [Validators.required] : []);
       
-      // E-commerce: champs optionnels
+      // Mobile: champs optionnels
       this.demandeForm.get('localite')?.clearValidators();
       this.demandeForm.get('rib')?.clearValidators();
       this.demandeForm.get('webmaster')?.clearValidators();
       this.demandeForm.get('contactTechnique')?.clearValidators();
       this.demandeForm.get('urlSiteMarchand')?.clearValidators();
     } else {
-      // E-commerce: champs E-commerce requis
-      this.demandeForm.get('localite')?.setValidators([Validators.required]);
-      this.demandeForm.get('rib')?.setValidators([Validators.required]);
-      this.demandeForm.get('webmaster')?.setValidators([Validators.required]);
-      this.demandeForm.get('contactTechnique')?.setValidators([Validators.required]);
-      this.demandeForm.get('urlSiteMarchand')?.setValidators([Validators.required, Validators.pattern('https?://.+')]);
+      // Mobile: champs requis
+      this.demandeForm.get('localite')?.setValidators(requireTypeSpecificFields ? [Validators.required] : []);
+      this.demandeForm.get('rib')?.setValidators(requireTypeSpecificFields ? [Validators.required] : []);
+      this.demandeForm.get('webmaster')?.setValidators(requireTypeSpecificFields ? [Validators.required] : []);
+      this.demandeForm.get('contactTechnique')?.setValidators(requireTypeSpecificFields ? [Validators.required] : []);
+      this.demandeForm.get('urlSiteMarchand')?.setValidators(
+        requireTypeSpecificFields
+          ? [Validators.required, Validators.pattern('https?://.+')]
+          : [Validators.pattern('https?://.+')]
+      );
       
-      // TPE Physique: champs optionnels
+      // TPE: champs optionnels
       this.demandeForm.get('typeTpeRequis')?.clearValidators();
       this.demandeForm.get('numeroCompte')?.clearValidators();
     }
@@ -190,7 +202,11 @@ export class DemandeFormComponent implements OnInit {
       next: (demande) => {
         this.currentDemande = demande;
         this.showReworkflowNotice = this.isEditMode && demande.statut === StatutDemande.AFFECTEE;
-        this.demandeForm.patchValue(demande);
+        this.demandeForm.patchValue({
+          ...demande,
+          valueDate: this.normalizeValueDate(demande.valueDate)
+        });
+        this.updateFormValidators(demande.typeDemande);
         this.loading = false;
       },
       error: (err) => {
@@ -261,9 +277,14 @@ export class DemandeFormComponent implements OnInit {
     }
 
     this.loading = true;
+    const formValue = this.demandeForm.getRawValue();
     const demandeData: DemandeTPE = {
-      ...this.demandeForm.value,
-      statut: StatutDemande.NOUVELLE
+      ...formValue,
+      tauxCommission: this.toNullableNumber(formValue.tauxCommission),
+      tauxCommissionInter: this.toNullableNumber(formValue.tauxCommissionInter),
+      loyer: this.toNullableNumber(formValue.loyer),
+      valueDate: this.normalizeValueDate(formValue.valueDate),
+      statut: this.currentDemande?.statut || StatutDemande.NOUVELLE
     };
 
     const request$ = this.isEditMode && this.demandeId
@@ -369,6 +390,19 @@ export class DemandeFormComponent implements OnInit {
       'CRITIQUE': 'Critique'
     };
     return labels[urgence] || urgence;
+  }
+
+  private toNullableNumber(value: unknown): number | undefined {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+
+    const numberValue = Number(value);
+    return Number.isNaN(numberValue) ? undefined : numberValue;
+  }
+
+  private normalizeValueDate(value: unknown): number {
+    return Number(value) === 2 ? 2 : 1;
   }
 
   showNotification(message: string, type: string): void {
