@@ -32,13 +32,6 @@ export class UploadFichierBancaireComponent implements OnInit {
     const file: File = event.target.files[0];
     
     if (file) {
-      // Vérifier l'extension
-      if (!file.name.toLowerCase().endsWith('.txt')) {
-        this.errorMessage = 'Seuls les fichiers .txt sont acceptés';
-        this.selectedFile = null;
-        return;
-      }
-
       // Vérifier la taille (max 10 MB)
       if (file.size > 10 * 1024 * 1024) {
         this.errorMessage = 'Le fichier est trop volumineux (max 10 MB)';

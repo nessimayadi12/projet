@@ -83,12 +83,6 @@
             <scope>provided</scope>
         </dependency>
         
-        <!-- Apache Commons -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-        
         <!-- Apache POI pour Excel -->
         <dependency>
             <groupId>org.apache.poi</groupId>

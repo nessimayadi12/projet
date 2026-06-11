@@ -136,6 +136,10 @@ public class TauxService {
             throw new UnauthorizedException("Seuls le service Monetique ou un administrateur peuvent valider des taux");
         }
 
+        if (taux.getInputer() != null && taux.getInputer().getId().equals(userPrincipal.getId())) {
+            throw new BusinessException("Regle 4 yeux: vous ne pouvez pas valider vos propres saisies");
+        }
+
         User authorizer = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 

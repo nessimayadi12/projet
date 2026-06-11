@@ -20,6 +20,7 @@ import com.banque.abc.tpe.repository.AffectationRepository;
 import com.banque.abc.tpe.repository.CommercantRepository;
 import com.banque.abc.tpe.repository.DemandeRepository;
 import com.banque.abc.tpe.repository.PanneRepository;
+import com.banque.abc.tpe.repository.PieceJointeRepository;
 import com.banque.abc.tpe.repository.UserRepository;
 import com.banque.abc.tpe.security.UserPrincipal;
 import com.banque.abc.tpe.util.ReferenceGenerator;
@@ -57,6 +58,7 @@ public class DemandeService {
     private final AffectationService affectationService;
     private final AffectationRepository affectationRepository;
     private final PanneRepository panneRepository;
+    private final PieceJointeRepository pieceJointeRepository;
 
     @Transactional
     public DemandeResponse createDemande(DemandeRequest request) {
@@ -590,8 +592,7 @@ public class DemandeService {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + demandeId));
 
-        String uploadDir = "uploads/demandes/" + demandeId;
-        Path filePath = Paths.get(uploadDir, fileName);
+        Path filePath = resolvePieceJointePath(demandeId, fileName);
 
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Fichier non trouvé: " + fileName);
@@ -609,5 +610,46 @@ public class DemandeService {
             log.error("Erreur lors de la lecture du fichier {} pour la demande {}", fileName, demandeId, e);
             throw new BusinessException("Erreur lors du téléchargement du fichier: " + e.getMessage());
         }
+    }
+
+    private Path resolvePieceJointePath(Long demandeId, String fileName) {
+        return pieceJointeRepository.findByDemandeId(demandeId).stream()
+                .filter(pieceJointe -> isRequestedPieceJointe(pieceJointe, fileName))
+                .map(PieceJointe::getCheminFichier)
+                .filter(Objects::nonNull)
+                .map(Paths::get)
+                .findFirst()
+                .orElseGet(() -> resolveLegacyUploadPath(demandeId, fileName));
+    }
+
+    private boolean isRequestedPieceJointe(PieceJointe pieceJointe, String fileName) {
+        if (pieceJointe == null || fileName == null) {
+            return false;
+        }
+
+        return fileName.equals(pieceJointe.getNomFichier())
+                || fileName.equals(pieceJointe.getCheminFichier())
+                || fileName.equals(extractFileName(pieceJointe.getCheminFichier()));
+    }
+
+    private String extractFileName(String path) {
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+
+        String normalizedPath = path.replace('\\', '/');
+        int lastSeparator = normalizedPath.lastIndexOf('/');
+        return lastSeparator >= 0 ? normalizedPath.substring(lastSeparator + 1) : normalizedPath;
+    }
+
+    private Path resolveLegacyUploadPath(Long demandeId, String fileName) {
+        Path uploadPath = Paths.get("uploads", "demandes", String.valueOf(demandeId)).normalize();
+        Path filePath = uploadPath.resolve(fileName).normalize();
+
+        if (!filePath.startsWith(uploadPath)) {
+            throw new BusinessException("Nom de fichier invalide");
+        }
+
+        return filePath;
     }
 }

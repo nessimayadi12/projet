@@ -4,8 +4,6 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { DemandeTPE, TypeDemande, StatutDemande } from '../../models/demande-tpe.model';
 import { DemandeService } from '../../services/demande.service';
 import { TpeService } from '../../services/tpe.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-demande-validation',
@@ -22,7 +20,6 @@ export class DemandeValidationComponent implements OnInit {
     private fb: FormBuilder,
     private demandeService: DemandeService,
     private tpeService: TpeService,
-    private http: HttpClient,
     public dialogRef: MatDialogRef<DemandeValidationComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { demande: DemandeTPE }
   ) {
@@ -196,14 +193,13 @@ export class DemandeValidationComponent implements OnInit {
   }
 
   downloadPieceJointe(fileName: string): void {
-    const url = `${environment.apiUrl}/demandes/${this.demande.id}/piece-jointe/${fileName}`;
-    
-    this.http.get(url, { 
-      responseType: 'blob',
-      observe: 'response'
-    }).subscribe({
+    if (!this.demande.id || !fileName) {
+      this.showNotification('Piece jointe introuvable', 'danger');
+      return;
+    }
+
+    this.demandeService.downloadPieceJointe(this.demande.id, fileName).subscribe({
       next: (response) => {
-        // Créer un blob et le télécharger
         const blob = response.body;
         if (blob) {
           const downloadUrl = window.URL.createObjectURL(blob);

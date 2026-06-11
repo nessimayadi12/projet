@@ -6,7 +6,6 @@ import com.banque.abc.tpe.dto.taux.ValiderTauxRequest;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Taux;
 import com.banque.abc.tpe.entity.User;
-import com.banque.abc.tpe.entity.enums.RoleType;
 import com.banque.abc.tpe.entity.enums.StatutTaux;
 import com.banque.abc.tpe.exception.BusinessException;
 import com.banque.abc.tpe.exception.ResourceNotFoundException;
@@ -106,7 +105,7 @@ class TauxServiceTest {
     @DisplayName("✅ INPUTER peut créer nouveau taux (statut: BROUILLON)")
     void testInputerCanCreateTaux() {
         // Setup: Alice est INPUTER
-        mockSecurityContext(inputerAlice.getId(), "ROLE_INPUTER");
+        mockSecurityContext(inputerAlice.getId(), "ROLE_MONETIQUE");
 
         when(userRepository.findById(inputerAlice.getId())).thenReturn(Optional.of(inputerAlice));
         when(commercantRepository.findById(commercantTest.getId())).thenReturn(Optional.of(commercantTest));
@@ -151,7 +150,7 @@ class TauxServiceTest {
     @DisplayName("✅ AUTHORIZER ≠ INPUTER peut approuver taux")
     void testAuthorizerCanValidateTaux() {
         // Setup: Bob est AUTHORIZER (et ≠ Alice qui a créé)
-        mockSecurityContext(authorizerBob.getId(), "ROLE_AUTHORIZER");
+        mockSecurityContext(authorizerBob.getId(), "ROLE_ADMIN");
 
         Taux tauxEnAttente = Taux.builder()
                 .commercant(commercantTest)
@@ -197,7 +196,7 @@ class TauxServiceTest {
     @DisplayName("❌ INPUTER ne peut PAS valider ses propres saisies (Règle 4 yeux)")
     void testInputerCannotValidateOwnTaux() {
         // Setup: Alice tente de valider son propre taux
-        mockSecurityContext(inputerAlice.getId(), "ROLE_AUTHORIZER");
+        mockSecurityContext(inputerAlice.getId(), "ROLE_MONETIQUE");
 
         Taux tauxEnAttente = Taux.builder()
                 .commercant(commercantTest)
@@ -236,7 +235,7 @@ class TauxServiceTest {
     @DisplayName("✅ AUTHORIZER peut rejeter taux avec motif")
     void testAuthorizerCanRejectTaux() {
         // Setup: Bob rejette le taux d'Alice
-        mockSecurityContext(authorizerBob.getId(), "ROLE_AUTHORIZER");
+        mockSecurityContext(authorizerBob.getId(), "ROLE_ADMIN");
 
         Taux tauxEnAttente = Taux.builder()
                 .commercant(commercantTest)
@@ -271,13 +270,13 @@ class TauxServiceTest {
     }
 
     /**
-     * ❌ TEST 5: Non-AUTHORIZER ne peut pas valider
+     * ❌ TEST 5: Utilisateur non MONETIQUE/ADMIN ne peut pas valider
      */
     @Test
-    @DisplayName("❌ Utilisateur sans rôle AUTHORIZER ne peut pas valider")
+    @DisplayName("❌ Utilisateur sans rôle MONETIQUE/ADMIN ne peut pas valider")
     void testNonAuthorizerCannotValidate() {
-        // Setup: Alice est INPUTER, tente de valider (elle devrait être AUTHORIZER)
-        mockSecurityContext(inputerAlice.getId(), "ROLE_INPUTER");  // ← Pas AUTHORIZER
+        // Setup: Alice a un rôle non autorisé pour valider les taux
+        mockSecurityContext(inputerAlice.getId(), "ROLE_AGENCE");
 
         Taux tauxEnAttente = Taux.builder()
                 .commercant(commercantTest)
@@ -299,8 +298,8 @@ class TauxServiceTest {
         );
 
         assertTrue(
-            exception.getMessage().contains("Authorizer"),
-            "Le message devrait mentionner le rôle Authorizer"
+            exception.getMessage().contains("Monetique") && exception.getMessage().contains("administrateur"),
+            "Le message devrait mentionner les roles autorises"
         );
     }
 

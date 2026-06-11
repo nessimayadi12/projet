@@ -59,7 +59,8 @@
                 <mat-icon [color]="'primary'" class="mr-2">{{ getFileIcon(getFileName(piece)) }}</mat-icon>
                 <span>{{ getFileName(piece) }}</span>
               </div>
-              <button mat-icon-button color="primary" 
+              <button mat-icon-button color="primary"
+                      type="button"
                       (click)="downloadPieceJointe(getFileName(piece))"
                       title="Télécharger">
                 <mat-icon>download</mat-icon>

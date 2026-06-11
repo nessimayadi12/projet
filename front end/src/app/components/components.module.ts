@@ -8,9 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FooterComponent } from './footer/footer.component';
 import { NavbarComponent } from './navbar/navbar.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
-import { PowerbiReportComponent } from './powerbi-report/powerbi-report.component';
 import { PowerbiPublicReportComponent } from './powerbi-public-report/powerbi-public-report.component';
-import { FileUploadComponent } from './file-upload/file-upload.component';
 import { UploadFichierBancaireComponent } from './upload-fichier-bancaire/upload-fichier-bancaire.component';
 
 @NgModule({
@@ -25,18 +23,14 @@ import { UploadFichierBancaireComponent } from './upload-fichier-bancaire/upload
     FooterComponent,
     NavbarComponent,
     SidebarComponent,
-    PowerbiReportComponent,
     PowerbiPublicReportComponent,
-    FileUploadComponent,
     UploadFichierBancaireComponent
   ],
   exports: [
     FooterComponent,
     NavbarComponent,
     SidebarComponent,
-    PowerbiReportComponent,
     PowerbiPublicReportComponent,
-    FileUploadComponent,
     UploadFichierBancaireComponent
   ]
 })

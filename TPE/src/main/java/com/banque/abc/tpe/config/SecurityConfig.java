@@ -68,7 +68,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/affectation/**", "/api/affectations/**").hasAnyRole("MONETIQUE", "ADMIN")
                         .requestMatchers("/api/panne/**", "/api/pannes/**").hasAnyRole("MONETIQUE", "AGENCE", "ADMIN")
                         .requestMatchers("/api/taux/**").hasAnyRole("MONETIQUE", "ADMIN")
-                        .requestMatchers("/api/file-upload/**", "/api/fichier-bancaire/**").hasAnyRole("MONETIQUE", "ADMIN")
+                        .requestMatchers("/api/fichier-bancaire/**").hasAnyRole("MONETIQUE", "ADMIN")
                         .requestMatchers("/api/tpe-posting/**").hasAnyRole("MONETIQUE", "ADMIN")
                         .anyRequest().authenticated()
                 );

@@ -73,17 +73,16 @@
               <div class="col-md-6">
                 <label for="fileInput" class="form-label">
                   <i class="fas fa-file-alt me-2"></i>
-                  Fichier Bancaire (.txt)
+                  Fichier Bancaire
                 </label>
                 <input 
                   type="file" 
                   class="form-control" 
                   id="fileInput" 
-                  accept=".txt"
                   (change)="onFileSelected($event)"
                   [disabled]="uploading">
                 <small class="form-text text-muted">
-                  Formats acceptés: .txt | Taille max: 10 MB
+                  Formats acceptés: tous formats lisibles (TXT, CSV, DAT, XLS, XLSX...) | Taille max: 10 MB
                 </small>
               </div>
             </div>

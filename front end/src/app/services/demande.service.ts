@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -102,6 +102,14 @@ export class DemandeService {
     formData.append('file', file);
     return this.http.post(`${this.apiUrl}/${id}/piece-jointe`, formData, {
       responseType: 'text'
+    });
+  }
+
+  downloadPieceJointe(id: number, fileName: string): Observable<HttpResponse<Blob>> {
+    const encodedFileName = encodeURIComponent(fileName);
+    return this.http.get(`${this.apiUrl}/${id}/piece-jointe/${encodedFileName}`, {
+      responseType: 'blob',
+      observe: 'response'
     });
   }
 

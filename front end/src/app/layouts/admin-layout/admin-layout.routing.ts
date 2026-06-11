@@ -16,7 +16,6 @@ import { DemandeFormComponent } from '../../demandes/demande-form/demande-form.c
 import { AffectationTPEComponent } from '../../demandes/affectation-tpe/affectation-tpe.component';
 import { PanneListComponent } from '../../maintenance/panne-list/panne-list.component';
 import { ScreenManagementComponent } from '../../components/screen-management/screen-management.component';
-import { FileUploadComponent } from '../../components/file-upload/file-upload.component';
 import { UploadFichierBancaireComponent } from '../../components/upload-fichier-bancaire/upload-fichier-bancaire.component';
 import { AuthGuard } from '../../guards/auth.guard';
 
