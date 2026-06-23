@@ -1,0 +1,200 @@
+<div class="main-content audit-page">
+  <div class="container-fluid">
+    <div class="audit-header">
+      <div>
+        <h3>Historique d'audit avance</h3>
+        <p>Tracabilite des actions sensibles et des modifications de donnees</p>
+      </div>
+      <button class="btn btn-outline-primary" type="button" (click)="exportCsv()" [disabled]="!logs.length">
+        <i class="material-icons">download</i>
+        Export CSV
+      </button>
+    </div>
+
+    <div class="stats-grid" *ngIf="stats">
+      <div class="stat-card">
+        <span>Total</span>
+        <strong>{{ stats.totalActions }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Aujourd'hui</span>
+        <strong>{{ stats.actionsAujourdhui }}</strong>
+      </div>
+      <div class="stat-card success">
+        <span>Reussies</span>
+        <strong>{{ stats.actionsReussies }}</strong>
+      </div>
+      <div class="stat-card danger">
+        <span>Echouees</span>
+        <strong>{{ stats.actionsEchouees }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Validations</span>
+        <strong>{{ stats.validations }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Rejets</span>
+        <strong>{{ stats.rejets }}</strong>
+      </div>
+      <div class="stat-card">
+        <span>Affectations</span>
+        <strong>{{ stats.affectations }}</strong>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="form-group">
+        <label>Utilisateur</label>
+        <input class="form-control" type="text" [(ngModel)]="filters.username">
+      </div>
+      <div class="form-group">
+        <label>Action</label>
+        <select class="form-control" [(ngModel)]="filters.action">
+          <option *ngFor="let action of actions" [value]="action.value">{{ action.label }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Module</label>
+        <select class="form-control" [(ngModel)]="filters.entityType">
+          <option *ngFor="let entityType of entityTypes" [value]="entityType">{{ entityType || 'Tous' }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ID entite</label>
+        <input class="form-control" type="text" [(ngModel)]="filters.entityId">
+      </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select class="form-control" [(ngModel)]="filters.statut">
+          <option value="">Tous</option>
+          <option value="SUCCESS">SUCCESS</option>
+          <option value="FAILED">FAILED</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Du</label>
+        <input class="form-control" type="datetime-local" [(ngModel)]="filters.dateDebut">
+      </div>
+      <div class="form-group">
+        <label>Au</label>
+        <input class="form-control" type="datetime-local" [(ngModel)]="filters.dateFin">
+      </div>
+      <div class="form-group keyword">
+        <label>Recherche</label>
+        <input class="form-control" type="text" [(ngModel)]="filters.keyword">
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" type="button" (click)="applyFilters()">
+          <i class="material-icons">search</i>
+        </button>
+        <button class="btn btn-default" type="button" (click)="resetFilters()">
+          <i class="material-icons">restart_alt</i>
+        </button>
+      </div>
+    </div>
+
+    <div class="audit-layout">
+      <div class="audit-table">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Module</th>
+                <th>Reference</th>
+                <th>Statut</th>
+                <th>Risque</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of logs" (click)="selectLog(log)" [class.active-row]="selectedLog?.id === log.id">
+                <td>{{ formatDate(log.dateAction) }}</td>
+                <td>{{ log.username }}</td>
+                <td><span class="audit-badge action">{{ getActionLabel(log) }}</span></td>
+                <td>{{ log.moduleName || log.entityType }}</td>
+                <td>{{ log.entityReference || log.entityId || '-' }}</td>
+                <td><span class="audit-badge" [class.success]="log.statut === 'SUCCESS'" [class.danger]="log.statut === 'FAILED'">{{ log.statut }}</span></td>
+                <td><span class="audit-badge risk" [class.critical]="log.riskLevel === 'CRITICAL'">{{ log.riskLevel || 'LOW' }}</span></td>
+              </tr>
+              <tr *ngIf="!loading && !logs.length">
+                <td colspan="7" class="empty-state">Aucune trace trouvee</td>
+              </tr>
+              <tr *ngIf="loading">
+                <td colspan="7" class="empty-state">Chargement...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination-row">
+          <span>{{ totalElements }} traces</span>
+          <div>
+            <button class="btn btn-sm btn-default" type="button" (click)="previousPage()" [disabled]="page === 0">
+              <i class="material-icons">chevron_left</i>
+            </button>
+            <span class="page-index">{{ page + 1 }} / {{ totalPages || 1 }}</span>
+            <button class="btn btn-sm btn-default" type="button" (click)="nextPage()" [disabled]="page + 1 >= totalPages">
+              <i class="material-icons">chevron_right</i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="audit-detail" *ngIf="selectedLog">
+        <div class="detail-title">
+          <span>{{ getActionLabel(selectedLog) }}</span>
+          <strong>#{{ selectedLog.id }}</strong>
+        </div>
+        <dl>
+          <dt>Date</dt>
+          <dd>{{ formatDate(selectedLog.dateAction) }}</dd>
+          <dt>Utilisateur</dt>
+          <dd>{{ selectedLog.username }} <small>{{ selectedLog.actorRoles }}</small></dd>
+          <dt>Entite</dt>
+          <dd>{{ selectedLog.entityType }} / {{ selectedLog.entityId || '-' }}</dd>
+          <dt>Requete</dt>
+          <dd>{{ selectedLog.requestMethod }} {{ selectedLog.requestUri }}</dd>
+          <dt>Adresse IP</dt>
+          <dd>{{ selectedLog.ipAddress || '-' }}</dd>
+          <dt>Details</dt>
+          <dd>{{ selectedLog.details || '-' }}</dd>
+        </dl>
+
+        <h5>Champs modifies</h5>
+        <div class="changes-list" *ngIf="getChanges(selectedLog).length; else noChanges">
+          <div class="change-row" *ngFor="let change of getChanges(selectedLog)">
+            <strong>{{ change.field }}</strong>
+            <div>
+              <span>{{ formatValue(change.oldValue) }}</span>
+              <i class="material-icons">arrow_forward</i>
+              <span>{{ formatValue(change.newValue) }}</span>
+            </div>
+          </div>
+        </div>
+        <ng-template #noChanges>
+          <p class="empty-state small">{{ getNoChangesMessage(selectedLog) }}</p>
+
+          <div class="value-sections" *ngIf="hasDetailedValues(selectedLog)">
+            <div class="value-section" *ngIf="getValueEntries(selectedLog.oldValues).length">
+              <h6>Valeurs avant</h6>
+              <div class="value-row" *ngFor="let item of getValueEntries(selectedLog.oldValues)">
+                <strong>{{ item.key }}</strong>
+                <span>{{ formatValue(item.value) }}</span>
+              </div>
+            </div>
+
+            <div class="value-section" *ngIf="getValueEntries(selectedLog.newValues).length">
+              <h6>Valeurs apres</h6>
+              <div class="value-row" *ngFor="let item of getValueEntries(selectedLog.newValues)">
+                <strong>{{ item.key }}</strong>
+                <span>{{ formatValue(item.value) }}</span>
+              </div>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

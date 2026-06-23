@@ -1,0 +1,112 @@
+@startuml DiagrammeCasUtilisationGlobalTPE
+title Diagramme de cas d'utilisation global - Systeme de gestion du parc TPE
+
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+skinparam actor {
+  BackgroundColor White
+  BorderColor #2F3A4A
+}
+
+skinparam usecase {
+  BackgroundColor #F8FAFC
+  BorderColor #2F3A4A
+  ArrowColor #2F3A4A
+}
+
+actor "Agent agence" as Agence
+actor "Service\nmonetique" as Monetique
+actor "Administrateur" as Admin
+
+rectangle "Systeme de gestion du parc TPE bancaire" {
+  usecase "S'authentifier" as UC_AUTH
+  usecase "Consulter tableau\nde bord" as UC_DASHBOARD
+
+  usecase "Creer demande TPE" as UC_CREER_DEMANDE
+  usecase "Joindre pieces\njustificatives" as UC_PIECES
+  usecase "Suivre demande" as UC_SUIVRE_DEMANDE
+  usecase "Consulter demandes" as UC_CONSULTER_DEMANDES
+
+  usecase "Traiter demande TPE" as UC_TRAITER_DEMANDE
+  usecase "Valider demande" as UC_VALIDER_DEMANDE
+  usecase "Rejeter demande" as UC_REJETER_DEMANDE
+  usecase "Saisir donnees\nmonetiques" as UC_DONNEES_MONETIQUES
+  usecase "Generer numero\nterminal TID" as UC_GENERER_TID
+  usecase "Affecter TPE" as UC_AFFECTER_TPE
+  usecase "Consulter TPE\ndisponibles" as UC_TPE_DISPO
+  usecase "Cloturer demande" as UC_CLOTURER_DEMANDE
+
+  usecase "Gerer commercants" as UC_GERER_COMMERCANTS
+  usecase "Gerer parc TPE" as UC_GERER_TPE
+  usecase "Changer statut TPE" as UC_STATUT_TPE
+  usecase "Declarer panne" as UC_DECLARER_PANNE
+  usecase "Traiter pannes" as UC_GERER_PANNES
+  usecase "Gerer taux" as UC_GERER_TAUX
+  usecase "Importer fichier\nbancaire" as UC_IMPORT
+  usecase "Consulter rapports\nstatistiques" as UC_REPORTING
+
+  usecase "Gerer utilisateurs" as UC_USERS
+  usecase "Gerer roles et\npermissions" as UC_ROLES_PERMISSIONS
+  usecase "Consulter journal\nd'audit" as UC_AUDIT
+}
+
+Agence --> UC_AUTH
+Agence --> UC_DASHBOARD
+Agence --> UC_CREER_DEMANDE
+Agence --> UC_SUIVRE_DEMANDE
+Agence --> UC_CONSULTER_DEMANDES
+Agence --> UC_PIECES
+Agence --> UC_DECLARER_PANNE
+
+Monetique --> UC_AUTH
+Monetique --> UC_DASHBOARD
+Monetique --> UC_CONSULTER_DEMANDES
+Monetique --> UC_TRAITER_DEMANDE
+Monetique --> UC_AFFECTER_TPE
+Monetique --> UC_CLOTURER_DEMANDE
+Monetique --> UC_GERER_COMMERCANTS
+Monetique --> UC_GERER_TPE
+Monetique --> UC_GERER_PANNES
+Monetique --> UC_GERER_TAUX
+Monetique --> UC_IMPORT
+Monetique --> UC_REPORTING
+
+Admin --> UC_AUTH
+Admin --> UC_DASHBOARD
+Admin --> UC_USERS
+Admin --> UC_ROLES_PERMISSIONS
+Admin --> UC_AUDIT
+Admin --> UC_GERER_COMMERCANTS
+Admin --> UC_GERER_TPE
+Admin --> UC_IMPORT
+Admin --> UC_REPORTING
+
+UC_CREER_DEMANDE .> UC_PIECES : <<include>>
+
+UC_TRAITER_DEMANDE .> UC_DONNEES_MONETIQUES : <<include>>
+UC_DONNEES_MONETIQUES .> UC_GENERER_TID : <<include>>
+UC_VALIDER_DEMANDE .> UC_TRAITER_DEMANDE : <<extend>>
+UC_REJETER_DEMANDE .> UC_TRAITER_DEMANDE : <<extend>>
+UC_AFFECTER_TPE .> UC_VALIDER_DEMANDE : <<extend>>
+UC_AFFECTER_TPE .> UC_TPE_DISPO : <<include>>
+UC_CLOTURER_DEMANDE .> UC_AFFECTER_TPE : <<extend>>
+
+UC_GERER_TPE .> UC_STATUT_TPE : <<include>>
+
+note right of UC_AFFECTER_TPE
+Regle metier:
+un TPE ne peut etre affecte
+que s'il est disponible.
+end note
+
+note bottom of UC_TRAITER_DEMANDE
+Workflow:
+NOUVELLE -> EN_COURS -> VALIDEE_MONETIQUE
+-> AFFECTEE -> CLOTUREE
+ou REJETEE
+end note
+
+@enduml

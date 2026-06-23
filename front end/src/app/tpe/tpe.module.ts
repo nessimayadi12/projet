@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PermissionsModule } from '../guards/permissions.module';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TpeListComponent } from './tpe-list/tpe-list.component';
@@ -22,6 +23,7 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
   ],
   imports: [
     CommonModule,
+    PermissionsModule,
     FormsModule,
     ReactiveFormsModule,
     RouterModule

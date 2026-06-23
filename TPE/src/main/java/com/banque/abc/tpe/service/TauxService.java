@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -77,8 +78,8 @@ public class TauxService {
 
         Taux savedTaux = tauxRepository.save(taux);
 
-        auditService.logAction("CREATE", "Taux", savedTaux.getId().toString(),
-                "Nouveau taux créé pour " + commercant.getRaisonSociale(), "SUCCESS");
+        auditService.logCreation("Taux", savedTaux.getId().toString(), commercant.getRaisonSociale(),
+                snapshot(savedTaux), "Nouveau taux cree pour " + commercant.getRaisonSociale());
 
         return mapToResponse(savedTaux);
     }
@@ -87,6 +88,7 @@ public class TauxService {
     public TauxResponse soumettreValidation(Long id) {
         Taux taux = tauxRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Taux non trouvé"));
+        Map<String, Object> oldValues = snapshot(taux);
 
         if (taux.getStatut() != StatutTaux.BROUILLON) {
             throw new BusinessException("Seuls les taux en brouillon peuvent être soumis à validation");
@@ -110,8 +112,9 @@ public class TauxService {
         taux.setStatut(StatutTaux.EN_ATTENTE_VALIDATION);
         Taux updatedTaux = tauxRepository.save(taux);
 
-        auditService.logAction("SUBMIT", "Taux", updatedTaux.getId().toString(),
-                "Taux soumis à validation", "SUCCESS");
+        auditService.logStatusChange("Taux", updatedTaux.getId().toString(),
+                updatedTaux.getCommercant() != null ? updatedTaux.getCommercant().getRaisonSociale() : null,
+                oldValues.get("statut"), updatedTaux.getStatut(), "Taux soumis a validation");
 
         return mapToResponse(updatedTaux);
     }
@@ -120,6 +123,7 @@ public class TauxService {
     public TauxResponse validerTaux(Long id, ValiderTauxRequest request) {
         Taux taux = tauxRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Taux non trouvé"));
+        Map<String, Object> oldValues = snapshot(taux);
 
         if (taux.getStatut() != StatutTaux.EN_ATTENTE_VALIDATION) {
             throw new BusinessException("Ce taux ne peut pas être validé");
@@ -160,10 +164,11 @@ public class TauxService {
                 }
             });
 
-            auditService.logAction("VALIDATE", "Taux", taux.getId().toString(),
-                    String.format("Taux validé: Commission %.2f%%, Commission Inter %.2f%%",
-                            taux.getNouveauTauxCommission(), taux.getNouveauTauxCommissionInter()),
-                    "SUCCESS");
+            auditService.logValidationDecision("Taux", taux.getId().toString(),
+                    taux.getCommercant() != null ? taux.getCommercant().getRaisonSociale() : null,
+                    true, oldValues, snapshot(taux),
+                    String.format("Taux valide: Commission %.2f%%, Commission Inter %.2f%%",
+                            taux.getNouveauTauxCommission(), taux.getNouveauTauxCommissionInter()));
         } else {
             if (request.getMotifRejet() == null || request.getMotifRejet().trim().isEmpty()) {
                 throw new BusinessException("Le motif de rejet est obligatoire");
@@ -171,8 +176,9 @@ public class TauxService {
             taux.setStatut(StatutTaux.REJETE);
             taux.setMotifRejet(request.getMotifRejet());
 
-            auditService.logAction("REJECT", "Taux", taux.getId().toString(),
-                    "Taux rejeté: " + request.getMotifRejet(), "SUCCESS");
+            auditService.logValidationDecision("Taux", taux.getId().toString(),
+                    taux.getCommercant() != null ? taux.getCommercant().getRaisonSociale() : null,
+                    false, oldValues, snapshot(taux), "Taux rejete: " + request.getMotifRejet());
         }
 
         Taux updatedTaux = tauxRepository.save(taux);
@@ -225,5 +231,25 @@ public class TauxService {
                     }
                     return false;
                 });
+    }
+
+    private Map<String, Object> snapshot(Taux taux) {
+        return auditService.values(
+                "commercantId", taux.getCommercant() != null ? taux.getCommercant().getId() : null,
+                "commercantNom", taux.getCommercant() != null ? taux.getCommercant().getRaisonSociale() : null,
+                "ancienTauxCommission", taux.getAncienTauxCommission(),
+                "nouveauTauxCommission", taux.getNouveauTauxCommission(),
+                "ancienTauxCommissionInter", taux.getAncienTauxCommissionInter(),
+                "nouveauTauxCommissionInter", taux.getNouveauTauxCommissionInter(),
+                "statut", taux.getStatut(),
+                "inputerId", taux.getInputer() != null ? taux.getInputer().getId() : null,
+                "authorizerId", taux.getAuthorizer() != null ? taux.getAuthorizer().getId() : null,
+                "dateSaisie", taux.getDateSaisie(),
+                "dateValidation", taux.getDateValidation(),
+                "dateApplication", taux.getDateApplication(),
+                "motifRejet", taux.getMotifRejet(),
+                "commentaire", taux.getCommentaire(),
+                "actif", taux.getActif()
+        );
     }
 }

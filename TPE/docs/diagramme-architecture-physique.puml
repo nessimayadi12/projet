@@ -1,0 +1,93 @@
+@startuml DiagrammeArchitecturePhysiqueTPE
+title Architecture physique - Systeme de gestion du parc TPE bancaire
+
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+skinparam node {
+  BackgroundColor #F8FAFC
+  BorderColor #2F3A4A
+}
+
+skinparam database {
+  BackgroundColor #EEF6FF
+  BorderColor #2F3A4A
+}
+
+skinparam artifact {
+  BackgroundColor White
+  BorderColor #2F3A4A
+}
+
+actor "Agent agence" as Agence
+actor "Service\nmonetique" as Monetique
+actor "Administrateur" as Admin
+
+node "Poste utilisateur" as Poste {
+  artifact "Navigateur Web\nChrome / Edge" as Browser
+}
+
+node "Serveur applicatif" as AppServer {
+  node "JVM Java 17" as JVM {
+    artifact "tpe-management-1.0.0.jar" as Jar
+
+    component "Tomcat embarque" as Tomcat
+    component "Application Spring Boot\nPort 8080" as SpringBoot
+    component "API REST\n/api/**" as ApiRest
+    component "Spring Security\nJWT" as Security
+    component "Frontend Angular compile\nresources/static" as AngularStatic
+  }
+
+  folder "uploads/\nPieces jointes" as Uploads
+  folder "logs/\ntpe-management.log" as Logs
+}
+
+database "Serveur base de donnees\nMySQL\nlocalhost:3306\nBase: TPE_Managements" as MySQL
+
+cloud "Service Power BI\noptionnel / desactive" as PowerBI
+artifact "Fichier bancaire\nExcel / TXT" as BankFile
+
+Agence --> Browser
+Monetique --> Browser
+Admin --> Browser
+
+Browser --> AngularStatic : HTTP\npages Angular
+Browser --> ApiRest : HTTP / JSON\nBearer JWT
+
+Jar *-- Tomcat
+Jar *-- SpringBoot
+SpringBoot *-- ApiRest
+SpringBoot *-- Security
+SpringBoot *-- AngularStatic
+
+ApiRest --> Security : controle authentification\net autorisations
+ApiRest --> MySQL : JDBC / JPA / Hibernate
+ApiRest --> Uploads : lecture / ecriture\npieces jointes
+ApiRest --> Logs : journalisation applicative
+
+BankFile --> ApiRest : import fichier bancaire
+ApiRest ..> PowerBI : rapports / indicateurs\nsi active
+
+note right of AppServer
+Deploiement principal:
+le backend Spring Boot expose l'API REST
+et peut servir le frontend Angular compile
+depuis resources/static.
+end note
+
+note bottom of MySQL
+Configuration active:
+spring.datasource.url =
+jdbc:mysql://localhost:3306/TPE_Managements
+end note
+
+note bottom of Browser
+En developpement, Angular peut aussi
+etre lance sur localhost:4200
+et consommer l'API localhost:8080/api.
+end note
+
+@enduml

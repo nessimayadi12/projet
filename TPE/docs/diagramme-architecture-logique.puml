@@ -1,0 +1,209 @@
+@startuml DiagrammeArchitectureLogiqueTPE
+title Architecture logique - Systeme de gestion du parc TPE bancaire
+
+top to bottom direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+skinparam component {
+  BackgroundColor #F8FAFC
+  BorderColor #2F3A4A
+  ArrowColor #2F3A4A
+}
+
+skinparam package {
+  BorderColor #2F3A4A
+}
+
+skinparam database {
+  BackgroundColor #EEF6FF
+  BorderColor #2F3A4A
+}
+
+actor "Agent agence" as Agence
+actor "Service\nmonetique" as Monetique
+actor "Administrateur" as Admin
+
+package "Couche presentation\nAngular" #E3F2FD {
+  component "Pages Authentification" as UIPagesAuth
+  component "Pages Dashboard" as UIPagesDashboard
+  component "Pages Demandes" as UIPagesDemandes
+  component "Pages Commercants" as UIPagesCommercants
+  component "Pages TPE" as UIPagesTPE
+  component "Pages Maintenance" as UIPagesMaintenance
+  component "Pages Administration" as UIPagesAdmin
+
+  component "Services Angular\nHTTP" as AngularServices
+  component "AuthGuard" as AuthGuard
+  component "AuthInterceptor\nJWT" as AuthInterceptor
+}
+
+package "Couche API REST\nSpring Controllers" #FFF3E0 {
+  component "AuthController" as AuthController
+  component "DemandeController" as DemandeController
+  component "CommercantController" as CommercantController
+  component "TPEController" as TPEController
+  component "AffectationController" as AffectationController
+  component "TauxController" as TauxController
+  component "PanneController" as PanneController
+  component "DashboardController" as DashboardController
+  component "RoleController\nScreenController" as AdminControllers
+  component "FichierBancaireController\nPowerBIController" as IntegrationControllers
+}
+
+package "Couche securite" #FFE0B2 {
+  component "Spring Security" as SpringSecurity
+  component "JwtAuthenticationFilter" as JwtFilter
+  component "JwtTokenProvider" as JwtProvider
+  component "CustomUserDetailsService" as UserDetailsService
+}
+
+package "Couche metier\nSpring Services" #E8F5E9 {
+  component "AuthService" as AuthService
+  component "DemandeService" as DemandeService
+  component "CommercantService" as CommercantService
+  component "TPEService" as TPEService
+  component "AffectationService" as AffectationService
+  component "TauxService" as TauxService
+  component "PanneService" as PanneService
+  component "DashboardService" as DashboardService
+  component "ScreenService" as ScreenService
+  component "AuditService" as AuditService
+  component "TPEExcelImportService" as ImportService
+  component "FichierBancaireService" as FichierBancaireService
+  component "TPEPostingService" as PostingService
+}
+
+package "Couche domaine" #F3E5F5 {
+  component "Entites principales\nDemande, TPE, Commercant,\nAffectation, Taux, Panne" as MainEntities
+  component "Entites securite\nUser, Role, Screen, ScreenRole" as SecurityEntities
+  component "Entites support\nPieceJointe, Commentaire,\nHistoriqueStatut, AuditLog" as SupportEntities
+  component "DTO\nRequest / Response" as DTO
+  component "Enums\nStatuts, Types, Roles" as Enums
+}
+
+package "Couche persistance" #E0F2F1 {
+  component "Repositories metier\nDemande, TPE, Commercant,\nAffectation, Taux, Panne" as BusinessRepositories
+  component "Repositories securite\nUser, Role, Screen" as SecurityRepositories
+  component "Repositories support\nAudit, Pieces, Import, Posting" as SupportRepositories
+}
+
+package "Ressources et integrations" #ECEFF1 {
+  database "Base relationnelle\nTPE_Managements" as Database
+  folder "Stockage fichiers\nuploads/" as FileStorage
+  component "Generation TID\nTIDGenerator" as TIDGenerator
+  component "Generation references\nReferenceGenerator" as ReferenceGenerator
+  cloud "Power BI\noptionnel" as PowerBI
+  artifact "Fichier bancaire\nExcel / TXT" as BankFile
+}
+
+Agence --> UIPagesDemandes
+Agence --> UIPagesDashboard
+Monetique --> UIPagesDemandes
+Monetique --> UIPagesTPE
+Monetique --> UIPagesCommercants
+Monetique --> UIPagesMaintenance
+Monetique --> UIPagesDashboard
+Admin --> UIPagesAdmin
+Admin --> UIPagesDashboard
+
+UIPagesAuth --> AngularServices
+UIPagesDashboard --> AngularServices
+UIPagesDemandes --> AngularServices
+UIPagesCommercants --> AngularServices
+UIPagesTPE --> AngularServices
+UIPagesMaintenance --> AngularServices
+UIPagesAdmin --> AngularServices
+
+AuthGuard --> AngularServices
+AngularServices --> AuthInterceptor
+AuthInterceptor --> AuthController
+AuthInterceptor --> DemandeController
+AuthInterceptor --> CommercantController
+AuthInterceptor --> TPEController
+AuthInterceptor --> AffectationController
+AuthInterceptor --> TauxController
+AuthInterceptor --> PanneController
+AuthInterceptor --> DashboardController
+AuthInterceptor --> AdminControllers
+AuthInterceptor --> IntegrationControllers
+
+AuthController --> AuthService
+DemandeController --> DemandeService
+CommercantController --> CommercantService
+TPEController --> TPEService
+AffectationController --> AffectationService
+TauxController --> TauxService
+PanneController --> PanneService
+DashboardController --> DashboardService
+AdminControllers --> ScreenService
+IntegrationControllers --> ImportService
+IntegrationControllers --> FichierBancaireService
+
+AuthController ..> SpringSecurity
+DemandeController ..> SpringSecurity
+TPEController ..> SpringSecurity
+AffectationController ..> SpringSecurity
+SpringSecurity --> JwtFilter
+JwtFilter --> JwtProvider
+JwtFilter --> UserDetailsService
+UserDetailsService --> SecurityRepositories
+
+AuthService --> SecurityRepositories
+DemandeService --> BusinessRepositories
+DemandeService --> SupportRepositories
+DemandeService --> ReferenceGenerator
+CommercantService --> BusinessRepositories
+TPEService --> BusinessRepositories
+TPEService --> TIDGenerator
+AffectationService --> BusinessRepositories
+AffectationService --> SecurityRepositories
+TauxService --> BusinessRepositories
+PanneService --> BusinessRepositories
+DashboardService --> BusinessRepositories
+ScreenService --> SecurityRepositories
+AuditService --> SupportRepositories
+ImportService --> BusinessRepositories
+ImportService --> SupportRepositories
+FichierBancaireService --> BankFile
+PostingService --> SupportRepositories
+
+BusinessRepositories --> MainEntities
+BusinessRepositories --> Database
+SecurityRepositories --> SecurityEntities
+SecurityRepositories --> Database
+SupportRepositories --> SupportEntities
+SupportRepositories --> Database
+
+DemandeService --> FileStorage : pieces jointes
+PanneService --> FileStorage : documents maintenance
+ImportService --> BankFile : lecture import
+DashboardService ..> PowerBI : indicateurs si active
+
+MainEntities ..> Enums
+SecurityEntities ..> Enums
+DTO ..> MainEntities
+DTO ..> SecurityEntities
+
+note right of DemandeService
+Orchestre le workflow:
+creation, validation, rejet,
+cloture et declenchement
+de l'affectation.
+end note
+
+note right of AffectationService
+Applique les regles:
+demande validee, TPE disponible,
+creation de l'affectation,
+statut TPE = AFFECTE.
+end note
+
+note bottom of AuthInterceptor
+Le token JWT est ajoute
+aux appels HTTP sortants.
+end note
+
+@enduml

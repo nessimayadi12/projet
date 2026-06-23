@@ -1,0 +1,416 @@
+@startuml DiagrammeClasseAnalyseGlobalTPE
+title Diagramme de classes d'analyse - Systeme de gestion du parc TPE
+
+left to right direction
+hide circle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+skinparam class {
+  BackgroundColor White
+  BorderColor #2F3A4A
+  ArrowColor #2F3A4A
+}
+
+skinparam stereotypeCBackgroundColor<<boundary>> #E3F2FD
+skinparam stereotypeCBackgroundColor<<control>> #FFF3E0
+skinparam stereotypeCBackgroundColor<<entity>> #E8F5E9
+skinparam stereotypeCBackgroundColor<<enumeration>> #F3E5F5
+
+package "Frontieres" {
+  class EspaceAgence <<boundary>> {
+    +creerDemandeTPE()
+    +suivreDemande()
+    +declarerPanne()
+    +consulterTableauBord()
+  }
+
+  class EspaceMonetique <<boundary>> {
+    +traiterDemande()
+    +affecterTPE()
+    +gererCommercants()
+    +gererParcTPE()
+    +importerFichierBancaire()
+    +consulterRapports()
+  }
+
+  class EspaceAdministration <<boundary>> {
+    +gererUtilisateurs()
+    +gererRolesPermissions()
+    +consulterAudit()
+  }
+}
+
+package "Controles" {
+  class GestionAuthentification <<control>> {
+    +authentifier()
+    +verifierAutorisation()
+  }
+
+  class GestionDemande <<control>> {
+    +creerDemande()
+    +validerDemande()
+    +rejeterDemande()
+    +cloturerDemande()
+  }
+
+  class GestionAffectation <<control>> {
+    +chercherTPEDisponible()
+    +affecterTPE()
+    +libererTPE()
+  }
+
+  class GestionParcTPE <<control>> {
+    +creerTPE()
+    +modifierTPE()
+    +changerStatutTPE()
+    +genererTID()
+  }
+
+  class GestionCommercant <<control>> {
+    +creerCommercant()
+    +modifierCommercant()
+    +changerStatutCommercant()
+    +rechercherCommercant()
+  }
+
+  class GestionPanne <<control>> {
+    +declarerPanne()
+    +traiterPanne()
+    +affecterRemplacement()
+  }
+
+  class GestionTaux <<control>> {
+    +saisirTaux()
+    +validerTaux()
+    +rejeterTaux()
+  }
+
+  class ImportBancaire <<control>> {
+    +importerFichier()
+    +controlerLignes()
+    +creerRapportImport()
+  }
+
+  class Pilotage <<control>> {
+    +calculerIndicateurs()
+    +genererRapportsStatistiques()
+  }
+
+  class AdministrationSysteme <<control>> {
+    +gererUtilisateur()
+    +gererRole()
+    +gererPermission()
+  }
+
+  class Journalisation <<control>> {
+    +tracerAction()
+    +consulterJournal()
+  }
+}
+
+package "Entites" {
+  class Utilisateur <<entity>> {
+    +id : Long
+    +username : String
+    +nom : String
+    +prenom : String
+    +email : String
+    +codeAgence : String
+    +actif : Boolean
+  }
+
+  class Role <<entity>> {
+    +id : Long
+    +nom : RoleType
+    +description : String
+  }
+
+  class PermissionEcran <<entity>> {
+    +id : Long
+    +canView : Boolean
+    +canCreate : Boolean
+    +canEdit : Boolean
+    +canDelete : Boolean
+    +canExport : Boolean
+  }
+
+  class Ecran <<entity>> {
+    +id : Long
+    +code : String
+    +libelle : String
+    +route : String
+    +actif : Boolean
+  }
+
+  class Commercant <<entity>> {
+    +id : Long
+    +raisonSociale : String
+    +activite : String
+    +numeroCompte : String
+    +codeAgence : String
+    +telephone : String
+    +email : String
+    +statut : StatutCommercant
+    +typeCommerce : TypeTPE
+  }
+
+  class DemandeTPE <<entity>> {
+    +id : Long
+    +reference : String
+    +typeDemande : TypeTPE
+    +statut : StatutDemande
+    +urgence : Urgence
+    +description : String
+    +dateValidation : Date
+    +dateCloture : Date
+  }
+
+  class TPE <<entity>> {
+    +id : Long
+    +typeTPE : String
+    +numeroSerie : String
+    +numeroTerminal : String
+    +statut : StatutTPE
+    +marque : String
+    +modele : String
+  }
+
+  class Affectation <<entity>> {
+    +id : Long
+    +dateAffectation : Date
+    +dateMiseEnService : Date
+    +dateFin : Date
+    +actif : Boolean
+    +commentaire : String
+  }
+
+  class Panne <<entity>> {
+    +id : Long
+    +reference : String
+    +typePanne : TypePanne
+    +statut : StatutPanne
+    +dateDeclaration : Date
+    +diagnostic : String
+    +actionCorrective : String
+  }
+
+  class Taux <<entity>> {
+    +id : Long
+    +ancienTauxCommission : Double
+    +nouveauTauxCommission : Double
+    +statut : StatutTaux
+    +dateSaisie : Date
+    +dateValidation : Date
+  }
+
+  class PieceJointe <<entity>> {
+    +id : Long
+    +nomFichier : String
+    +cheminFichier : String
+    +typeMime : String
+  }
+
+  class FichierBancaire <<entity>> {
+    +nomFichier : String
+    +dateImport : Date
+    +nombreLignes : Integer
+    +statutImport : String
+  }
+
+  class LigneImportTPE <<entity>> {
+    +id : Long
+    +numeroSerie : String
+    +numeroTerminal : String
+    +raisonSociale : String
+    +numeroCompte : String
+    +active : Boolean
+  }
+
+  class RapportStatistique <<entity>> {
+    +totalDemandes : Long
+    +tpesDisponibles : Long
+    +affectationsActives : Long
+    +pannesOuvertes : Long
+  }
+
+  class JournalAudit <<entity>> {
+    +id : Long
+    +dateAction : Date
+    +username : String
+    +action : String
+    +entityType : String
+    +statut : String
+  }
+}
+
+package "Enumerations" {
+  enum RoleType <<enumeration>> {
+    ROLE_AGENCE
+    ROLE_MONETIQUE
+    ROLE_ADMIN
+  }
+
+  enum StatutDemande <<enumeration>> {
+    NOUVELLE
+    EN_COURS
+    VALIDEE_MONETIQUE
+    AFFECTEE
+    CLOTUREE
+    REJETEE
+  }
+
+  enum StatutTPE <<enumeration>> {
+    DISPONIBLE
+    RESERVE
+    AFFECTE
+    EN_PANNE
+    MAINTENANCE
+    HORS_SERVICE
+  }
+
+  enum StatutCommercant <<enumeration>> {
+    ACTIF
+    INACTIF
+    SUSPENDU
+  }
+
+  enum TypeTPE <<enumeration>> {
+    TPE
+    MOBILE
+    PHYSIQUE
+    ECOMMERCE
+  }
+
+  enum Urgence <<enumeration>> {
+    BASSE
+    NORMALE
+    HAUTE
+    CRITIQUE
+  }
+
+  enum StatutPanne <<enumeration>> {
+    DECLAREE
+    DIAGNOSTIQUEE
+    EN_REPARATION
+    REPAREE
+    TESTEE
+    IRRECUPERABLE
+  }
+
+  enum StatutTaux <<enumeration>> {
+    BROUILLON
+    EN_ATTENTE_VALIDATION
+    VALIDE
+    REJETE
+  }
+}
+
+' Frontieres vers controles
+EspaceAgence ..> GestionAuthentification
+EspaceAgence ..> GestionDemande
+EspaceAgence ..> GestionPanne
+EspaceAgence ..> Pilotage
+
+EspaceMonetique ..> GestionAuthentification
+EspaceMonetique ..> GestionDemande
+EspaceMonetique ..> GestionAffectation
+EspaceMonetique ..> GestionParcTPE
+EspaceMonetique ..> GestionCommercant
+EspaceMonetique ..> GestionPanne
+EspaceMonetique ..> GestionTaux
+EspaceMonetique ..> ImportBancaire
+EspaceMonetique ..> Pilotage
+
+EspaceAdministration ..> GestionAuthentification
+EspaceAdministration ..> AdministrationSysteme
+EspaceAdministration ..> Journalisation
+
+' Controles vers entites
+GestionAuthentification ..> Utilisateur
+GestionAuthentification ..> Role
+GestionDemande ..> DemandeTPE
+GestionDemande ..> PieceJointe
+GestionAffectation ..> Affectation
+GestionAffectation ..> TPE
+GestionParcTPE ..> TPE
+GestionCommercant ..> Commercant
+GestionPanne ..> Panne
+GestionTaux ..> Taux
+ImportBancaire ..> FichierBancaire
+ImportBancaire ..> LigneImportTPE
+Pilotage ..> RapportStatistique
+AdministrationSysteme ..> Utilisateur
+AdministrationSysteme ..> Role
+AdministrationSysteme ..> PermissionEcran
+Journalisation ..> JournalAudit
+
+' Relations metier
+Utilisateur "0..*" -- "1..*" Role : possede
+Role "1" -- "0..*" PermissionEcran : autorise
+Ecran "1" -- "0..*" PermissionEcran : concerne
+
+Commercant "1" -- "0..*" DemandeTPE : emet
+Commercant "1" -- "0..*" TPE : utilise
+Commercant "1" -- "0..*" Taux : possede
+
+DemandeTPE "1" -- "0..*" PieceJointe : contient
+DemandeTPE "1" -- "0..1" Affectation : aboutit a
+Affectation "0..*" -- "1" TPE : concerne
+Affectation "0..*" -- "1" Commercant : beneficiaire
+
+TPE "1" -- "0..*" Panne : subit
+Panne "0..*" -- "0..1" TPE : tpeRemplacement
+
+FichierBancaire "1" -- "1..*" LigneImportTPE : contient
+LigneImportTPE ..> TPE : alimente
+LigneImportTPE ..> Commercant : alimente
+LigneImportTPE ..> DemandeTPE : alimente
+
+DemandeTPE "0..*" --> "1" Utilisateur : demandeur
+DemandeTPE "0..*" --> "0..1" Utilisateur : valideur
+Affectation "0..*" --> "0..1" Utilisateur : affectePar
+Panne "0..*" --> "1" Utilisateur : declarant
+Taux "0..*" --> "1" Utilisateur : saisiePar
+Taux "0..*" --> "0..1" Utilisateur : validePar
+JournalAudit "0..*" --> "1" Utilisateur : utilisateur
+
+' Liens vers enumerations
+Role --> RoleType
+DemandeTPE --> StatutDemande
+DemandeTPE --> TypeTPE
+DemandeTPE --> Urgence
+TPE --> StatutTPE
+Commercant --> StatutCommercant
+Commercant --> TypeTPE
+Panne --> StatutPanne
+Taux --> StatutTaux
+
+note right of DemandeTPE
+Workflow:
+NOUVELLE -> EN_COURS -> VALIDEE_MONETIQUE
+-> AFFECTEE -> CLOTUREE
+ou REJETEE
+end note
+
+note bottom of Affectation
+Une affectation active associe
+un TPE a un commercant.
+Le TPE doit etre disponible.
+end note
+
+note bottom of EspaceMonetique
+La monetique gere les commercants,
+le parc TPE, les demandes, les pannes,
+les taux, l'import bancaire et les rapports.
+end note
+
+note bottom of EspaceAgence
+L'agence cree et suit les demandes,
+joint les pieces justificatives
+et declare les pannes.
+end note
+
+@enduml

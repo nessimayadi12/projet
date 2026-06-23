@@ -9,7 +9,9 @@ import { DashboardDemandesComponent } from '../../dashboard/dashboard-demandes/d
 import { DashboardPannesComponent } from '../../dashboard/dashboard-pannes/dashboard-pannes.component';
 import { UserProfileComponent } from '../../user-profile/user-profile.component';
 import { ScreenManagementComponent } from '../../components/screen-management/screen-management.component';
-import { HasPermissionDirective } from '../../guards/has-permission.directive';
+import { AuditLogComponent } from '../../components/audit-log/audit-log.component';
+import { AssistantMetierComponent } from '../../components/assistant-metier/assistant-metier.component';
+import { PermissionsModule } from '../../guards/permissions.module';
 import { TpeModule } from '../../tpe/tpe.module';
 import { CommercantModule } from '../../commercants/commercant.module';
 import { DemandesModule } from '../../demandes/demandes.module';
@@ -25,10 +27,13 @@ import {MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatIconModule} from '@angular/material/icon';
+import {MatTableModule} from '@angular/material/table';
+import { NgChartsModule } from 'ng2-charts';
 
 @NgModule({
   imports: [
     CommonModule,
+    PermissionsModule,
     RouterModule.forChild(AdminLayoutRoutes),
     FormsModule,
     ReactiveFormsModule,
@@ -43,6 +48,8 @@ import {MatIconModule} from '@angular/material/icon';
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatIconModule,
+    MatTableModule,
+    NgChartsModule,
     TpeModule,
     CommercantModule,
     DemandesModule,
@@ -55,7 +62,8 @@ import {MatIconModule} from '@angular/material/icon';
     DashboardPannesComponent,
     UserProfileComponent,
     ScreenManagementComponent,
-    HasPermissionDirective
+    AuditLogComponent,
+    AssistantMetierComponent,
   ]
 })
 

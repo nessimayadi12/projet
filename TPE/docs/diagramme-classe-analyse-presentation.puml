@@ -1,0 +1,191 @@
+@startuml DiagrammeClasseAnalyseTPEPresentation
+title Diagramme de classes d'analyse - Version presentation
+
+left to right direction
+hide circle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+skinparam class {
+  BackgroundColor White
+  BorderColor #2F3A4A
+  ArrowColor #2F3A4A
+}
+
+skinparam stereotypeCBackgroundColor<<boundary>> #E3F2FD
+skinparam stereotypeCBackgroundColor<<control>> #FFF3E0
+skinparam stereotypeCBackgroundColor<<entity>> #E8F5E9
+
+package "Frontieres" {
+  class EspaceAgence <<boundary>> {
+    +creerDemande()
+    +suivreDemande()
+    +declarerPanne()
+  }
+
+  class EspaceMonetique <<boundary>> {
+    +traiterDemande()
+    +affecterTPE()
+    +gererCommercants()
+    +importerFichierBancaire()
+    +consulterRapports()
+  }
+
+  class EspaceAdministration <<boundary>> {
+    +gererUtilisateurs()
+    +gererRolesPermissions()
+    +consulterAudit()
+  }
+}
+
+package "Controles metier" {
+  class GestionDemande <<control>> {
+    +creer()
+    +valider()
+    +rejeter()
+  }
+
+  class GestionAffectation <<control>> {
+    +affecterTPE()
+    +libererTPE()
+  }
+
+  class GestionParcTPE <<control>> {
+    +gererTPE()
+    +changerStatut()
+    +genererTID()
+  }
+
+  class GestionPanne <<control>> {
+    +declarer()
+    +traiter()
+  }
+
+  class ImportEtPilotage <<control>> {
+    +importerFichier()
+    +calculerIndicateurs()
+  }
+
+  class AdministrationSysteme <<control>> {
+    +gererUtilisateurs()
+    +gererPermissions()
+  }
+}
+
+package "Entites principales" {
+  class Utilisateur <<entity>> {
+    +id : Long
+    +nom : String
+    +role : RoleType
+  }
+
+  class Commercant <<entity>> {
+    +id : Long
+    +raisonSociale : String
+    +codeAgence : String
+    +statut : StatutCommercant
+  }
+
+  class DemandeTPE <<entity>> {
+    +id : Long
+    +reference : String
+    +typeDemande : TypeTPE
+    +statut : StatutDemande
+  }
+
+  class TPE <<entity>> {
+    +id : Long
+    +numeroSerie : String
+    +numeroTerminal : String
+    +statut : StatutTPE
+  }
+
+  class Affectation <<entity>> {
+    +id : Long
+    +dateAffectation : Date
+    +actif : Boolean
+  }
+
+  class Panne <<entity>> {
+    +id : Long
+    +reference : String
+    +statut : StatutPanne
+  }
+
+  class FichierBancaire <<entity>> {
+    +nomFichier : String
+    +dateImport : Date
+    +statutImport : String
+  }
+
+  class RapportStatistique <<entity>> {
+    +totalDemandes : Long
+    +tpesDisponibles : Long
+    +pannesOuvertes : Long
+  }
+}
+
+' Acces des espaces aux controles
+EspaceAgence ..> GestionDemande
+EspaceAgence ..> GestionPanne
+
+EspaceMonetique ..> GestionDemande
+EspaceMonetique ..> GestionAffectation
+EspaceMonetique ..> GestionParcTPE
+EspaceMonetique ..> ImportEtPilotage
+
+EspaceAdministration ..> AdministrationSysteme
+
+' Controles vers entites
+GestionDemande ..> DemandeTPE
+GestionDemande ..> Commercant
+GestionAffectation ..> Affectation
+GestionAffectation ..> TPE
+GestionParcTPE ..> TPE
+GestionPanne ..> Panne
+ImportEtPilotage ..> FichierBancaire
+ImportEtPilotage ..> RapportStatistique
+AdministrationSysteme ..> Utilisateur
+
+' Relations metier principales
+Utilisateur "1" -- "0..*" DemandeTPE : cree / valide
+Commercant "1" -- "0..*" DemandeTPE : emet
+Commercant "1" -- "0..*" TPE : utilise
+
+DemandeTPE "1" -- "0..1" Affectation : aboutit a
+Affectation "0..*" -- "1" TPE : concerne
+Affectation "0..*" -- "1" Commercant : beneficiaire
+
+TPE "1" -- "0..*" Panne : subit
+Panne "0..*" --> "1" Utilisateur : declareePar
+
+FichierBancaire "1" ..> TPE : alimente
+FichierBancaire "1" ..> Commercant : alimente
+RapportStatistique ..> DemandeTPE
+RapportStatistique ..> TPE
+RapportStatistique ..> Panne
+
+note right of DemandeTPE
+Workflow:
+NOUVELLE -> EN_COURS
+-> VALIDEE_MONETIQUE
+-> AFFECTEE -> CLOTUREE
+ou REJETEE
+end note
+
+note bottom of Affectation
+Regle principale:
+un TPE est affecte seulement
+s'il est DISPONIBLE.
+end note
+
+note bottom of EspaceMonetique
+La monetique traite les demandes,
+gere les commercants et le parc TPE,
+importe les fichiers bancaires
+et consulte les rapports.
+end note
+
+@enduml

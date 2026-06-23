@@ -4,6 +4,7 @@ import com.banque.abc.tpe.entity.Demande;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -78,6 +79,35 @@ public interface DemandeRepository extends JpaRepository<Demande, Long>, JpaSpec
 
     @Query("SELECT d FROM Demande d WHERE d.reference LIKE CONCAT(:prefix, '%') AND d.statut = :statut")
     List<Demande> findByReferenceStartingWithAndStatut(String prefix, StatutDemande statut);
+
+    @Query("""
+            SELECT d
+            FROM Demande d
+            WHERE d.statut = :statut
+              AND NOT EXISTS (
+                  SELECT a.id
+                  FROM Affectation a
+                  WHERE a.demande = d
+                    AND a.actif = true
+              )
+            ORDER BY d.dateValidation DESC, d.createdDate DESC, d.id DESC
+            """)
+    List<Demande> findByStatutWithoutActiveAffectation(
+            @Param("statut") StatutDemande statut,
+            Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(d)
+            FROM Demande d
+            WHERE d.statut = :statut
+              AND NOT EXISTS (
+                  SELECT a.id
+                  FROM Affectation a
+                  WHERE a.demande = d
+                    AND a.actif = true
+              )
+            """)
+    Long countByStatutWithoutActiveAffectation(@Param("statut") StatutDemande statut);
 
     @Query(value = """
             SELECT COUNT(DISTINCT COALESCE(NULLIF(d.numero_terminal, ''), NULLIF(d.serie_tpe, ''), d.reference))

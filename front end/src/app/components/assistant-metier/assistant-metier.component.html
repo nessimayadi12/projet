@@ -1,0 +1,123 @@
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card assistant-header">
+          <div class="card-header card-header-info">
+            <h4 class="card-title">
+              <i class="material-icons">psychology</i>
+              Assistant IA
+            </h4>
+            <p class="card-category">Question libre en francais, analyse IA, interrogation MySQL et reponse metier</p>
+          </div>
+          <div class="card-body">
+            <form (ngSubmit)="poserQuestion()" class="assistant-form">
+              <div class="question-zone">
+                <label for="assistantQuestion">Question</label>
+                <textarea
+                  id="assistantQuestion"
+                  name="question"
+                  class="form-control"
+                  rows="4"
+                  [(ngModel)]="question"
+                  (keydown)="onQuestionKeydown($event)"
+                  [disabled]="loading"
+                  placeholder="Tapez votre question en francais... ex: Quels TPE sont en panne depuis 7 jours ?"></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button mat-raised-button color="primary" type="submit" [disabled]="loading || !question.trim()">
+                  <mat-icon>send</mat-icon>
+                  Interroger
+                </button>
+
+                <button mat-button type="button" (click)="reset()" [disabled]="loading">
+                  <mat-icon>refresh</mat-icon>
+                  Effacer
+                </button>
+              </div>
+            </form>
+
+            <div class="history-strip" *ngIf="historiqueQuestions.length">
+              <span class="history-label">Historique</span>
+              <button
+                type="button"
+                class="history-chip"
+                *ngFor="let item of historiqueQuestions"
+                (click)="reposerQuestion(item)"
+                [disabled]="loading">
+                {{ item }}
+              </button>
+            </div>
+
+            <mat-progress-bar *ngIf="loading" mode="indeterminate" class="assistant-progress"></mat-progress-bar>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="response && !loading">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="card response-card" [ngClass]="{ 'response-error': response.erreur }">
+            <div class="card-header" [ngClass]="response.erreur ? 'card-header-danger' : 'card-header-success'">
+              <h4 class="card-title">
+                <i class="material-icons">{{ response.erreur ? 'error' : 'psychology' }}</i>
+                Reponse IA
+              </h4>
+              <p class="card-category">{{ response.question }}</p>
+            </div>
+            <div class="card-body">
+              <p class="answer-text" *ngIf="!response.erreur">{{ response.reponseIA }}</p>
+              <p class="answer-text text-danger" *ngIf="response.erreur">{{ response.messageErreur }}</p>
+
+              <div class="assistant-meta" *ngIf="!response.erreur">
+                <span class="badge badge-info">{{ response.nombreResultats || 0 }} resultat(s)</span>
+                <span class="badge badge-secondary" *ngIf="response.explication">{{ response.explication }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" *ngIf="hasResults()">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header card-header-primary result-header">
+              <div>
+                <h4 class="card-title">Donnees</h4>
+                <p class="card-category">Colonnes dynamiques depuis la reponse SQL</p>
+              </div>
+              <button mat-raised-button color="accent" type="button" (click)="exporterExcel()">
+                <mat-icon>download</mat-icon>
+                Exporter Excel
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="mat-elevation-z1 assistant-table">
+                <table mat-table [dataSource]="response.donnees" class="full-width-table">
+                  <ng-container *ngFor="let column of getColumns()" [matColumnDef]="column">
+                    <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
+                    <td mat-cell *matCellDef="let row">{{ displayValue(row, column) }}</td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="getColumns()"></tr>
+                  <tr mat-row *matRowDef="let row; columns: getColumns();"></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" *ngIf="!hasResults() && !response.erreur">
+        <div class="col-md-12">
+          <div class="empty-panel">
+            <i class="material-icons">search_off</i>
+            <span>Aucune donnee detaillee a afficher.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

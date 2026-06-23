@@ -195,6 +195,10 @@
 
   <mat-dialog-actions align="end">
     <button mat-button (click)="onCancel()" [disabled]="loading">Annuler</button>
+    <button mat-stroked-button color="accent" type="button" (click)="demanderComplement()"
+            [disabled]="loading || !isAuthorizerStep()">
+      Demander complement
+    </button>
     <button mat-raised-button color="primary" (click)="onSubmit()" 
             [disabled]="!canSubmit()">
       <mat-spinner *ngIf="loading" diameter="20" class="mr-2"></mat-spinner>

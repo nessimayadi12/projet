@@ -69,3 +69,25 @@ export interface Panne {
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }
+
+export interface DiagnosticIaSource {
+  id?: number;
+  titre?: string;
+  typePanne?: TypePanne | string;
+  score?: number;
+  extrait?: string;
+  indices?: string[];
+}
+
+export interface DiagnosticIaPanne {
+  typePanneSuggere?: TypePanne | string;
+  diagnosticPropose?: string;
+  actionCorrectiveProposee?: string;
+  urgence?: string;
+  scoreConfiance?: number;
+  indicesDetectes?: string[];
+  recommandations?: string[];
+  remplacementRecommande?: boolean;
+  contexteRag?: string;
+  sourcesRetenues?: DiagnosticIaSource[];
+}

@@ -40,13 +40,13 @@
                   class="btn btn-success mt-4 mr-2" 
                   (click)="exportToExcel()"
                   [disabled]="filteredCommercants.length === 0"
-                  *ngIf="(canExportCommercant$ | async)">
+                  *appHasPermission="{ screen: 'LISTE_COMMERCANTS', permission: 'canExport' }">
                   <i class="material-icons">get_app</i> Exporter Excel
                 </button>
                 <button 
                   class="btn btn-success mt-4" 
                   (click)="addNewCommercant()"
-                  *ngIf="(canCreateCommercant$ | async)">
+                  *appHasPermission="{ screen: 'CREER_COMMERCANT', permission: 'canCreate' }">
                   <i class="material-icons">add</i> Nouveau Commerçant
                 </button>
               </div>
@@ -103,7 +103,7 @@
                         class="btn btn-success btn-sm"
                         (click)="editCommercant(commercant.id!)"
                         title="Modifier"
-                        *ngIf="(canEditCommercant$ | async)">
+                        *appHasPermission="{ screen: 'MODIFIER_COMMERCANT', permission: 'canEdit' }">
                         <i class="material-icons">edit</i>
                       </button>
                       <button 
@@ -111,7 +111,7 @@
                         class="btn btn-danger btn-sm"
                         (click)="deleteCommercant(commercant.id!, commercant.raisonSociale)"
                         title="Supprimer"
-                        *ngIf="(canDeleteCommercant$ | async)">
+                        *appHasPermission="{ screen: 'MODIFIER_COMMERCANT', permission: 'canDelete' }">
                         <i class="material-icons">delete</i>
                       </button>
                     </td>

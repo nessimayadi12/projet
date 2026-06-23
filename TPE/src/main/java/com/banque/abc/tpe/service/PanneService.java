@@ -2,6 +2,8 @@ package com.banque.abc.tpe.service;
 
 import com.banque.abc.tpe.dto.panne.PanneRequest;
 import com.banque.abc.tpe.dto.panne.PanneResponse;
+import com.banque.abc.tpe.dto.audit.AuditEvent;
+import com.banque.abc.tpe.dto.notification.NotificationIaEventType;
 import com.banque.abc.tpe.entity.Affectation;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
@@ -49,6 +51,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -63,6 +66,8 @@ public class PanneService {
     private final AffectationRepository affectationRepository;
     private final DemandeRepository demandeRepository;
     private final ReferenceGenerator referenceGenerator;
+    private final AuditService auditService;
+    private final BusinessNotificationService businessNotificationService;
     private static final DateTimeFormatter EXPORT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final List<StatutTPE> STATUTS_TPE_DECLARATION = List.of(
             StatutTPE.AFFECTE,
@@ -133,12 +138,20 @@ public class PanneService {
             tpe.setStatut(StatutTPE.EN_PANNE);
             tpeRepository.save(tpe);
         }
+
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.PANNE_TPE_DECLAREE,
+                panneNotificationContext(panneSaved)
+        );
+        auditService.logCreation("Panne", panneSaved.getId().toString(), panneSaved.getReference(),
+                snapshot(panneSaved), notification);
         
         return panneSaved;
     }
 
     public Panne updatePanne(Long id, Panne panneDetails) {
         Panne panne = getPanneOrThrow(id);
+        Map<String, Object> oldValues = snapshot(panne);
         
         if (panneDetails.getDescription() != null && !panneDetails.getDescription().isBlank()) {
             panne.setDescription(panneDetails.getDescription());
@@ -152,7 +165,10 @@ public class PanneService {
         panne.setCoutReparation(panneDetails.getCoutReparation());
         panne.setSousGarantie(panneDetails.getSousGarantie());
         
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated), "Panne mise a jour: " + updated.getReference());
+        return updated;
     }
 
     public Panne changeStatut(Long id, StatutPanne nouveauStatut) {
@@ -161,6 +177,8 @@ public class PanneService {
         }
 
         Panne panne = getPanneOrThrow(id);
+        Map<String, Object> oldValues = snapshot(panne);
+        StatutPanne ancienStatut = panne.getStatut();
         validateTransition(panne, nouveauStatut);
         
         panne.setStatut(nouveauStatut);
@@ -185,22 +203,54 @@ public class PanneService {
                 break;
         }
         
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        String details = "Statut panne change de " + ancienStatut + " a " + updated.getStatut();
+        if (nouveauStatut == StatutPanne.DIAGNOSTIQUEE) {
+            details = businessNotificationService.publish(
+                    NotificationIaEventType.PANNE_TPE_DIAGNOSTIQUEE,
+                    panneNotificationContext(updated)
+            );
+        } else if (nouveauStatut == StatutPanne.REPAREE) {
+            details = businessNotificationService.publish(
+                    NotificationIaEventType.TPE_REPARE,
+                    panneNotificationContext(updated)
+            );
+        }
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated),
+                details);
+        return updated;
     }
 
     public Panne assignerTechnicien(Long panneId, Long technicienId) {
         Panne panne = getPanneOrThrow(panneId);
+        Map<String, Object> oldValues = snapshot(panne);
         
         User technicien = userRepository.findById(technicienId)
             .orElseThrow(() -> new ResourceNotFoundException("Technicien non trouve"));
         
         panne.setTechnicien(technicien);
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated), "Technicien assigne a la panne " + updated.getReference());
+        return updated;
     }
 
     public void deletePanne(Long id) {
         Panne panne = getPanneOrThrow(id);
         panneRepository.delete(panne);
+        auditService.logBusinessEvent(AuditEvent.builder()
+                .action("DELETE")
+                .actionLabel("Suppression")
+                .moduleName("Panne")
+                .entityType("Panne")
+                .entityId(id.toString())
+                .entityReference(panne.getReference())
+                .details("Panne supprimee: " + panne.getReference())
+                .oldValues(snapshot(panne))
+                .statut("SUCCESS")
+                .riskLevel("CRITICAL")
+                .build());
     }
 
     public Panne diagnostiquer(Long id, String diagnostic) {
@@ -209,13 +259,23 @@ public class PanneService {
         }
 
         Panne panne = getPanneOrThrow(id);
+        Map<String, Object> oldValues = snapshot(panne);
+        StatutPanne ancienStatut = panne.getStatut();
         validateTransition(panne, StatutPanne.DIAGNOSTIQUEE);
         
         panne.setDiagnostic(diagnostic.trim());
         panne.setStatut(StatutPanne.DIAGNOSTIQUEE);
         panne.setDateDiagnostic(LocalDateTime.now());
         
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.PANNE_TPE_DIAGNOSTIQUEE,
+                panneNotificationContext(updated)
+        );
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated),
+                notification);
+        return updated;
     }
 
     public Panne marquerEnReparation(Long id) {
@@ -229,6 +289,8 @@ public class PanneService {
 
     public Panne marquerReparee(Long id, String solution) {
         Panne panne = getPanneOrThrow(id);
+        Map<String, Object> oldValues = snapshot(panne);
+        StatutPanne ancienStatut = panne.getStatut();
         validateTransition(panne, StatutPanne.REPAREE);
         
         if (solution != null && !solution.isBlank()) {
@@ -242,7 +304,15 @@ public class PanneService {
             updateTpeAfterResolution(tpe);
         }
         
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.TPE_REPARE,
+                panneNotificationContext(updated)
+        );
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated),
+                notification);
+        return updated;
     }
 
     public Panne resoudrePanne(Long id, String solution) {
@@ -256,6 +326,7 @@ public class PanneService {
             return marquerReparee(id, panne.getActionCorrective());
         }
 
+        Map<String, Object> oldValues = snapshot(panne);
         if (panne.getStatut() == StatutPanne.REPAREE) {
             panne.setStatut(StatutPanne.EN_REPARATION);
             TPE tpe = panne.getTpe();
@@ -267,16 +338,28 @@ public class PanneService {
             throw new BusinessException("Le test ne peut etre relance que depuis REPAREE ou EN_REPARATION");
         }
         
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated), "Test de reparation non concluant");
+        return updated;
     }
 
     public Panne affecterTPERemplacement(Long panneId, Long tpeRemplacementId) {
         Panne panne = getPanneOrThrow(panneId);
+        Map<String, Object> oldValues = snapshot(panne);
         
         TPE tpeRemplacement = getTpeOrThrow(tpeRemplacementId);
         
         panne.setTpeRemplacement(tpeRemplacement);
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.TPE_REMPLACE,
+                panneNotificationContext(updated)
+        );
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, snapshot(updated),
+                notification);
+        return updated;
     }
 
     public Panne marquerIrrecuperableAvecRemplacement(Long panneId,
@@ -307,6 +390,8 @@ public class PanneService {
         }
 
         Panne panne = getPanneOrThrow(panneId);
+        Map<String, Object> oldValues = snapshot(panne);
+        StatutPanne ancienStatut = panne.getStatut();
         validateTransition(panne, StatutPanne.IRRECUPERABLE);
 
         TPE tpe = panne.getTpe();
@@ -397,7 +482,25 @@ public class PanneService {
                     + numeroSerieRemplacement + " - " + marqueRemplacement + " " + modeleRemplacement);
         }
 
-        return panneRepository.save(panne);
+        Panne updated = panneRepository.save(panne);
+        Map<String, Object> newValues = snapshot(updated);
+        newValues.put("ancienTpeId", tpe.getId());
+        newValues.put("ancienTpeNumeroSerie", tpe.getNumeroSerie());
+        newValues.put("tpeRemplacementId", tpeRemplacement.getId());
+        newValues.put("tpeRemplacementNumeroSerie", tpeRemplacement.getNumeroSerie());
+        Map<String, Object> notificationContext = panneNotificationContext(updated);
+        notificationContext.put("ancienTpeId", tpe.getId());
+        notificationContext.put("ancienTpeNumeroSerie", tpe.getNumeroSerie());
+        notificationContext.put("tpeRemplacementId", tpeRemplacement.getId());
+        notificationContext.put("tpeRemplacementNumeroSerie", tpeRemplacement.getNumeroSerie());
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.TPE_REMPLACE,
+                notificationContext
+        );
+        auditService.logUpdate("Panne", updated.getId().toString(), updated.getReference(),
+                oldValues, newValues,
+                notification);
+        return updated;
     }
 
     private void cloturerDemandeSource(Demande demandeSource) {
@@ -765,6 +868,46 @@ public class PanneService {
         PdfPCell cell = new PdfPCell(new Phrase(nvl(text), font));
         cell.setPadding(3);
         table.addCell(cell);
+    }
+
+    private Map<String, Object> snapshot(Panne panne) {
+        TPE tpe = panne.getTpe();
+        return auditService.values(
+                "reference", panne.getReference(),
+                "statut", panne.getStatut(),
+                "description", panne.getDescription(),
+                "typePanne", panne.getTypePanne(),
+                "tpeId", tpe != null ? tpe.getId() : null,
+                "tpeNumeroSerie", tpe != null ? tpe.getNumeroSerie() : null,
+                "tpeNumeroTerminal", tpe != null ? tpe.getNumeroTerminal() : null,
+                "tpeStatut", tpe != null ? tpe.getStatut() : null,
+                "dateDeclaration", panne.getDateDeclaration(),
+                "dateDiagnostic", panne.getDateDiagnostic(),
+                "dateReparation", panne.getDateReparation(),
+                "dateResolution", panne.getDateResolution(),
+                "declarantId", panne.getDeclarant() != null ? panne.getDeclarant().getId() : null,
+                "technicienId", panne.getTechnicien() != null ? panne.getTechnicien().getId() : null,
+                "diagnostic", panne.getDiagnostic(),
+                "actionCorrective", panne.getActionCorrective(),
+                "commentaireTechnicien", panne.getCommentaireTechnicien(),
+                "tpeRemplacementId", panne.getTpeRemplacement() != null ? panne.getTpeRemplacement().getId() : null,
+                "tpeRemplacementNumeroSerie", panne.getTpeRemplacement() != null ? panne.getTpeRemplacement().getNumeroSerie() : null,
+                "coutReparation", panne.getCoutReparation(),
+                "sousGarantie", panne.getSousGarantie()
+        );
+    }
+
+    private Map<String, Object> panneNotificationContext(Panne panne) {
+        Map<String, Object> context = snapshot(panne);
+        TPE tpe = panne.getTpe();
+        context.put("commercantNom", getCommercantNom(panne));
+        context.put("numeroSerie", tpe != null ? tpe.getNumeroSerie() : null);
+        context.put("numeroTerminal", tpe != null ? tpe.getNumeroTerminal() : null);
+        context.put("codeAgence", tpe != null && tpe.getCommercant() != null
+                ? tpe.getCommercant().getCodeAgence()
+                : panne.getDeclarant() != null ? panne.getDeclarant().getCodeAgence() : null);
+        context.put("solution", panne.getActionCorrective());
+        return context;
     }
     
     /**

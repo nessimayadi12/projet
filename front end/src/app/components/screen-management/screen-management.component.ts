@@ -1,10 +1,25 @@
 import { Component, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { forkJoin } from 'rxjs';
+import { Screen, ScreenPermissions, ScreenRole } from '../../models/screen.model';
+import { RoleDTO, RoleService } from '../../services/role.service';
 import { ScreenService } from '../../services/screen.service';
-import { AuthService } from '../../services/auth.service';
-import { RoleService, RoleDTO } from '../../services/role.service';
-import { Screen, ScreenRole, ScreenPermissions } from '../../models/screen.model';
-import { Role } from '../../models/utilisateur.model';
+
+interface PermissionAction {
+  key: keyof ScreenPermissions;
+  label: string;
+  icon: string;
+}
+
+interface PermissionHistory {
+  id: number;
+  dateAction: string;
+  username: string;
+  action: string;
+  actionLabel?: string;
+  details: string;
+  changes?: Array<{ field: string; oldValue: any; newValue: any }>;
+}
 
 @Component({
   selector: 'app-screen-management',
@@ -13,282 +28,200 @@ import { Role } from '../../models/utilisateur.model';
 })
 export class ScreenManagementComponent implements OnInit {
   screens: Screen[] = [];
-  selectedScreen: Screen | null = null;
-  screenRoles: ScreenRole[] = [];
-  loading = false;
-  isAdmin = false;
+  filteredScreens: Screen[] = [];
+  roles: RoleDTO[] = [];
+  history: PermissionHistory[] = [];
+  loading = true;
+  copying = false;
+  showHistory = false;
+  searchTerm = '';
+  sourceRoleId: number | null = null;
+  targetRoleId: number | null = null;
+  private matrix = new Map<string, ScreenRole>();
+  private savingCells = new Set<string>();
 
-  // Liste des rôles disponibles (chargée dynamiquement depuis le backend)
-  availableRoles: RoleDTO[] = [];
-  allRoles: RoleDTO[] = [];
+  readonly actions: PermissionAction[] = [
+    { key: 'canView', label: 'Voir', icon: 'visibility' },
+    { key: 'canCreate', label: 'Créer', icon: 'add_circle' },
+    { key: 'canEdit', label: 'Modifier', icon: 'edit' },
+    { key: 'canDelete', label: 'Supprimer', icon: 'delete' },
+    { key: 'canExport', label: 'Exporter', icon: 'download' }
+  ];
 
-  // Labels pour les rôles
-  private roleLabels: { [key: string]: string } = {
-    'ROLE_ADMIN': 'Administrateur',
-    'ROLE_MONETIQUE': 'Monétique',
-    'ROLE_AGENCE': 'Agence',
-  };
-
-  // Formulaire pour ajouter/modifier un screen
-  screenForm: Screen = {
-    code: '',
-    libelle: '',
-    description: '',
-    route: '',
-    icon: '',
-    ordre: 0,
-    actif: true
-  };
-
-  // Formulaire pour assigner des permissions
-  permissionForm: any = {
-    roleId: null,
-    permissions: {
-      canView: true,
-      canCreate: false,
-      canEdit: false,
-      canDelete: false,
-      canExport: false
-    }
+  private readonly roleLabels: { [key: string]: string } = {
+    ROLE_ADMIN: 'Administrateur',
+    ROLE_MONETIQUE: 'Monétique',
+    ROLE_AGENCE: 'Agence'
   };
 
   constructor(
     private screenService: ScreenService,
-    private authService: AuthService,
     private roleService: RoleService,
     private snackBar: MatSnackBar
-  ) { }
+  ) {}
 
   ngOnInit(): void {
-    const currentUser = this.authService.getCurrentUser();
-    this.isAdmin = this.authService.hasAnyRole([Role.ADMIN]);
-
-    if (!this.isAdmin) {
-      this.showNotification('Accès refusé - Vous devez être administrateur pour accéder à cette page', 'error');
-      return;
-    }
-
-    this.loadRoles();
-    this.loadScreens();
+    this.loadMatrix();
   }
 
-  loadRoles(): void {
-    this.roleService.getAllRoles().subscribe({
-      next: (roles) => {
-        // Ajouter les labels aux rôles
-        this.allRoles = roles.map(role => ({
-          ...role,
-          label: this.roleLabels[role.name] || role.name
-        }));
-        this.updateAvailableRoles();
-      },
-      error: (error) => {
-        this.showNotification('Erreur - Impossible de charger les rôles', 'error');
-      }
-    });
-  }
-
-  loadScreens(): void {
+  loadMatrix(): void {
     this.loading = true;
-    this.screenService.getAllScreens().subscribe({
-      next: (screens) => {
-        this.screens = screens;
+    forkJoin({
+      screens: this.screenService.getAllScreens(),
+      roles: this.roleService.getAllRoles(),
+      matrix: this.screenService.getPermissionMatrix()
+    }).subscribe({
+      next: ({ screens, roles, matrix }) => {
+        this.screens = screens
+          .filter(screen => screen.actif)
+          .sort((a, b) => (a.ordre || 999) - (b.ordre || 999));
+        const order = ['ROLE_ADMIN', 'ROLE_MONETIQUE', 'ROLE_AGENCE'];
+        this.roles = roles
+          .filter(role => order.includes(role.name))
+          .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name))
+          .map(role => ({ ...role, label: this.roleLabels[role.name] || role.name }));
+        this.matrix.clear();
+        matrix.forEach(item => this.matrix.set(this.cellKey(item.screenId, item.roleId), item));
+        this.filterScreens();
+        this.sourceRoleId = this.sourceRoleId || this.roles[0]?.id || null;
+        this.targetRoleId = this.targetRoleId || this.roles[1]?.id || null;
         this.loading = false;
       },
-      error: (error) => {
-        this.showNotification('Erreur - Impossible de charger les screens', 'error');
+      error: () => {
         this.loading = false;
+        this.notify('Impossible de charger la matrice des permissions', true);
       }
     });
   }
 
-  selectScreen(screen: Screen): void {
-    this.selectedScreen = screen;
-    this.screenRoles = [];
-    this.resetPermissionForm();
-    if (screen.id) {
-      this.loadScreenRoles(screen.id);
-    }
+  filterScreens(): void {
+    const term = this.searchTerm.trim().toLowerCase();
+    this.filteredScreens = !term ? this.screens : this.screens.filter(screen =>
+      screen.libelle.toLowerCase().includes(term) ||
+      screen.code.toLowerCase().includes(term) ||
+      screen.route.toLowerCase().includes(term)
+    );
   }
 
-  loadScreenRoles(screenId: number): void {
-    this.screenService.getScreenRoles(screenId).subscribe({
-      next: (roles) => {
-        this.screenRoles = roles;
-        this.updateAvailableRoles();
-      },
-      error: (error) => {
-        this.showNotification('Erreur - Impossible de charger les permissions du screen', 'error');
-      }
+  isGranted(screen: Screen, role: RoleDTO, action: keyof ScreenPermissions): boolean {
+    const permission = this.matrix.get(this.cellKey(screen.id!, role.id));
+    return permission ? permission[action] === true : false;
+  }
+
+  isSaving(screen: Screen, role: RoleDTO): boolean {
+    return this.savingCells.has(this.cellKey(screen.id!, role.id));
+  }
+
+  togglePermission(screen: Screen, role: RoleDTO, action: keyof ScreenPermissions): void {
+    if (!screen.id || this.isSaving(screen, role)) {
+      return;
+    }
+
+    const key = this.cellKey(screen.id, role.id);
+    const current = this.matrix.get(key);
+    const previous = current ? { ...current } : undefined;
+    const permissions = this.toPermissions(current);
+    permissions[action] = !permissions[action];
+
+    if (action === 'canView' && !permissions.canView) {
+      permissions.canCreate = false;
+      permissions.canEdit = false;
+      permissions.canDelete = false;
+      permissions.canExport = false;
+    } else if (action !== 'canView' && permissions[action]) {
+      permissions.canView = true;
+    }
+
+    this.matrix.set(key, {
+      ...(current || { screenId: screen.id, roleId: role.id }),
+      ...permissions
     });
-  }
+    this.savingCells.add(key);
 
-  // Filtrer les rôles déjà assignés au screen sélectionné
-  updateAvailableRoles(): void {
-    if (!this.allRoles.length) {
-      return;
-    }
-
-    if (!this.selectedScreen || !this.screenRoles.length) {
-      this.availableRoles = [...this.allRoles];
-      return;
-    }
-
-    const assignedRoleIds = this.screenRoles.map(sr => sr.roleId);
-    this.availableRoles = this.allRoles.filter(role => !assignedRoleIds.includes(role.id));
-  }
-
-  createScreen(): void {
-    if (!this.validateScreenForm()) {
-      return;
-    }
-
-    this.loading = true;
-    this.screenService.createScreen(this.screenForm).subscribe({
-      next: (screen) => {
-        this.showNotification('Screen créé avec succès', 'success');
-        this.loadScreens();
-        this.resetScreenForm();
-        this.loading = false;
-      },
-      error: (error) => {
-        this.showNotification('Erreur - Impossible de créer le screen', 'error');
-        this.loading = false;
-      }
-    });
-  }
-
-  updateScreen(): void {
-    if (!this.selectedScreen || !this.selectedScreen.id) {
-      return;
-    }
-
-    this.loading = true;
-    this.screenService.updateScreen(this.selectedScreen.id, this.selectedScreen).subscribe({
-      next: (screen) => {
-        this.showNotification('Screen modifié avec succès', 'success');
-        this.loadScreens();
-        this.loading = false;
-      },
-      error: (error) => {
-        this.showNotification('Erreur - Impossible de modifier le screen', 'error');
-        this.loading = false;
-      }
-    });
-  }
-
-  deleteScreen(screenId: number): void {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce screen ?')) {
-      this.loading = true;
-      this.screenService.deleteScreen(screenId).subscribe({
-        next: () => {
-          this.showNotification('Screen supprimé avec succès', 'success');
-          this.loadScreens();
-          this.selectedScreen = null;
-          this.loading = false;
-        },
-        error: (error) => {
-          this.showNotification('Erreur - Impossible de supprimer le screen', 'error');
-          this.loading = false;
+    this.screenService.assignRoleToScreen(screen.id, role.id, permissions).subscribe({
+      next: saved => {
+        this.matrix.set(key, saved);
+        this.savingCells.delete(key);
+        this.notify(`${screen.libelle} · ${role.label} mis à jour`);
+        if (this.showHistory) {
+          this.loadHistory();
         }
-      });
-    }
-  }
-
-  assignRoleToScreen(): void {
-    if (!this.selectedScreen || !this.selectedScreen.id || !this.permissionForm.roleId) {
-      this.showNotification('Erreur - Veuillez sélectionner un screen et un rôle', 'error');
-      return;
-    }
-
-    this.loading = true;
-    this.screenService.assignRoleToScreen(
-      this.selectedScreen.id,
-      this.permissionForm.roleId,
-      this.permissionForm.permissions
-    ).subscribe({
-      next: (screenRole) => {
-        this.showNotification('Permissions assignées avec succès', 'success');
-        // Vider le cache pour forcer le rechargement des permissions
-        this.screenService.clearCache();
-        this.loadScreenRoles(this.selectedScreen!.id!);
-        this.resetPermissionForm();
-        this.loading = false;
       },
-      error: (error) => {
-        this.showNotification('Erreur - Impossible d\'assigner les permissions', 'error');
-        this.loading = false;
+      error: () => {
+        if (previous) {
+          this.matrix.set(key, previous);
+        } else {
+          this.matrix.delete(key);
+        }
+        this.savingCells.delete(key);
+        this.notify('La permission n’a pas pu être enregistrée', true);
       }
     });
   }
 
-  removeRoleFromScreen(screenId: number, roleId: number): void {
-    if (confirm('Êtes-vous sûr de vouloir retirer ce rôle ?')) {
-      this.loading = true;
-      this.screenService.removeRoleFromScreen(screenId, roleId).subscribe({
-        next: () => {
-          this.showNotification('Rôle retiré avec succès', 'success');
-          // Vider le cache pour forcer le rechargement des permissions
-          this.screenService.clearCache();
-          this.loadScreenRoles(screenId);
-          this.loading = false;
-        },
-        error: (error) => {
-          this.showNotification('Erreur - Impossible de retirer le rôle', 'error');
-          this.loading = false;
-        }
-      });
+  copyProfile(): void {
+    if (!this.sourceRoleId || !this.targetRoleId || this.sourceRoleId === this.targetRoleId) {
+      this.notify('Choisissez deux profils différents', true);
+      return;
+    }
+    const source = this.roles.find(role => role.id === this.sourceRoleId);
+    const target = this.roles.find(role => role.id === this.targetRoleId);
+    if (!confirm(`Copier toutes les permissions ${source?.label} vers ${target?.label} ?`)) {
+      return;
+    }
+
+    this.copying = true;
+    this.screenService.copyRoleProfile(this.sourceRoleId, this.targetRoleId).subscribe({
+      next: copied => {
+        this.screens.forEach(screen => this.matrix.delete(this.cellKey(screen.id!, this.targetRoleId!)));
+        copied.forEach(item => this.matrix.set(this.cellKey(item.screenId, item.roleId), item));
+        this.copying = false;
+        this.notify(`${copied.length} permissions copiées vers ${target?.label}`);
+        this.loadHistory();
+      },
+      error: () => {
+        this.copying = false;
+        this.notify('La copie du profil a échoué', true);
+      }
+    });
+  }
+
+  toggleHistory(): void {
+    this.showHistory = !this.showHistory;
+    if (this.showHistory) {
+      this.loadHistory();
     }
   }
 
-  validateScreenForm(): boolean {
-    if (!this.screenForm.code || !this.screenForm.libelle || !this.screenForm.route) {
-      this.showNotification('Erreur - Veuillez remplir tous les champs obligatoires', 'error');
-      return false;
-    }
-    return true;
+  loadHistory(): void {
+    this.screenService.getPermissionHistory(0, 20).subscribe({
+      next: response => this.history = response.content || [],
+      error: () => this.notify('Impossible de charger l’historique', true)
+    });
   }
 
-  resetScreenForm(): void {
-    this.screenForm = {
-      code: '',
-      libelle: '',
-      description: '',
-      route: '',
-      icon: '',
-      ordre: 0,
-      actif: true
+  trackScreen(_: number, screen: Screen): number | string {
+    return screen.id || screen.code;
+  }
+
+  private cellKey(screenId: number, roleId: number): string {
+    return `${screenId}:${roleId}`;
+  }
+
+  private toPermissions(item?: ScreenRole): ScreenPermissions {
+    return {
+      canView: item?.canView === true,
+      canCreate: item?.canCreate === true,
+      canEdit: item?.canEdit === true,
+      canDelete: item?.canDelete === true,
+      canExport: item?.canExport === true
     };
   }
 
-  resetPermissionForm(): void {
-    this.permissionForm = {
-      roleId: null,
-      permissions: {
-        canView: true,
-        canCreate: false,
-        canEdit: false,
-        canDelete: false,
-        canExport: false
-      }
-    };
-  }
-
-  editScreen(screen: Screen): void {
-    this.selectedScreen = { ...screen };
-  }
-
-  cancelEdit(): void {
-    this.selectedScreen = null;
-    this.resetScreenForm();
-  }
-
-  private showNotification(message: string, type: 'success' | 'error' | 'info'): void {
+  private notify(message: string, error = false): void {
     this.snackBar.open(message, 'Fermer', {
-      duration: 5000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: [`snackbar-${type}`]
+      duration: error ? 5000 : 2500,
+      panelClass: error ? ['snackbar-error'] : ['snackbar-success']
     });
   }
 }

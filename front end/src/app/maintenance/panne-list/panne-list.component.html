@@ -122,7 +122,8 @@
 
                 <mat-form-field class="full-width">
                   <mat-label>Description</mat-label>
-                  <textarea matInput formControlName="description" rows="4"></textarea>
+                  <textarea matInput formControlName="description" rows="4"
+                            (input)="onDescriptionChange()"></textarea>
                   <mat-error *ngIf="declarationForm.hasError('typeOrDescriptionRequired')">
                     Renseignez une description ou un type de panne.
                   </mat-error>
@@ -130,6 +131,84 @@
                     Minimum 5 caractères
                   </mat-error>
                 </mat-form-field>
+
+                <div class="ia-toolbar">
+                  <button mat-stroked-button color="primary" type="button"
+                          (click)="analyserDescriptionIa()"
+                          [disabled]="!canAnalyseDescriptionIa()">
+                    <mat-icon>psychology</mat-icon>
+                    {{ analyseIaLoading ? 'Analyse...' : 'Analyser avec IA' }}
+                  </button>
+                </div>
+
+                <div *ngIf="diagnosticIa" class="ia-diagnostic-panel agency-ia-panel">
+                  <div class="ia-panel-header">
+                    <div>
+                      <h5>Aide au diagnostic</h5>
+                      <span *ngIf="diagnosticIa.typePanneSuggere">
+                        {{ getTypePanneLabel(diagnosticIa.typePanneSuggere) }}
+                      </span>
+                      <span *ngIf="!diagnosticIa.typePanneSuggere">Type non identifie</span>
+                    </div>
+                    <div class="ia-meta">
+                      <span class="ia-confidence">Fiabilite {{ diagnosticIa.scoreConfiance || 0 }}%</span>
+                      <span class="ia-urgence" [ngClass]="getUrgenceIaClass(diagnosticIa.urgence)">
+                        Priorite {{ diagnosticIa.urgence || 'MOYENNE' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="agency-diagnostic-summary">
+                    <div class="agency-main-result">
+                      <span>Panne probable</span>
+                      <strong>{{ diagnosticIa.typePanneSuggere ? getTypePanneLabel(diagnosticIa.typePanneSuggere) : 'A confirmer' }}</strong>
+                      <p>{{ getDiagnosticAgence() }}</p>
+                    </div>
+
+                    <div class="agency-next-steps">
+                      <span>Ce que l'agence doit faire</span>
+                      <ol>
+                        <li *ngFor="let action of getActionsAgence()">{{ action }}</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  <div *ngIf="diagnosticIa.remplacementRecommande" class="agency-warning">
+                    <mat-icon>warning</mat-icon>
+                    <span>Ne remettez pas ce TPE en service avant validation Monétique.</span>
+                  </div>
+
+                  <div class="ia-tags" *ngIf="diagnosticIa.indicesDetectes?.length">
+                    <strong>Indices detectes</strong>
+                    <span *ngFor="let indice of diagnosticIa.indicesDetectes">{{ indice }}</span>
+                  </div>
+
+                  <div class="agency-transfer-list">
+                    <strong>A transmettre a la Monetique</strong>
+                    <ul>
+                      <li *ngFor="let information of getInformationsATransmettre()">{{ information }}</li>
+                    </ul>
+                  </div>
+
+                  <div class="ia-sources" *ngIf="canTraiterPanne() && diagnosticIa.sourcesRetenues?.length">
+                    <strong>Cas similaires consultes</strong>
+                    <div class="ia-source-item" *ngFor="let source of diagnosticIa.sourcesRetenues">
+                      <div>
+                        <span>{{ source.titre || 'Document diagnostic' }}</span>
+                        <small>{{ getTypePanneLabel(source.typePanne) }}</small>
+                      </div>
+                      <em>score {{ source.score || 0 }}</em>
+                      <p>{{ source.extrait }}</p>
+                    </div>
+                  </div>
+
+                  <div class="ia-actions" *ngIf="diagnosticIa.typePanneSuggere">
+                    <button mat-button color="primary" type="button" (click)="appliquerDiagnosticIa()">
+                      <mat-icon>done</mat-icon>
+                      Utiliser ce type
+                    </button>
+                  </div>
+                </div>
 
                 <div class="form-actions">
                   <button mat-raised-button color="primary" type="button" (click)="declarerPanne()"
@@ -295,13 +374,25 @@
             </div>
 
             <div class="filters-row">
-              <mat-form-field class="filter-field">
+              <mat-form-field class="filter-field status-filter-field">
                 <mat-label>Filtrer par statut</mat-label>
                 <mat-select [(ngModel)]="filtreStatut" (selectionChange)="onFiltreChange()">
                   <mat-option *ngFor="let statut of statuts" [value]="statut">
                     {{ statut === 'TOUS' ? 'Tous' : getStatutLabel(statut) }}
                   </mat-option>
                 </mat-select>
+              </mat-form-field>
+
+              <mat-form-field class="filter-field date-filter-field">
+                <mat-label>Date de déclaration - Du</mat-label>
+                <input matInput type="date" [(ngModel)]="dateDebut"
+                       [attr.max]="dateFin || null" (ngModelChange)="onFiltreChange()">
+              </mat-form-field>
+
+              <mat-form-field class="filter-field date-filter-field">
+                <mat-label>Au</mat-label>
+                <input matInput type="date" [(ngModel)]="dateFin"
+                       [attr.min]="dateDebut || null" (ngModelChange)="onFiltreChange()">
               </mat-form-field>
             </div>
 

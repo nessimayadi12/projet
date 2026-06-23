@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PermissionsModule } from '../guards/permissions.module';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommercantListComponent } from './commercant-list/commercant-list.component';
@@ -12,6 +13,7 @@ import { CommercantFormComponent } from './commercant-form/commercant-form.compo
   ],
   imports: [
     CommonModule,
+    PermissionsModule,
     FormsModule,
     ReactiveFormsModule,
     RouterModule

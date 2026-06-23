@@ -8,6 +8,67 @@
         </button>
         <div class="collapse navbar-collapse justify-content-end" id="navigation">
             <ul class="navbar-nav">
+                <li class="nav-item notification-wrapper">
+                    <button type="button"
+                            class="nav-link notification-button"
+                            aria-label="Ouvrir les notifications"
+                            [attr.aria-expanded]="notificationsOpen"
+                            (click)="toggleNotifications($event)">
+                        <i class="material-icons">notifications</i>
+                        <span class="notification-badge" *ngIf="unreadCount > 0">
+                            {{ unreadCount > 99 ? '99+' : unreadCount }}
+                        </span>
+                        <span class="connection-dot"
+                              [class.connected]="notificationsConnected"
+                              [title]="notificationsConnected ? 'Temps réel connecté' : 'Reconnexion en cours'">
+                        </span>
+                    </button>
+
+                    <div class="notification-panel" *ngIf="notificationsOpen" (click)="$event.stopPropagation()">
+                        <div class="notification-panel-header">
+                            <div>
+                                <h6>Notifications</h6>
+                                <span>{{ unreadCount }} non lue{{ unreadCount > 1 ? 's' : '' }}</span>
+                            </div>
+                            <button type="button"
+                                    class="mark-all-button"
+                                    [disabled]="unreadCount === 0"
+                                    (click)="markAllAsRead($event)">
+                                Tout lire
+                            </button>
+                        </div>
+
+                        <div class="notification-empty" *ngIf="notifications.length === 0">
+                            <i class="material-icons">notifications_none</i>
+                            <p>Aucune notification</p>
+                        </div>
+
+                        <div class="notification-list" *ngIf="notifications.length > 0">
+                            <button type="button"
+                                    class="notification-item"
+                                    *ngFor="let notification of notifications"
+                                    [class.unread]="!notification.read"
+                                    [class.priority-critical]="notification.priority === 'CRITIQUE'"
+                                    [class.priority-high]="notification.priority === 'HAUTE'"
+                                    (click)="openNotification(notification)">
+                                <span class="notification-icon">
+                                    <i class="material-icons">{{ notificationIcon(notification.type) }}</i>
+                                </span>
+                                <span class="notification-content">
+                                    <strong>{{ notification.title }}</strong>
+                                    <span class="notification-message">{{ notification.message }}</span>
+                                    <span class="notification-meta">
+                                        <span *ngIf="notification.sourceCodeAgence">
+                                            Agence {{ notification.sourceCodeAgence }} ·
+                                        </span>
+                                        {{ notification.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                                    </span>
+                                </span>
+                                <span class="unread-dot" *ngIf="!notification.read"></span>
+                            </button>
+                        </div>
+                    </div>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="javascript:void(0)" (click)="logout()">
                         <i class="material-icons">exit_to_app</i>
@@ -17,6 +78,21 @@
                     </a>
                 </li>
             </ul>
+        </div>
+
+        <div class="notification-toast"
+             *ngIf="toastNotification"
+             [class.priority-critical]="toastNotification.priority === 'CRITIQUE'">
+            <span class="notification-toast-icon">
+                <i class="material-icons">{{ notificationIcon(toastNotification.type) }}</i>
+            </span>
+            <button type="button" class="notification-toast-body" (click)="openNotification(toastNotification)">
+                <strong>{{ toastNotification.title }}</strong>
+                <span>{{ toastNotification.message }}</span>
+            </button>
+            <button type="button" class="notification-toast-close" (click)="dismissToast()">
+                <i class="material-icons">close</i>
+            </button>
         </div>
     </div>
 </nav>

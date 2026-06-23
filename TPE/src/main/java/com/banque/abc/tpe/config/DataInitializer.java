@@ -291,6 +291,8 @@ public class DataInitializer {
 
                 createScreenIfNotExists(screenRepository, "LISTE_PANNES", "Liste Pannes", "/pannes", "build", 40),
                 createScreenIfNotExists(screenRepository, "UPLOAD_FICHIER_BANCAIRE", "Upload Transactions", "/file-upload", "cloud_upload", 45),
+                createScreenIfNotExists(screenRepository, "AUDIT_AVANCE", "Audit avance", "/audit", "manage_search", 46),
+                createScreenIfNotExists(screenRepository, "ASSISTANT_IA", "Assistant IA", "/assistant-ia", "psychology", 47),
                 createScreenIfNotExists(screenRepository, "GESTION_PERMISSIONS", "Gestion Permissions", "/admin/screens", "security", 50)
         );
 
@@ -316,7 +318,7 @@ public class DataInitializer {
 
             // AGENCE: accès principalement demandes/commerçants/tpe consultation
             boolean agenceCanView = switch (screen.getCode()) {
-                case "PROFIL_UTILISATEUR", "LISTE_TPE", "DETAIL_TPE", "LISTE_COMMERCANTS", "DETAIL_COMMERCANT",
+                case "PROFIL_UTILISATEUR", "ASSISTANT_IA", "LISTE_TPE", "DETAIL_TPE", "LISTE_COMMERCANTS", "DETAIL_COMMERCANT",
                         "LISTE_DEMANDES", "CREER_DEMANDE", "MODIFIER_DEMANDE", "DETAIL_DEMANDE", "LISTE_PANNES" -> true;
                 default -> false;
             };
@@ -337,23 +339,50 @@ public class DataInitializer {
                                            String route,
                                            String icon,
                                            Integer ordre) {
-        return screenRepository.findByCode(code).orElseGet(() -> {
-            Screen screen = Screen.builder()
-                    .code(code)
-                    .libelle(libelle)
-                    .description(libelle)
-                    .route(route)
-                    .icon(icon)
-                    .ordre(ordre)
-                    .actif(true)
-                    .build();
-            Screen saved = screenRepository.save(screen);
-            System.out.println("Screen créé: " + code);
-            return saved;
-        });
+        return screenRepository.findByCode(code)
+                .map(existing -> repairScreenEncoding(screenRepository, existing, libelle))
+                .orElseGet(() -> {
+                    Screen screen = Screen.builder()
+                            .code(code)
+                            .libelle(libelle)
+                            .description(libelle)
+                            .route(route)
+                            .icon(icon)
+                            .ordre(ordre)
+                            .actif(true)
+                            .build();
+                    Screen saved = screenRepository.save(screen);
+                    System.out.println("Screen créé: " + code);
+                    return saved;
+                });
     }
 
-        private void upsertScreenRole(ScreenRoleRepository screenRoleRepository,
+    /** Répare les libellés UTF-8 historiques déjà enregistrés comme texte Windows-1252. */
+    private Screen repairScreenEncoding(ScreenRepository screenRepository, Screen screen, String canonicalLabel) {
+        boolean corruptedLabel = hasMojibake(screen.getLibelle());
+        boolean corruptedDescription = hasMojibake(screen.getDescription());
+        if (!corruptedLabel && !corruptedDescription) {
+            return screen;
+        }
+
+        if (corruptedLabel) {
+            screen.setLibelle(canonicalLabel);
+        }
+        if (corruptedDescription) {
+            screen.setDescription(canonicalLabel);
+        }
+        System.out.println("Encodage du screen réparé: " + screen.getCode());
+        return screenRepository.save(screen);
+    }
+
+    private boolean hasMojibake(String value) {
+        return value != null && (value.indexOf('\u00C3') >= 0
+                || value.indexOf('\u00C2') >= 0
+                || value.indexOf('\u00E2') >= 0
+                || value.indexOf('\uFFFD') >= 0);
+    }
+
+    private void upsertScreenRole(ScreenRoleRepository screenRoleRepository,
                                                                   ScreenRepository screenRepository,
                                                                   RoleRepository roleRepository,
                                                                   Screen screen,

@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PermissionsModule } from '../guards/permissions.module';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -28,6 +29,7 @@ import { DemandeValidationComponent } from './demande-validation/demande-validat
   ],
   imports: [
     CommonModule,
+    PermissionsModule,
     RouterModule,
     FormsModule,
     ReactiveFormsModule,

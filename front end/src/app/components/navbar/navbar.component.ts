@@ -1,21 +1,33 @@
-import { Component, OnInit, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
+import { BusinessNotificationService } from '../../services/business-notification.service';
+import { BusinessNotification } from '../../models/business-notification.model';
 
 @Component({
   selector: 'app-navbar',
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.css']
 })
-export class NavbarComponent implements OnInit {
+export class NavbarComponent implements OnInit, OnDestroy {
     mobile_menu_visible: any = 0;
     private toggleButton: any;
     private sidebarVisible: boolean;
+    private subscriptions = new Subscription();
+    private toastTimer?: ReturnType<typeof setTimeout>;
+
+    notifications: BusinessNotification[] = [];
+    unreadCount = 0;
+    notificationsOpen = false;
+    notificationsConnected = false;
+    toastNotification: BusinessNotification | null = null;
 
     constructor(
       private element: ElementRef, 
       private router: Router,
-      private authService: AuthService
+      private authService: AuthService,
+      private notificationService: BusinessNotificationService
     ) {
       this.sidebarVisible = false;
     }
@@ -23,14 +35,44 @@ export class NavbarComponent implements OnInit {
     ngOnInit(){
       const navbar: HTMLElement = this.element.nativeElement;
       this.toggleButton = navbar.getElementsByClassName('navbar-toggler')[0];
-      this.router.events.subscribe((event) => {
+      this.subscriptions.add(this.router.events.subscribe(() => {
         this.sidebarClose();
+        this.notificationsOpen = false;
          var $layer: any = document.getElementsByClassName('close-layer')[0];
          if ($layer) {
            $layer.remove();
            this.mobile_menu_visible = 0;
          }
-     });
+      }));
+
+      this.subscriptions.add(
+        this.notificationService.notifications$.subscribe(notifications => {
+          this.notifications = notifications;
+        })
+      );
+      this.subscriptions.add(
+        this.notificationService.unreadCount$.subscribe(count => {
+          this.unreadCount = count;
+        })
+      );
+      this.subscriptions.add(
+        this.notificationService.connected$.subscribe(connected => {
+          this.notificationsConnected = connected;
+        })
+      );
+      this.subscriptions.add(
+        this.notificationService.latestNotification$.subscribe(notification => {
+          this.toastNotification = notification;
+          if (this.toastTimer) {
+            clearTimeout(this.toastTimer);
+          }
+          this.toastTimer = setTimeout(() => {
+            this.toastNotification = null;
+          }, 6000);
+        })
+      );
+
+      this.notificationService.connect();
     }
 
     sidebarOpen() {
@@ -109,7 +151,61 @@ export class NavbarComponent implements OnInit {
     };
 
     logout(): void {
+      this.notificationService.disconnect();
       this.authService.logout();
       this.router.navigate(['/login']);
+    }
+
+    toggleNotifications(event: MouseEvent): void {
+      event.stopPropagation();
+      this.notificationsOpen = !this.notificationsOpen;
+    }
+
+    openNotification(notification: BusinessNotification): void {
+      const navigate = () => {
+        this.notificationsOpen = false;
+        if (notification.actionUrl) {
+          this.router.navigateByUrl(notification.actionUrl);
+        }
+      };
+
+      if (notification.read) {
+        navigate();
+        return;
+      }
+
+      this.notificationService.markAsRead(notification).subscribe({
+        next: navigate,
+        error: navigate
+      });
+    }
+
+    markAllAsRead(event: MouseEvent): void {
+      event.stopPropagation();
+      if (this.unreadCount === 0) {
+        return;
+      }
+      this.notificationService.markAllAsRead().subscribe();
+    }
+
+    dismissToast(): void {
+      this.toastNotification = null;
+    }
+
+    notificationIcon(type: string): string {
+      if (type.includes('PANNE') || type.includes('REPARE') || type.includes('REMPLACE')) {
+        return 'build';
+      }
+      if (type.includes('AFFECTE')) {
+        return 'devices';
+      }
+      return 'assignment';
+    }
+
+    ngOnDestroy(): void {
+      this.subscriptions.unsubscribe();
+      if (this.toastTimer) {
+        clearTimeout(this.toastTimer);
+      }
     }
 }

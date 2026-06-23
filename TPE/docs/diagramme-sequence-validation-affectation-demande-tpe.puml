@@ -1,0 +1,201 @@
+@startuml DiagrammeSequenceValidationAffectationDemandeTPE
+title Diagramme de sequence - Validation et affectation d'une demande TPE
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor "Service monetique" as Monetique
+
+box "Frontend Angular" #E3F2FD
+  participant "DemandeListComponent" as DemandeList
+  participant "DemandeValidationComponent" as ValidationUI
+  participant "AffectationTPEComponent" as AffectationUI
+  participant "DemandeService\nAngular" as DemandeServiceFE
+  participant "TpeService\nAngular" as TpeServiceFE
+  participant "PDFService\nAngular" as PdfServiceFE
+end box
+
+box "Backend Spring Boot" #FFF3E0
+  participant "TPEController" as TPEController
+  participant "TPEService" as TPEService
+  participant "DemandeController" as DemandeController
+  participant "DemandeService" as DemandeServiceBE
+  participant "AffectationController" as AffectationController
+  participant "AffectationService" as AffectationService
+  participant "AuditService" as AuditService
+end box
+
+database "Base de donnees\nSQL Server" as DB
+
+== Ouverture de la validation monetique ==
+
+Monetique -> DemandeList : cliquer sur "Valider"
+DemandeList -> ValidationUI : ouvrir dialogue(demande)
+ValidationUI -> ValidationUI : precharger les informations\nde la demande
+
+== Generation du numero terminal ==
+
+Monetique -> ValidationUI : cliquer sur "Generer numero terminal"
+ValidationUI -> TpeServiceFE : genererNumeroTerminal(rib, codeAgence, typeTPE, numeroSerie)
+TpeServiceFE -> TPEController : POST /api/tpe/generer-tid
+TPEController -> TPEService : generateTID(rib, codeAgence)
+TPEService -> DB : verifier unicite du TID
+DB --> TPEService : resultat
+TPEService --> TPEController : tid genere
+TPEController --> TpeServiceFE : 200 OK + tid
+TpeServiceFE --> ValidationUI : numeroTerminal
+ValidationUI -> ValidationUI : afficher le TID genere
+
+== Validation de la demande ==
+
+Monetique -> ValidationUI : enregistrer la decision
+ValidationUI -> DemandeServiceFE : validerDemande(demandeId, validationData)
+DemandeServiceFE -> DemandeController : POST /api/demandes/{id}/valider
+DemandeController -> DemandeServiceBE : validerDemande(id, request)
+
+DemandeServiceBE -> DB : rechercher Demande par id
+DB --> DemandeServiceBE : Demande
+DemandeServiceBE -> DB : rechercher utilisateur connecte
+DB --> DemandeServiceBE : valideur
+DemandeServiceBE -> DemandeServiceBE : verifier role MONETIQUE/ADMIN
+DemandeServiceBE -> DemandeServiceBE : verifier statut NOUVELLE ou EN_COURS
+DemandeServiceBE -> DemandeServiceBE : renseigner donnees monetiques\nMCC, taux, loyer, serie, TID, valueDate
+
+alt demande approuvee
+  DemandeServiceBE -> DemandeServiceBE : statut = VALIDEE_MONETIQUE\n dateValidation = maintenant
+  DemandeServiceBE -> DB : sauvegarder Demande validee
+  DB --> DemandeServiceBE : Demande mise a jour
+
+  DemandeServiceBE -> DB : verifier affectation active\nde la demande
+  DB --> DemandeServiceBE : aucune affectation active
+
+  DemandeServiceBE -> AffectationService : affecterTPE(demandeId,\ncommentaire automatique)
+
+  == Affectation automatique du TPE ==
+
+  AffectationService -> DB : rechercher Demande par id
+  DB --> AffectationService : Demande VALIDEE_MONETIQUE
+  AffectationService -> DB : verifier absence\nd'affectation active
+  DB --> AffectationService : aucune
+
+  alt numeroTerminal present dans la demande
+    AffectationService -> DB : rechercher TPE par numeroTerminal
+    alt TPE existant
+      DB --> AffectationService : TPE
+    else TPE inexistant
+      AffectationService -> AffectationService : creer nouveau TPE\navec numeroTerminal et serieTpe
+      AffectationService -> DB : sauvegarder nouveau TPE
+      DB --> AffectationService : TPE cree
+    end
+  else aucun numeroTerminal
+    AffectationService -> DB : chercher TPE DISPONIBLE\npar type de demande
+    DB --> AffectationService : premier TPE disponible
+  end
+
+  AffectationService -> AffectationService : rattacher TPE au commercant\nstatut TPE = AFFECTE
+  AffectationService -> DB : sauvegarder TPE
+  DB --> AffectationService : TPE affecte
+
+  AffectationService -> DB : rechercher utilisateur affectePar
+  DB --> AffectationService : utilisateur
+  AffectationService -> AffectationService : creer Affectation\nactif = true
+  AffectationService -> DB : sauvegarder Affectation
+  DB --> AffectationService : Affectation creee
+
+  AffectationService -> AffectationService : statut Demande = AFFECTEE\n dateCloture = maintenant
+  AffectationService -> DB : sauvegarder Demande
+  DB --> AffectationService : Demande affectee
+
+  AffectationService -> AuditService : logAction(CREATE, Affectation)
+  AuditService -> DB : enregistrer journal d'audit
+  DB --> AuditService : OK
+  AffectationService --> DemandeServiceBE : AffectationResponse
+
+  DemandeServiceBE -> DB : recharger Demande
+  DB --> DemandeServiceBE : Demande AFFECTEE
+else demande rejetee
+  DemandeServiceBE -> DemandeServiceBE : statut = REJETEE\n dateCloture = maintenant
+  DemandeServiceBE -> DB : sauvegarder Demande rejetee
+  DB --> DemandeServiceBE : Demande mise a jour
+end
+
+DemandeServiceBE -> AuditService : logAction(VALIDATE, Demande)
+AuditService -> DB : enregistrer journal d'audit
+DB --> AuditService : OK
+DemandeServiceBE --> DemandeController : DemandeResponse
+DemandeController --> DemandeServiceFE : 200 OK + DemandeResponse
+DemandeServiceFE --> ValidationUI : resultat validation
+ValidationUI --> DemandeList : fermer dialogue(success)
+DemandeList -> DemandeServiceFE : getAllDemandes()
+DemandeServiceFE -> DemandeController : GET /api/demandes
+DemandeController -> DemandeServiceBE : getAllDemandes(pageable)
+DemandeServiceBE -> DB : charger demandes
+DB --> DemandeServiceBE : page demandes
+DemandeServiceBE --> DemandeController : Page<DemandeResponse>
+DemandeController --> DemandeServiceFE : 200 OK
+DemandeServiceFE --> DemandeList : liste actualisee
+
+== Variante: affectation manuelle depuis l'ecran dedie ==
+
+opt demande deja validee et choix manuel d'un TPE
+  Monetique -> DemandeList : cliquer sur "Affecter TPE"
+  DemandeList -> AffectationUI : naviguer vers /demandes/{id}/affecter
+  AffectationUI -> DemandeServiceFE : getDemandeById(id)
+  DemandeServiceFE -> DemandeController : GET /api/demandes/{id}
+  DemandeController -> DemandeServiceBE : getDemandeById(id)
+  DemandeServiceBE -> DB : rechercher Demande
+  DB --> DemandeServiceBE : Demande
+  DemandeServiceBE --> DemandeController : DemandeResponse
+  DemandeController --> DemandeServiceFE : 200 OK
+  DemandeServiceFE --> AffectationUI : Demande
+
+  AffectationUI -> TpeServiceFE : getTPEDisponibles()
+  TpeServiceFE -> TPEController : GET /api/tpe/disponibles
+  TPEController -> TPEService : getTPEsDisponibles()
+  TPEService -> DB : rechercher TPE DISPONIBLE
+  DB --> TPEService : liste TPE
+  TPEService --> TPEController : liste TPE
+  TPEController --> TpeServiceFE : 200 OK
+  TpeServiceFE --> AffectationUI : TPE disponibles
+
+  Monetique -> AffectationUI : selectionner TPE\net confirmer affectation
+  AffectationUI -> DemandeServiceFE : affecterTPE(demandeId, tpeId, commentaire)
+  DemandeServiceFE -> AffectationController : POST /api/affectations
+  AffectationController -> AffectationService : affecterTPE(request)
+  AffectationService -> DB : controler demande validee,\nTPE disponible, absence affectation active
+  DB --> AffectationService : donnees valides
+  AffectationService -> DB : sauvegarder TPE, Affectation,\nDemande AFFECTEE
+  DB --> AffectationService : OK
+  AffectationService -> AuditService : logAction(CREATE, Affectation)
+  AuditService -> DB : enregistrer audit
+  DB --> AuditService : OK
+  AffectationService --> AffectationController : AffectationResponse
+  AffectationController --> DemandeServiceFE : 201 Created
+
+  opt generation des documents
+    AffectationUI -> PdfServiceFE : genererContrat(commercantId, tpeId)
+    AffectationUI -> PdfServiceFE : genererBonLivraison(demandeId, tpeId)
+  end
+
+  AffectationUI --> DemandeList : retour liste demandes
+end
+
+note right of DemandeServiceBE
+Dans le code backend, une validation approuvee
+declenche directement AffectationService.affecterTPE()
+si aucune affectation active n'existe.
+end note
+
+note right of AffectationService
+Regles controlees:
+- demande au statut VALIDEE_MONETIQUE
+- aucune affectation active pour la demande
+- TPE disponible si un tpeId est fourni
+- sinon creation/recherche automatique du TPE
+end note
+
+@enduml

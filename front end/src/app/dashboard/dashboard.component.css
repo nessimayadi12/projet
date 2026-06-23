@@ -88,8 +88,15 @@
 }
 
 /* Chart Container */
-.ct-chart {
+.chart-container {
+  position: relative;
   height: 250px;
+  width: 100%;
+}
+
+.chart-container-wide {
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 /* Badges */

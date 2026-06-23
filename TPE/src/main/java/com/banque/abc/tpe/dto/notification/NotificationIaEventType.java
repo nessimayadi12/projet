@@ -1,0 +1,13 @@
+package com.banque.abc.tpe.dto.notification;
+
+public enum NotificationIaEventType {
+    DEMANDE_TPE_CREEE,
+    DEMANDE_TPE_VALIDEE,
+    DEMANDE_TPE_REFUSEE,
+    TPE_AFFECTE_COMMERCANT,
+    PANNE_TPE_DECLAREE,
+    PANNE_TPE_DIAGNOSTIQUEE,
+    TPE_REPARE,
+    TPE_REMPLACE,
+    DEMANDE_ATTENTE_COMPLEMENT_INFORMATION
+}

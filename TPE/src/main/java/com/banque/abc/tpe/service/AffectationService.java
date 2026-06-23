@@ -2,6 +2,8 @@ package com.banque.abc.tpe.service;
 
 import com.banque.abc.tpe.dto.affectation.AffectationRequest;
 import com.banque.abc.tpe.dto.affectation.AffectationResponse;
+import com.banque.abc.tpe.dto.audit.AuditEvent;
+import com.banque.abc.tpe.dto.notification.NotificationIaEventType;
 import com.banque.abc.tpe.entity.*;
 import com.banque.abc.tpe.entity.enums.StatutDemande;
 import com.banque.abc.tpe.entity.enums.StatutTPE;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +35,7 @@ public class AffectationService {
     private final CommercantRepository commercantRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final BusinessNotificationService businessNotificationService;
     private final ModelMapper modelMapper;
 
     @Transactional
@@ -95,6 +99,16 @@ public class AffectationService {
             tpe = tpesDisponibles.get(0);
         }
 
+        Map<String, Object> oldValues = auditService.values(
+                "tpeId", tpe.getId(),
+                "tpeNumeroSerie", tpe.getNumeroSerie(),
+                "tpeStatut", tpe.getStatut(),
+                "demandeId", demande.getId(),
+                "demandeReference", demande.getReference(),
+                "demandeStatut", demande.getStatut(),
+                "commercantId", demande.getCommercant() != null ? demande.getCommercant().getId() : null
+        );
+
         // Mettre à jour le statut du TPE
         tpe.setCommercant(demande.getCommercant());
         tpe.setStatut(StatutTPE.AFFECTE);
@@ -123,11 +137,24 @@ public class AffectationService {
         demande.setStatut(StatutDemande.AFFECTEE);
         demande.setDateCloture(LocalDateTime.now());
         demandeRepository.save(demande);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.TPE_AFFECTE_COMMERCANT,
+                snapshot(savedAffectation)
+        );
 
-        // Audit
-        auditService.logAction("CREATE", "Affectation", savedAffectation.getId().toString(),
-                "TPE " + tpe.getNumeroTerminal() + " affecté au commerçant " + demande.getCommercant().getRaisonSociale(),
-                "SUCCESS");
+        auditService.logBusinessEvent(AuditEvent.builder()
+                .action("AFFECT")
+                .actionLabel("Affectation")
+                .moduleName("Affectation")
+                .entityType("Affectation")
+                .entityId(savedAffectation.getId().toString())
+                .entityReference(demande.getReference())
+                .details(notification)
+                .oldValues(oldValues)
+                .newValues(snapshot(savedAffectation))
+                .statut("SUCCESS")
+                .riskLevel("CRITICAL")
+                .build());
 
         return mapToResponse(savedAffectation);
     }
@@ -165,12 +192,14 @@ public class AffectationService {
     public AffectationResponse mettreEnService(Long id, LocalDate dateMiseEnService) {
         Affectation affectation = affectationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Affectation non trouvée"));
+        Map<String, Object> oldValues = snapshot(affectation);
 
         affectation.setDateMiseEnService(dateMiseEnService);
         Affectation updated = affectationRepository.save(affectation);
 
-        auditService.logAction("UPDATE", "Affectation", id.toString(),
-                "TPE mis en service", "SUCCESS");
+        auditService.logUpdate("Affectation", id.toString(),
+                updated.getDemande() != null ? updated.getDemande().getReference() : null,
+                oldValues, snapshot(updated), "TPE mis en service");
 
         return mapToResponse(updated);
     }
@@ -179,6 +208,7 @@ public class AffectationService {
     public void desaffecterTPE(Long id, String motif) {
         Affectation affectation = affectationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Affectation non trouvée"));
+        Map<String, Object> oldValues = snapshot(affectation);
 
         affectation.setActif(false);
         affectation.setDateFin(LocalDate.now());
@@ -191,8 +221,9 @@ public class AffectationService {
         tpe.setStatut(StatutTPE.DISPONIBLE);
         tpeRepository.save(tpe);
 
-        auditService.logAction("UPDATE", "Affectation", id.toString(),
-                "TPE désaffecté: " + motif, "SUCCESS");
+        auditService.logUpdate("Affectation", id.toString(),
+                affectation.getDemande() != null ? affectation.getDemande().getReference() : null,
+                oldValues, snapshot(affectation), "TPE desaffecte: " + motif);
     }
 
     private AffectationResponse mapToResponse(Affectation affectation) {
@@ -220,5 +251,41 @@ public class AffectationService {
         }
         
         return response;
+    }
+
+    private Map<String, Object> snapshot(Affectation affectation) {
+        TPE tpe = affectation.getTpe();
+        Demande demande = affectation.getDemande();
+        Commercant commercant = affectation.getCommercant();
+        return auditService.values(
+                "tpeId", tpe != null ? tpe.getId() : null,
+                "tpeNumeroSerie", tpe != null ? tpe.getNumeroSerie() : null,
+                "tpeNumeroTerminal", tpe != null ? tpe.getNumeroTerminal() : null,
+                "tpeStatut", tpe != null ? tpe.getStatut() : null,
+                "commercantId", commercant != null ? commercant.getId() : null,
+                "commercantNom", commercant != null ? commercant.getRaisonSociale() : null,
+                "codeAgence", commercant != null ? commercant.getCodeAgence() : null,
+                "demandeId", demande != null ? demande.getId() : null,
+                "demandeReference", demande != null ? demande.getReference() : null,
+                "demandeStatut", demande != null ? demande.getStatut() : null,
+                "dateAffectation", affectation.getDateAffectation(),
+                "dateMiseEnService", affectation.getDateMiseEnService(),
+                "dateFin", affectation.getDateFin(),
+                "actif", affectation.getActif(),
+                "affecteParId", affectation.getAffectePar() != null ? affectation.getAffectePar().getId() : null,
+                "commentaire", affectation.getCommentaire()
+        );
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }

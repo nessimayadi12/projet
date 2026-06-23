@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthResponse, LoginRequest, Utilisateur, Role } from '../models/utilisateur.model';
+import { ScreenService } from './screen.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +13,7 @@ export class AuthService {
   private currentUserSubject: BehaviorSubject<Utilisateur | null>;
   public currentUser: Observable<Utilisateur | null>;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private screenService: ScreenService) {
     sessionStorage.setItem('tabOpen', 'true');
     
     const storedUser = localStorage.getItem('currentUser');
@@ -39,6 +40,7 @@ export class AuthService {
     return this.http.post<any>(`${this.apiUrl}/login`, credentials)
       .pipe(
         tap(response => {
+          this.screenService.clearCache();
           localStorage.setItem('token', response.token);
           
           // Le backend renvoie "roles" (pluriel) comme tableau
@@ -70,6 +72,7 @@ export class AuthService {
   }
 
   logout(): void {
+    this.screenService.clearCache();
     localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
     this.currentUserSubject.next(null);

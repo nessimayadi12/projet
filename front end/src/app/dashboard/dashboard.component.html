@@ -235,7 +235,13 @@
         <div class="col-md-6">
           <div class="card card-chart">
             <div class="card-header card-header-success">
-              <div id="tpeStatutChart" class="ct-chart"></div>
+              <div class="chart-container">
+                <canvas baseChart
+                        [data]="tpeStatutChartData"
+                        [options]="doughnutChartOptions"
+                        [type]="'doughnut'">
+                </canvas>
+              </div>
             </div>
             <div class="card-body">
               <h4 class="card-title">Répartition des TPE par Statut</h4>
@@ -247,7 +253,13 @@
         <div class="col-md-6">
           <div class="card card-chart">
             <div class="card-header card-header-warning">
-              <div id="marqueChart" class="ct-chart"></div>
+              <div class="chart-container">
+                <canvas baseChart
+                        [data]="marqueChartData"
+                        [options]="barChartOptions"
+                        [type]="'bar'">
+                </canvas>
+              </div>
             </div>
             <div class="card-body">
               <h4 class="card-title">Répartition par Marque</h4>
@@ -261,7 +273,13 @@
         <div class="col-md-12">
           <div class="card card-chart">
             <div class="card-header card-header-danger">
-              <div id="pannesChart" class="ct-chart"></div>
+              <div class="chart-container chart-container-wide">
+                <canvas baseChart
+                        [data]="pannesChartData"
+                        [options]="doughnutChartOptions"
+                        [type]="'doughnut'">
+                </canvas>
+              </div>
             </div>
             <div class="card-body">
               <h4 class="card-title">Pannes: En cours vs Résolues</h4>

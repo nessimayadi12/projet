@@ -37,6 +37,8 @@ export class DemandeListComponent implements OnInit {
   filtreType: string = 'TOUS';
   filtreUrgence: string = 'TOUS';
   rechercheText: string = '';
+  dateDebut: string = '';
+  dateFin: string = '';
   page = 1;
   pageSize = 25;
   pageSizeOptions = [10, 25, 50, 100];
@@ -139,14 +141,51 @@ export class DemandeListComponent implements OnInit {
         (demande.serieTpe || '').toLowerCase().includes(query) ||
         (demande.tpeAffecteNumeroSerie || '').toLowerCase().includes(query) ||
         (demande.nouvelleSerieTpe || demande.tpeRemplacementNumeroSerie || '').toLowerCase().includes(query);
+      const matchDate = this.matchesDemandeDateRange(demande);
 
-      return matchStatut && matchType && matchUrgence && matchRecherche;
+      return matchStatut && matchType && matchUrgence && matchRecherche && matchDate;
     });
 
     this.page = 1;
     this.updatePagedDemandes();
   }
 
+  private matchesDemandeDateRange(demande: DemandeTPE): boolean {
+    if (!this.dateDebut && !this.dateFin) {
+      return true;
+    }
+
+    const dates = [
+      demande.createdAt || demande.createdDate,
+      demande.dateValidation
+    ].filter((date): date is Date | string => Boolean(date));
+
+    return dates.some(date => this.isWithinSelectedDateRange(date));
+  }
+
+  private isWithinSelectedDateRange(value: Date | string): boolean {
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) {
+      return false;
+    }
+
+    const start = this.dateDebut ? this.localDateBoundary(this.dateDebut, false) : null;
+    const end = this.dateFin ? this.localDateBoundary(this.dateFin, true) : null;
+    return (start === null || timestamp >= start) && (end === null || timestamp <= end);
+  }
+
+  private localDateBoundary(value: string, endOfDay: boolean): number {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(
+      year,
+      month - 1,
+      day,
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 999 : 0
+    ).getTime();
+  }
   get totalPages(): number {
     const total = Math.ceil(this.demandesFiltrees.length / this.pageSize);
     return total > 0 ? total : 1;
@@ -645,6 +684,7 @@ export class DemandeListComponent implements OnInit {
     const classes: { [key: string]: string } = {
       'NOUVELLE': 'badge-info',
       'EN_COURS': 'badge-warning',
+      'EN_ATTENTE_COMPLEMENT': 'badge-warning',
       'VALIDEE_MONETIQUE': 'badge-primary',
       'VALIDEE_AGENCE': 'badge-primary',
       'AFFECTEE': 'badge-success',
@@ -658,6 +698,7 @@ export class DemandeListComponent implements OnInit {
     const labels: { [key: string]: string } = {
       'NOUVELLE': 'Nouvelle',
       'EN_COURS': 'En Cours',
+      'EN_ATTENTE_COMPLEMENT': 'En attente de complement',
       'VALIDEE_MONETIQUE': 'Validée Monétique',
       'VALIDEE_AGENCE': 'Validée Agence',
       'AFFECTEE': 'Affectée',

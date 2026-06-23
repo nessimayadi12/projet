@@ -1,0 +1,183 @@
+@startuml DiagrammeComposantsTPE
+title Diagramme de composants - Systeme de gestion du parc TPE bancaire
+
+left to right direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+skinparam component {
+  BackgroundColor #F8FAFC
+  BorderColor #2F3A4A
+  ArrowColor #2F3A4A
+}
+
+skinparam database {
+  BackgroundColor #EEF6FF
+  BorderColor #2F3A4A
+}
+
+actor "Agent agence" as Agence
+actor "Service\nmonetique" as Monetique
+actor "Administrateur" as Admin
+
+node "Navigateur Web" {
+  component "Application Frontend\nAngular" as Frontend
+
+  package "Modules UI" {
+    component "Authentification UI" as UIAuth
+    component "Dashboard UI" as UIDashboard
+    component "Demandes UI" as UIDemandes
+    component "Commercants UI" as UICommercants
+    component "TPE UI" as UITPE
+    component "Maintenance UI" as UIMaintenance
+    component "Administration UI" as UIAdmin
+  }
+
+  package "Services Angular" {
+    component "AuthService" as FEAuthService
+    component "DemandeService" as FEDemandeService
+    component "CommercantService" as FECommercantService
+    component "TPEService" as FETPEService
+    component "PanneService" as FEPanneService
+    component "DashboardService" as FEDashboardService
+    component "HTTP Interceptor JWT" as FEInterceptor
+  }
+}
+
+node "Serveur applicatif" {
+  component "API REST\nSpring Boot" as Backend
+
+  package "Couche API" {
+    component "AuthController" as AuthController
+    component "DemandeController" as DemandeController
+    component "CommercantController" as CommercantController
+    component "TPEController" as TPEController
+    component "AffectationController" as AffectationController
+    component "PanneController" as PanneController
+    component "TauxController" as TauxController
+    component "DashboardController" as DashboardController
+    component "Role / Screen Controller" as AdminController
+  }
+
+  package "Couche metier" {
+    component "AuthService" as AuthService
+    component "DemandeService" as DemandeService
+    component "CommercantService" as CommercantService
+    component "TPEService" as TPEService
+    component "AffectationService" as AffectationService
+    component "PanneService" as PanneService
+    component "TauxService" as TauxService
+    component "DashboardService" as DashboardService
+    component "AuditService" as AuditService
+    component "FichierBancaireService" as FichierBancaireService
+  }
+
+  package "Securite" {
+    component "Spring Security" as SpringSecurity
+    component "JWT Token Provider" as JWT
+    component "JWT Filter" as JWTFilter
+    component "UserDetailsService" as UserDetailsService
+  }
+
+  package "Persistance" {
+    component "Repositories JPA" as Repositories
+    component "Entites JPA" as Entities
+  }
+}
+
+database "Base de donnees\nSQL Server" as DB
+folder "Stockage fichiers\npieces jointes / contrats" as FileStorage
+cloud "Power BI" as PowerBI
+artifact "Fichier bancaire\nExcel / TXT" as BankFile
+
+Agence --> Frontend
+Monetique --> Frontend
+Admin --> Frontend
+
+Frontend *-- UIAuth
+Frontend *-- UIDashboard
+Frontend *-- UIDemandes
+Frontend *-- UICommercants
+Frontend *-- UITPE
+Frontend *-- UIMaintenance
+Frontend *-- UIAdmin
+
+UIAuth --> FEAuthService
+UIDashboard --> FEDashboardService
+UIDemandes --> FEDemandeService
+UICommercants --> FECommercantService
+UITPE --> FETPEService
+UIMaintenance --> FEPanneService
+UIAdmin --> FEAuthService
+
+FEAuthService --> FEInterceptor
+FEDemandeService --> FEInterceptor
+FECommercantService --> FEInterceptor
+FETPEService --> FEInterceptor
+FEPanneService --> FEInterceptor
+FEDashboardService --> FEInterceptor
+
+FEInterceptor --> Backend : HTTPS / JSON\nBearer JWT
+
+Backend *-- AuthController
+Backend *-- DemandeController
+Backend *-- CommercantController
+Backend *-- TPEController
+Backend *-- AffectationController
+Backend *-- PanneController
+Backend *-- TauxController
+Backend *-- DashboardController
+Backend *-- AdminController
+
+AuthController --> AuthService
+DemandeController --> DemandeService
+CommercantController --> CommercantService
+TPEController --> TPEService
+AffectationController --> AffectationService
+PanneController --> PanneService
+TauxController --> TauxService
+DashboardController --> DashboardService
+AdminController --> AuthService
+
+AuthService --> SpringSecurity
+SpringSecurity --> JWTFilter
+JWTFilter --> JWT
+JWTFilter --> UserDetailsService
+UserDetailsService --> Repositories
+
+DemandeService --> Repositories
+CommercantService --> Repositories
+TPEService --> Repositories
+AffectationService --> Repositories
+PanneService --> Repositories
+TauxService --> Repositories
+DashboardService --> Repositories
+AuditService --> Repositories
+FichierBancaireService --> Repositories
+
+Repositories --> Entities
+Repositories --> DB : JPA / Hibernate
+
+DemandeService --> FileStorage : pieces jointes
+AffectationService --> FileStorage : contrats\nbons livraison
+FichierBancaireService --> BankFile : lecture import
+FichierBancaireService --> DB : enregistrements importes
+
+DashboardService --> PowerBI : donnees / indicateurs
+
+note right of Backend
+Le backend centralise:
+- regles metier
+- securite JWT
+- acces aux donnees
+- audit des actions
+end note
+
+note bottom of Repositories
+Les repositories isolent la persistance
+et manipulent les entites JPA.
+end note
+
+@enduml

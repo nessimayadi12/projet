@@ -69,7 +69,7 @@ export class DashboardDemandesComponent implements OnInit {
       this.statutDemandesChart.destroy();
     }
 
-    const orderedStatuses = ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE', 'AFFECTEE', 'CLOTUREE', 'REJETEE'];
+    const orderedStatuses = ['NOUVELLE', 'EN_COURS', 'EN_ATTENTE_COMPLEMENT', 'VALIDEE_MONETIQUE', 'AFFECTEE', 'CLOTUREE', 'REJETEE'];
     const countsByStatus = orderedStatuses.map((status) => {
       const match = this.demandesStatutData.find((item) => item.statut === status);
       return match ? Number(match.count || 0) : 0;
@@ -85,10 +85,11 @@ export class DashboardDemandesComponent implements OnInit {
           backgroundColor: [
             '#ffc107', // NOUVELLE - Orange
             '#17a2b8', // EN_COURS - Cyan
+            '#fd7e14', // EN_ATTENTE_COMPLEMENT - Orange fonce
             '#28a745', // VALIDEE - Vert
             '#007bff', // APPROUVEE - Bleu
-            '#6f42c1', // AFFECTEE - Violet
-            '#28a745'  // CLOTUREE - Vert foncé
+            '#6c757d', // CLOTUREE - Gris
+            '#dc3545'  // REJETEE - Rouge
           ],
           borderWidth: 1
         }]
@@ -208,7 +209,7 @@ export class DashboardDemandesComponent implements OnInit {
       this.funnelChart.destroy();
     }
 
-    const orderedStatuses = ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE', 'AFFECTEE', 'CLOTUREE', 'REJETEE'];
+    const orderedStatuses = ['NOUVELLE', 'EN_COURS', 'EN_ATTENTE_COMPLEMENT', 'VALIDEE_MONETIQUE', 'AFFECTEE', 'CLOTUREE', 'REJETEE'];
     const values = orderedStatuses.map((status) => {
       const match = this.demandesStatutData.find((item) => item.statut === status);
       return match ? Number(match.count || 0) : 0;
@@ -224,10 +225,11 @@ export class DashboardDemandesComponent implements OnInit {
           backgroundColor: [
             '#ffc107',
             '#17a2b8',
+            '#fd7e14',
             '#28a745',
             '#007bff',
-            '#6f42c1',
-            '#28a745'
+            '#6c757d',
+            '#dc3545'
           ],
           borderWidth: 1
         }]
@@ -278,7 +280,7 @@ export class DashboardDemandesComponent implements OnInit {
       return Number(this.performanceData.demandesEnRetard || 0);
     }
     return this.demandesStatutData
-      .filter((item) => ['NOUVELLE', 'EN_COURS', 'VALIDEE_MONETIQUE'].includes(item.statut))
+      .filter((item) => ['NOUVELLE', 'EN_COURS', 'EN_ATTENTE_COMPLEMENT', 'VALIDEE_MONETIQUE'].includes(item.statut))
       .reduce((sum, item) => sum + Number(item.count || 0), 0);
   }
 

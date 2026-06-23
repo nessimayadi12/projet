@@ -121,7 +121,19 @@ public class AuthService {
         user.setRoles(roles);
         User savedUser = userRepository.save(user);
 
-        auditService.logAction("CREATE", "User", savedUser.getId().toString(),
-                "Nouvel utilisateur créé: " + savedUser.getUsername(), "SUCCESS");
+        auditService.logCreation("User", savedUser.getId().toString(), savedUser.getUsername(),
+                auditService.values(
+                        "username", savedUser.getUsername(),
+                        "email", savedUser.getEmail(),
+                        "nom", savedUser.getNom(),
+                        "prenom", savedUser.getPrenom(),
+                        "codeAgence", savedUser.getCodeAgence(),
+                        "actif", savedUser.getActif(),
+                        "roles", savedUser.getRoles().stream()
+                                .map(role -> role.getName().name())
+                                .sorted()
+                                .collect(Collectors.toList())
+                ),
+                "Nouvel utilisateur cree: " + savedUser.getUsername());
     }
 }

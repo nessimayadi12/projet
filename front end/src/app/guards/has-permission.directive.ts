@@ -1,38 +1,40 @@
-import { Directive, Input, TemplateRef, ViewContainerRef, OnInit } from '@angular/core';
+import { Directive, Input, OnDestroy, TemplateRef, ViewContainerRef } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { ScreenPermissions } from '../models/screen.model';
 import { ScreenService } from '../services/screen.service';
 
-@Directive({
-  selector: '[appHasPermission]'
-})
-export class HasPermissionDirective implements OnInit {
-  private screenCode: string;
-  private permissionType: 'canView' | 'canCreate' | 'canEdit' | 'canDelete' | 'canExport';
+@Directive({ selector: '[appHasPermission]' })
+export class HasPermissionDirective implements OnDestroy {
+  private destroy$ = new Subject<void>();
+  private rendered = false;
 
   constructor(
     private templateRef: TemplateRef<any>,
     private viewContainer: ViewContainerRef,
     private screenService: ScreenService
-  ) { }
+  ) {}
 
   @Input()
-  set appHasPermission(value: { screen: string, permission: string }) {
-    this.screenCode = value.screen;
-    this.permissionType = value.permission as any;
+  set appHasPermission(value: { screen: string; permission: keyof ScreenPermissions }) {
+    this.destroy$.next();
+    this.screenService.hasPermission(value.screen, value.permission).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(hasPermission => this.render(hasPermission));
   }
 
-  ngOnInit() {
-    this.screenService.hasPermission(this.screenCode, this.permissionType).subscribe(
-      hasPermission => {
-        if (hasPermission) {
-          this.viewContainer.createEmbeddedView(this.templateRef);
-        } else {
-          this.viewContainer.clear();
-        }
-      },
-      error => {
-        // En cas d'erreur, cacher l'élément par sécurité
-        this.viewContainer.clear();
-      }
-    );
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private render(hasPermission: boolean): void {
+    if (hasPermission && !this.rendered) {
+      this.viewContainer.createEmbeddedView(this.templateRef);
+      this.rendered = true;
+    } else if (!hasPermission && this.rendered) {
+      this.viewContainer.clear();
+      this.rendered = false;
+    }
   }
 }

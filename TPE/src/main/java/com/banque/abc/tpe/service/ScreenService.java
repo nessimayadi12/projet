@@ -8,6 +8,7 @@ import com.banque.abc.tpe.entity.Role;
 import com.banque.abc.tpe.entity.Screen;
 import com.banque.abc.tpe.entity.ScreenRole;
 import com.banque.abc.tpe.entity.User;
+import com.banque.abc.tpe.exception.BusinessException;
 import com.banque.abc.tpe.exception.ResourceNotFoundException;
 import com.banque.abc.tpe.repository.RoleRepository;
 import com.banque.abc.tpe.repository.ScreenRepository;
@@ -217,6 +218,52 @@ public class ScreenService {
                 "Screen supprimé: " + screen.getLibelle(), "SUCCESS");
     }
 
+    @Transactional(readOnly = true)
+    public List<ScreenRoleDTO> getPermissionMatrix() {
+        return screenRoleRepository.findAll().stream()
+                .map(this::mapScreenRoleToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public List<ScreenRoleDTO> copyRoleProfile(Long sourceRoleId, Long targetRoleId) {
+        if (sourceRoleId.equals(targetRoleId)) {
+            throw new BusinessException("Les profils source et cible doivent etre differents");
+        }
+
+        Role sourceRole = roleRepository.findById(sourceRoleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role source non trouve: " + sourceRoleId));
+        Role targetRole = roleRepository.findById(targetRoleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role cible non trouve: " + targetRoleId));
+        List<ScreenRole> sourcePermissions = screenRoleRepository.findByRoleId(sourceRoleId);
+
+        screenRoleRepository.deleteAll(screenRoleRepository.findByRoleId(targetRoleId));
+        screenRoleRepository.flush();
+
+        List<ScreenRole> copied = sourcePermissions.stream()
+                .filter(source -> "ROLE_ADMIN".equals(targetRole.getName().toString())
+                        || !"GESTION_PERMISSIONS".equals(source.getScreen().getCode()))
+                .map(source -> ScreenRole.builder()
+                        .screen(source.getScreen())
+                        .role(targetRole)
+                        .canView(source.getCanView())
+                        .canCreate(source.getCanCreate())
+                        .canEdit(source.getCanEdit())
+                        .canDelete(source.getCanDelete())
+                        .canExport(source.getCanExport())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<ScreenRoleDTO> result = screenRoleRepository.saveAll(copied).stream()
+                .map(this::mapScreenRoleToDTO)
+                .collect(Collectors.toList());
+
+        auditService.logAction("COPY_PROFILE", "ScreenRole", targetRoleId.toString(),
+                "Profil " + sourceRole.getName() + " copie vers " + targetRole.getName()
+                        + " (" + result.size() + " ecrans)", "SUCCESS");
+        return result;
+    }
+
     @Transactional
     public ScreenRoleDTO assignRoleToScreen(Long screenId, Long roleId, ScreenPermissionsDTO permissions) {
         Screen screen = screenRepository.findById(screenId)
@@ -230,6 +277,7 @@ public class ScreenService {
                         .screen(screen)
                         .role(role)
                         .build());
+        Map<String, Object> oldValues = permissionValues(screenRole);
 
         screenRole.setCanView(permissions.getCanView() != null ? permissions.getCanView() : true);
         screenRole.setCanCreate(permissions.getCanCreate() != null ? permissions.getCanCreate() : false);
@@ -239,8 +287,9 @@ public class ScreenService {
 
         ScreenRole savedScreenRole = screenRoleRepository.save(screenRole);
 
-        auditService.logAction("ASSIGN", "ScreenRole", savedScreenRole.getId().toString(),
-                "Rôle " + role.getName() + " assigné au screen " + screen.getLibelle(), "SUCCESS");
+        auditService.logUpdate("ScreenRole", savedScreenRole.getId().toString(),
+                screen.getCode() + ":" + role.getName(), oldValues, permissionValues(savedScreenRole),
+                "Permissions du role " + role.getName() + " modifiees sur " + screen.getLibelle());
 
         return mapScreenRoleToDTO(savedScreenRole);
     }
@@ -260,6 +309,14 @@ public class ScreenService {
                 .collect(Collectors.toList());
     }
 
+    private Map<String, Object> permissionValues(ScreenRole screenRole) {
+        return auditService.values(
+                "canView", Boolean.TRUE.equals(screenRole.getCanView()),
+                "canCreate", Boolean.TRUE.equals(screenRole.getCanCreate()),
+                "canEdit", Boolean.TRUE.equals(screenRole.getCanEdit()),
+                "canDelete", Boolean.TRUE.equals(screenRole.getCanDelete()),
+                "canExport", Boolean.TRUE.equals(screenRole.getCanExport()));
+    }
     private ScreenDTO mapToDTO(Screen screen) {
         List<String> roles = screen.getRoles().stream()
                 .map(role -> role.getName().toString())

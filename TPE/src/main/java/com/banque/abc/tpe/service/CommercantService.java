@@ -2,6 +2,7 @@ package com.banque.abc.tpe.service;
 
 import com.banque.abc.tpe.dto.commercant.CommercantRequest;
 import com.banque.abc.tpe.dto.commercant.CommercantResponse;
+import com.banque.abc.tpe.dto.audit.AuditEvent;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.enums.StatutCommercant;
 import com.banque.abc.tpe.exception.DuplicateResourceException;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,8 +48,8 @@ public class CommercantService {
 
         Commercant savedCommercant = commercantRepository.save(commercant);
 
-        auditService.logAction("CREATE", "Commercant", savedCommercant.getId().toString(),
-                "Commerçant créé: " + savedCommercant.getRaisonSociale(), "SUCCESS");
+        auditService.logCreation("Commercant", savedCommercant.getId().toString(), savedCommercant.getRaisonSociale(),
+                snapshot(savedCommercant), "Commercant cree: " + savedCommercant.getRaisonSociale());
 
         return mapToResponse(savedCommercant);
     }
@@ -89,6 +91,7 @@ public class CommercantService {
     public CommercantResponse updateCommercant(Long id, CommercantRequest request) {
         Commercant commercant = commercantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Commerçant non trouvé avec l'ID: " + id));
+        Map<String, Object> oldValues = snapshot(commercant);
 
         if (request.getEmail() != null && !commercant.getEmail().equals(request.getEmail()) &&
                 commercantRepository.existsByEmail(request.getEmail())) {
@@ -103,8 +106,9 @@ public class CommercantService {
         modelMapper.map(request, commercant);
         Commercant updatedCommercant = commercantRepository.save(commercant);
 
-        auditService.logAction("UPDATE", "Commercant", updatedCommercant.getId().toString(),
-                "Commerçant mis à jour: " + updatedCommercant.getRaisonSociale(), "SUCCESS");
+        auditService.logUpdate("Commercant", updatedCommercant.getId().toString(), updatedCommercant.getRaisonSociale(),
+                oldValues, snapshot(updatedCommercant),
+                "Commercant mis a jour: " + updatedCommercant.getRaisonSociale());
 
         return mapToResponse(updatedCommercant);
     }
@@ -118,8 +122,8 @@ public class CommercantService {
         commercant.setStatut(statut);
         commercantRepository.save(commercant);
 
-        auditService.logAction("UPDATE_STATUS", "Commercant", commercant.getId().toString(),
-                String.format("Statut changé de %s à %s", ancienStatut, statut), "SUCCESS");
+        auditService.logStatusChange("Commercant", commercant.getId().toString(), commercant.getRaisonSociale(),
+                ancienStatut, statut, String.format("Statut change de %s a %s", ancienStatut, statut));
     }
 
     @Transactional
@@ -129,8 +133,18 @@ public class CommercantService {
 
         commercantRepository.delete(commercant);
 
-        auditService.logAction("DELETE", "Commercant", id.toString(),
-                "Commerçant supprimé: " + commercant.getRaisonSociale(), "SUCCESS");
+        auditService.logBusinessEvent(AuditEvent.builder()
+                .action("DELETE")
+                .actionLabel("Suppression")
+                .moduleName("Commercant")
+                .entityType("Commercant")
+                .entityId(id.toString())
+                .entityReference(commercant.getRaisonSociale())
+                .details("Commercant supprime: " + commercant.getRaisonSociale())
+                .oldValues(snapshot(commercant))
+                .statut("SUCCESS")
+                .riskLevel("CRITICAL")
+                .build());
     }
 
     private CommercantResponse mapToResponse(Commercant commercant) {
@@ -151,5 +165,28 @@ public class CommercantService {
         count = Math.max(count, demandeTpeCount != null ? demandeTpeCount : 0L);
 
         return Math.toIntExact(count);
+    }
+
+    private Map<String, Object> snapshot(Commercant commercant) {
+        return auditService.values(
+                "raisonSociale", commercant.getRaisonSociale(),
+                "activite", commercant.getActivite(),
+                "numeroCompte", commercant.getNumeroCompte(),
+                "adresse", commercant.getAdresse(),
+                "localite", commercant.getLocalite(),
+                "codePostal", commercant.getCodePostal(),
+                "codeAgence", commercant.getCodeAgence(),
+                "telephone", commercant.getTelephone(),
+                "email", commercant.getEmail(),
+                "statut", commercant.getStatut(),
+                "loyer", commercant.getLoyer(),
+                "typeCommerce", commercant.getTypeCommerce(),
+                "urlSiteMarchand", commercant.getUrlSiteMarchand(),
+                "webhookUrl", commercant.getWebhookUrl(),
+                "webmaster", commercant.getWebmaster(),
+                "contactTechnique", commercant.getContactTechnique(),
+                "typeCartesAcceptees", commercant.getTypeCartesAcceptees(),
+                "modeTest", commercant.getModeTest()
+        );
     }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Panne, StatutPanne, TypePanne } from '../../models/panne.model';
+import { DiagnosticIaPanne, Panne, StatutPanne, TypePanne } from '../../models/panne.model';
 import { StatutTPE } from '../../models/tpe.model';
 import { PanneService } from '../../services/panne.service';
 import { AuthService } from '../../services/auth.service';
@@ -28,6 +28,8 @@ export class PanneListComponent implements OnInit {
   exportingExcel = false;
   exportingPdf = false;
   showDeclarationForm = false;
+  analyseIaLoading = false;
+  diagnosticIa: DiagnosticIaPanne | null = null;
 
   declarationForm: FormGroup;
   workflowForm: FormGroup;
@@ -35,6 +37,8 @@ export class PanneListComponent implements OnInit {
   workflowAction: WorkflowAction = 'DETAIL';
 
   filtreStatut = 'TOUS';
+  dateDebut: string = '';
+  dateFin: string = '';
 
   statuts = [
     'TOUS',
@@ -154,9 +158,44 @@ export class PanneListComponent implements OnInit {
   }
 
   appliquerFiltres(): void {
-    this.pannesFiltrees = this.sortPannes(this.pannes.filter(panne =>
-      this.filtreStatut === 'TOUS' || panne.statut === this.filtreStatut
-    ));
+    this.pannesFiltrees = this.sortPannes(this.pannes.filter(panne => {
+      const matchStatut = this.filtreStatut === 'TOUS' || panne.statut === this.filtreStatut;
+      const matchDate = this.matchesPanneDateRange(panne);
+      return matchStatut && matchDate;
+    }));
+  }
+
+  private matchesPanneDateRange(panne: Panne): boolean {
+    if (!this.dateDebut && !this.dateFin) {
+      return true;
+    }
+
+    const value = panne.dateDeclaration || panne.createdAt || panne.createdDate;
+    if (!value) {
+      return false;
+    }
+
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) {
+      return false;
+    }
+
+    const start = this.dateDebut ? this.localDateBoundary(this.dateDebut, false) : null;
+    const end = this.dateFin ? this.localDateBoundary(this.dateFin, true) : null;
+    return (start === null || timestamp >= start) && (end === null || timestamp <= end);
+  }
+
+  private localDateBoundary(value: string, endOfDay: boolean): number {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(
+      year,
+      month - 1,
+      day,
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 999 : 0
+    ).getTime();
   }
 
   onFiltreChange(): void {
@@ -173,6 +212,7 @@ export class PanneListComponent implements OnInit {
     if (!this.showDeclarationForm) {
       this.declarationForm.reset();
       this.clearTpeSearch();
+      this.resetDiagnosticIa();
     }
   }
 
@@ -205,6 +245,7 @@ export class PanneListComponent implements OnInit {
       next: () => {
         this.showNotification('Panne declaree avec succes', 'success');
         this.declarationForm.reset();
+        this.resetDiagnosticIa();
         this.showDeclarationForm = false;
         this.loadTPEs();
         this.loadPannes();
@@ -214,6 +255,54 @@ export class PanneListComponent implements OnInit {
         this.showNotification(this.getErrorMessage(error, 'Erreur lors de la declaration'), 'error');
       }
     });
+  }
+
+  analyserDescriptionIa(): void {
+    const description = this.cleanText(this.declarationForm.value.description);
+    if (description.length < 5) {
+      this.showNotification('Saisissez une description plus precise avant l analyse IA', 'error');
+      return;
+    }
+
+    this.analyseIaLoading = true;
+    this.diagnosticIa = null;
+    this.panneService.analyserDiagnosticIa(description).subscribe({
+      next: (suggestion) => {
+        if (this.cleanText(this.declarationForm.value.description) !== description) {
+          this.analyseIaLoading = false;
+          return;
+        }
+        this.diagnosticIa = suggestion;
+        this.analyseIaLoading = false;
+        if (suggestion.typePanneSuggere) {
+          this.declarationForm.patchValue({ typePanne: suggestion.typePanneSuggere });
+        }
+        this.showNotification('Proposition IA generee', 'success');
+      },
+      error: (error) => {
+        console.error('Erreur analyse IA panne', error);
+        this.analyseIaLoading = false;
+        this.showNotification(this.getErrorMessage(error, 'Erreur lors de l analyse IA'), 'error');
+      }
+    });
+  }
+
+  appliquerDiagnosticIa(): void {
+    if (!this.diagnosticIa?.typePanneSuggere) {
+      this.showNotification('Aucun type de panne propose', 'info');
+      return;
+    }
+
+    this.declarationForm.patchValue({ typePanne: this.diagnosticIa.typePanneSuggere });
+    this.showNotification('Type de panne applique', 'success');
+  }
+
+  onDescriptionChange(): void {
+    this.diagnosticIa = null;
+  }
+
+  canAnalyseDescriptionIa(): boolean {
+    return this.cleanText(this.declarationForm.value.description).length >= 5 && !this.analyseIaLoading;
   }
 
   afficherAideTPE(): void {
@@ -426,6 +515,59 @@ export class PanneListComponent implements OnInit {
     return classes[statut] || 'badge-default';
   }
 
+  getUrgenceIaClass(urgence?: string): string {
+    const classes: { [key: string]: string } = {
+      FAIBLE: 'ia-urgence-low',
+      MOYENNE: 'ia-urgence-medium',
+      HAUTE: 'ia-urgence-high',
+      CRITIQUE: 'ia-urgence-critical'
+    };
+    return urgence ? classes[urgence] || 'ia-urgence-medium' : 'ia-urgence-medium';
+  }
+
+  getDiagnosticAgence(): string {
+    const diagnostic = this.cleanText(this.diagnosticIa?.diagnosticPropose);
+    if (!diagnostic) {
+      return 'Aucun diagnostic fiable pour le moment. Completez la description avec le message affiche et les tests deja effectues.';
+    }
+
+    return diagnostic
+      .replace(/^Selon la base de connaissances RAG, le cas le plus proche est "[^"]+"\.\s*/i, '')
+      .replace(/\s*Sources retenues:.*$/i, '')
+      .trim();
+  }
+
+  getActionsAgence(): string[] {
+    const recommandations = this.diagnosticIa?.recommandations || [];
+    if (recommandations.length > 0) {
+      return recommandations.slice(0, 4);
+    }
+
+    const action = this.cleanText(this.diagnosticIa?.actionCorrectiveProposee);
+    if (action) {
+      return action
+        .split(/[.;]/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .slice(0, 4);
+    }
+
+    return [
+      'Verifier le message affiche sur le TPE',
+      'Redemarrer le terminal si cela ne presente pas de risque',
+      'Noter les tests deja effectues avant declaration'
+    ];
+  }
+
+  getInformationsATransmettre(): string[] {
+    return [
+      'Message exact affiche sur le TPE',
+      'Moment ou la panne est apparue',
+      'Tests deja effectues par l agence',
+      'Impact client: paiement bloque, ticket non imprime ou TPE hors service'
+    ];
+  }
+
   getStatCount(statut: StatutPanne): number {
     return this.pannes.filter(panne => panne.statut === statut).length;
   }
@@ -611,6 +753,11 @@ export class PanneListComponent implements OnInit {
 
   private cleanText(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private resetDiagnosticIa(): void {
+    this.diagnosticIa = null;
+    this.analyseIaLoading = false;
   }
 
   private saveBlob(blob: Blob, filename: string): void {

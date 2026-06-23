@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Panne, StatutPanne } from '../models/panne.model';
+import { DiagnosticIaPanne, Panne, StatutPanne } from '../models/panne.model';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +30,10 @@ export class PanneService {
 
   getPannesByTechnicien(technicienId: number): Observable<Panne[]> {
     return this.http.get<Panne[]>(`${this.apiUrl}/technicien/${technicienId}`);
+  }
+
+  analyserDiagnosticIa(description: string): Observable<DiagnosticIaPanne> {
+    return this.http.post<DiagnosticIaPanne>(`${this.apiUrl}/diagnostic-ia`, { description });
   }
 
   createPanne(panne: Panne): Observable<Panne> {

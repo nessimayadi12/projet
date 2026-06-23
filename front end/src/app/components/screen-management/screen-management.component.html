@@ -1,256 +1,91 @@
-<div class="main-content">
+<div class="main-content permissions-page">
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="card">
-          <div class="card-header card-header-primary">
-            <h4 class="card-title">Gestion des Screens et Permissions</h4>
-            <p class="card-category">Configuration de l'accès aux écrans par rôle</p>
-          </div>
-          <div class="card-body">
-            <div class="row">
-              <!-- Liste des screens -->
-              <div class="col-md-4">
-                <h5>Screens disponibles</h5>
-                <div class="list-group">
-                  <button 
-                    *ngFor="let screen of screens" 
-                    class="list-group-item list-group-item-action"
-                    [class.active]="selectedScreen?.id === screen.id"
-                    (click)="selectScreen(screen)">
-                    <div class="d-flex w-100 justify-content-between">
-                      <h6 class="mb-1">
-                        <i [class]="screen.icon || 'material-icons'"></i>
-                        {{ screen.libelle }}
-                      </h6>
-                      <span class="badge" [class.badge-success]="screen.actif" [class.badge-secondary]="!screen.actif">
-                        {{ screen.actif ? 'Actif' : 'Inactif' }}
-                      </span>
-                    </div>
-                    <small>{{ screen.route }}</small>
-                  </button>
-                </div>
+    <div class="permissions-header">
+      <div>
+        <span class="eyebrow">Administration</span>
+        <h2>Gestion des écrans et permissions</h2>
+        <p>{{ screens.length }} écrans · {{ roles.length }} profils · modification en un clic</p>
+      </div>
+      <button type="button" class="btn history-btn" (click)="toggleHistory()">
+        <i class="material-icons">history</i>
+        {{ showHistory ? 'Masquer l’historique' : 'Voir l’historique' }}
+      </button>
+    </div>
 
-                <!-- Formulaire de création de screen -->
-                <div class="mt-4">
-                  <h5>Ajouter un nouveau screen</h5>
-                  <form>
-                    <div class="form-group">
-                      <label>Code *</label>
-                      <input type="text" class="form-control" [(ngModel)]="screenForm.code" name="code" placeholder="Ex: DASHBOARD">
-                    </div>
-                    <div class="form-group">
-                      <label>Libellé *</label>
-                      <input type="text" class="form-control" [(ngModel)]="screenForm.libelle" name="libelle" placeholder="Ex: Tableau de bord">
-                    </div>
-                    <div class="form-group">
-                      <label>Route *</label>
-                      <input type="text" class="form-control" [(ngModel)]="screenForm.route" name="route" placeholder="Ex: /dashboard">
-                    </div>
-                    <div class="form-group">
-                      <label>Icône</label>
-                      <input type="text" class="form-control" [(ngModel)]="screenForm.icon" name="icon" placeholder="Ex: dashboard">
-                    </div>
-                    <div class="form-group">
-                      <label>Ordre</label>
-                      <input type="number" class="form-control" [(ngModel)]="screenForm.ordre" name="ordre">
-                    </div>
-                    <div class="form-check">
-                      <label class="form-check-label">
-                        <input class="form-check-input" type="checkbox" [(ngModel)]="screenForm.actif" name="actif">
-                        Actif
-                        <span class="form-check-sign">
-                          <span class="check"></span>
-                        </span>
-                      </label>
-                    </div>
-                    <button type="button" class="btn btn-primary" (click)="createScreen()" [disabled]="loading">
-                      <i class="material-icons">add</i> Créer
-                    </button>
-                  </form>
-                </div>
-              </div>
+    <div class="copy-card">
+      <div class="copy-title">
+        <i class="material-icons">content_copy</i>
+        <div><strong>Copier un profil</strong><small>Remplace toutes les permissions du profil cible</small></div>
+      </div>
+      <select class="form-control" [(ngModel)]="sourceRoleId" aria-label="Profil source">
+        <option *ngFor="let role of roles" [ngValue]="role.id">{{ role.label }}</option>
+      </select>
+      <i class="material-icons copy-arrow">arrow_forward</i>
+      <select class="form-control" [(ngModel)]="targetRoleId" aria-label="Profil cible">
+        <option *ngFor="let role of roles" [ngValue]="role.id">{{ role.label }}</option>
+      </select>
+      <button type="button" class="btn btn-primary" (click)="copyProfile()" [disabled]="copying || sourceRoleId === targetRoleId">
+        <span *ngIf="!copying">Copier</span><span *ngIf="copying">Copie…</span>
+      </button>
+    </div>
 
-              <!-- Détails et permissions du screen sélectionné -->
-              <div class="col-md-8" *ngIf="selectedScreen">
-                <h5>{{ selectedScreen.libelle }}</h5>
-                
-                <!-- Modification du screen -->
-                <div class="card">
-                  <div class="card-header card-header-info">
-                    <h6 class="card-title">Informations du screen</h6>
-                  </div>
-                  <div class="card-body">
-                    <form>
-                      <div class="row">
-                        <div class="col-md-6">
-                          <div class="form-group">
-                            <label>Code</label>
-                            <input type="text" class="form-control" [(ngModel)]="selectedScreen.code" name="code" disabled>
-                          </div>
-                        </div>
-                        <div class="col-md-6">
-                          <div class="form-group">
-                            <label>Libellé</label>
-                            <input type="text" class="form-control" [(ngModel)]="selectedScreen.libelle" name="libelle">
-                          </div>
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col-md-6">
-                          <div class="form-group">
-                            <label>Route</label>
-                            <input type="text" class="form-control" [(ngModel)]="selectedScreen.route" name="route">
-                          </div>
-                        </div>
-                        <div class="col-md-6">
-                          <div class="form-group">
-                            <label>Icône</label>
-                            <input type="text" class="form-control" [(ngModel)]="selectedScreen.icon" name="icon">
-                          </div>
-                        </div>
-                      </div>
-                      <div class="form-group">
-                        <label>Description</label>
-                        <textarea class="form-control" [(ngModel)]="selectedScreen.description" name="description" rows="3"></textarea>
-                      </div>
-                      <div class="row">
-                        <div class="col-md-6">
-                          <div class="form-group">
-                            <label>Ordre</label>
-                            <input type="number" class="form-control" [(ngModel)]="selectedScreen.ordre" name="ordre">
-                          </div>
-                        </div>
-                        <div class="col-md-6">
-                          <div class="form-check mt-4">
-                            <label class="form-check-label">
-                              <input class="form-check-input" type="checkbox" [(ngModel)]="selectedScreen.actif" name="actif">
-                              Actif
-                              <span class="form-check-sign">
-                                <span class="check"></span>
-                              </span>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <button type="button" class="btn btn-success" (click)="updateScreen()" [disabled]="loading">
-                        <i class="material-icons">save</i> Enregistrer
-                      </button>
-                      <button type="button" class="btn btn-danger" (click)="deleteScreen(selectedScreen.id!)" [disabled]="loading">
-                        <i class="material-icons">delete</i> Supprimer
-                      </button>
-                      <button type="button" class="btn btn-default" (click)="cancelEdit()">
-                        <i class="material-icons">cancel</i> Annuler
-                      </button>
-                    </form>
-                  </div>
-                </div>
-
-                <!-- Gestion des permissions -->
-                <div class="card mt-3">
-                  <div class="card-header card-header-warning">
-                    <h6 class="card-title">Permissions par rôle</h6>
-                  </div>
-                  <div class="card-body">
-                    <!-- Tableau des permissions existantes -->
-                    <table class="table table-striped">
-                      <thead>
-                        <tr>
-                          <th>Rôle</th>
-                          <th>Voir</th>
-                          <th>Créer</th>
-                          <th>Modifier</th>
-                          <th>Supprimer</th>
-                          <th>Exporter</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr *ngFor="let screenRole of screenRoles">
-                          <td><strong>{{ screenRole.roleName }}</strong></td>
-                          <td><i class="material-icons" [class.text-success]="screenRole.canView">{{ screenRole.canView ? 'check' : 'close' }}</i></td>
-                          <td><i class="material-icons" [class.text-success]="screenRole.canCreate">{{ screenRole.canCreate ? 'check' : 'close' }}</i></td>
-                          <td><i class="material-icons" [class.text-success]="screenRole.canEdit">{{ screenRole.canEdit ? 'check' : 'close' }}</i></td>
-                          <td><i class="material-icons" [class.text-success]="screenRole.canDelete">{{ screenRole.canDelete ? 'check' : 'close' }}</i></td>
-                          <td><i class="material-icons" [class.text-success]="screenRole.canExport">{{ screenRole.canExport ? 'check' : 'close' }}</i></td>
-                          <td>
-                            <button class="btn btn-sm btn-danger" (click)="removeRoleFromScreen(selectedScreen.id!, screenRole.roleId)">
-                              <i class="material-icons">delete</i>
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    <!-- Formulaire d'ajout de permissions -->
-                    <div class="mt-4">
-                      <h6>Ajouter des permissions</h6>
-                      <form>
-                        <div class="form-group">
-                          <label>Rôle</label>
-                          <select class="form-control" [(ngModel)]="permissionForm.roleId" name="roleId">
-                            <option [value]="null">Sélectionner un rôle</option>
-                            <option *ngFor="let role of availableRoles" [value]="role.id">{{ role.label }}</option>
-                          </select>
-                        </div>
-                        <div class="form-group">
-                          <label>Permissions</label>
-                          <div class="form-check">
-                            <label class="form-check-label">
-                              <input class="form-check-input" type="checkbox" [(ngModel)]="permissionForm.permissions.canView" name="canView">
-                              Voir
-                              <span class="form-check-sign"><span class="check"></span></span>
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <label class="form-check-label">
-                              <input class="form-check-input" type="checkbox" [(ngModel)]="permissionForm.permissions.canCreate" name="canCreate">
-                              Créer
-                              <span class="form-check-sign"><span class="check"></span></span>
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <label class="form-check-label">
-                              <input class="form-check-input" type="checkbox" [(ngModel)]="permissionForm.permissions.canEdit" name="canEdit">
-                              Modifier
-                              <span class="form-check-sign"><span class="check"></span></span>
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <label class="form-check-label">
-                              <input class="form-check-input" type="checkbox" [(ngModel)]="permissionForm.permissions.canDelete" name="canDelete">
-                              Supprimer
-                              <span class="form-check-sign"><span class="check"></span></span>
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <label class="form-check-label">
-                              <input class="form-check-input" type="checkbox" [(ngModel)]="permissionForm.permissions.canExport" name="canExport">
-                              Exporter
-                              <span class="form-check-sign"><span class="check"></span></span>
-                            </label>
-                          </div>
-                        </div>
-                        <button type="button" class="btn btn-primary" (click)="assignRoleToScreen()" [disabled]="loading">
-                          <i class="material-icons">add</i> Assigner
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Message si aucun screen sélectionné -->
-              <div class="col-md-8" *ngIf="!selectedScreen">
-                <div class="alert alert-info">
-                  <i class="material-icons">info</i>
-                  Sélectionnez un screen dans la liste pour gérer ses permissions
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="matrix-card">
+      <div class="matrix-toolbar">
+        <div>
+          <h4>Matrice des accès</h4>
+          <span>Chaque icône est un interrupteur de permission</span>
+        </div>
+        <div class="search-box">
+          <i class="material-icons">search</i>
+          <input type="search" class="form-control" [(ngModel)]="searchTerm" (ngModelChange)="filterScreens()" placeholder="Écran, code ou route">
         </div>
       </div>
+
+      <div class="loading-state" *ngIf="loading">
+        <mat-spinner diameter="38"></mat-spinner><span>Chargement de la matrice…</span>
+      </div>
+
+      <div class="matrix-scroll" *ngIf="!loading">
+        <table class="permission-matrix">
+          <thead>
+            <tr>
+              <th class="screen-column">Écran</th>
+              <th *ngFor="let role of roles" class="role-column">{{ role.label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let screen of filteredScreens; trackBy: trackScreen">
+              <td class="screen-cell">
+                <span class="screen-icon"><i class="material-icons">{{ screen.icon || 'web_asset' }}</i></span>
+                <span><strong>{{ screen.libelle }}</strong><small>{{ screen.code }} · {{ screen.route }}</small></span>
+              </td>
+              <td *ngFor="let role of roles" class="permission-cell" [class.saving]="isSaving(screen, role)">
+                <button *ngFor="let action of actions" type="button" class="permission-toggle"
+                        [class.granted]="isGranted(screen, role, action.key)"
+                        [disabled]="isSaving(screen, role)"
+                        [attr.aria-pressed]="isGranted(screen, role, action.key)"
+                        [matTooltip]="action.label + ' · ' + role.label"
+                        (click)="togglePermission(screen, role, action.key)">
+                  <i class="material-icons">{{ action.icon }}</i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="!filteredScreens.length"><td [attr.colspan]="roles.length + 1" class="empty-state">Aucun écran trouvé</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="history-card" *ngIf="showHistory">
+      <div class="history-header"><div><h4>Historique des permissions</h4><span>Les 20 dernières modifications tracées</span></div><button class="btn btn-link" (click)="loadHistory()"><i class="material-icons">refresh</i></button></div>
+      <div class="history-list" *ngIf="history.length; else noHistory">
+        <div class="history-item" *ngFor="let item of history">
+          <span class="history-icon"><i class="material-icons">{{ item.action === 'COPY_PROFILE' ? 'content_copy' : 'tune' }}</i></span>
+          <div class="history-body"><strong>{{ item.action === 'COPY_PROFILE' ? 'Copie de profil' : (item.actionLabel || item.action) }}</strong><p>{{ item.details }}</p><small>{{ item.username }} · {{ item.dateAction | date:'dd/MM/yyyy HH:mm:ss' }}</small></div>
+          <div class="changes" *ngIf="item.changes?.length"><span *ngFor="let change of item.changes">{{ change.field }}: {{ change.oldValue ? 'oui' : 'non' }} → {{ change.newValue ? 'oui' : 'non' }}</span></div>
+        </div>
+      </div>
+      <ng-template #noHistory><div class="empty-state">Aucune modification enregistrée.</div></ng-template>
     </div>
   </div>
 </div>

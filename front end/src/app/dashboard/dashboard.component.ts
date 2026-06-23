@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { DashboardService } from '../services/dashboard.service';
 import { DashboardStats } from '../models/dashboard.model';
 import { environment } from '../../environments/environment';
-import * as Chartist from 'chartist';
+import { ChartData, ChartOptions } from 'chart.js';
 
 @Component({
   selector: 'app-dashboard',
@@ -13,6 +13,133 @@ export class DashboardComponent implements OnInit {
   stats: DashboardStats | null = null;
   loading = true;
   error: string | null = null;
+
+  tpeStatutChartData: ChartData<'doughnut', number[], string> = {
+    labels: ['Disponibles', 'Affectés', 'En panne', 'Maintenance', 'Hors service'],
+    datasets: [{
+      data: [0, 0, 0, 0, 0],
+      backgroundColor: ['#22c55e', '#3b82f6', '#ef4444', '#f59e0b', '#64748b'],
+      hoverBackgroundColor: ['#16a34a', '#2563eb', '#dc2626', '#d97706', '#475569'],
+      borderColor: '#ffffff',
+      borderWidth: 2,
+      hoverOffset: 8
+    }]
+  };
+
+  marqueChartData: ChartData<'bar', number[], string> = {
+    labels: [],
+    datasets: [{
+      label: 'Nombre de TPE',
+      data: [],
+      backgroundColor: '#8b5cf6',
+      hoverBackgroundColor: '#7c3aed',
+      borderRadius: 6,
+      borderSkipped: false
+    }]
+  };
+
+  pannesChartData: ChartData<'doughnut', number[], string> = {
+    labels: ['En cours', 'Résolues'],
+    datasets: [{
+      data: [0, 0],
+      backgroundColor: ['#ef4444', '#22c55e'],
+      hoverBackgroundColor: ['#dc2626', '#16a34a'],
+      borderColor: '#ffffff',
+      borderWidth: 2,
+      hoverOffset: 8
+    }]
+  };
+
+  readonly doughnutChartOptions: ChartOptions<'doughnut'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '58%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: '#ffffff',
+          usePointStyle: true,
+          padding: 18,
+          font: {
+            size: 13,
+            weight: 600
+          }
+        }
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        padding: 12,
+        callbacks: {
+          label: (context) => {
+            const value = Number(context.raw) || 0;
+            const values = context.dataset.data.map(Number);
+            const total = values.reduce((sum, item) => sum + item, 0);
+            const percentage = total ? Math.round((value / total) * 100) : 0;
+            return context.label + ': ' + value + ' (' + percentage + '%)';
+          }
+        }
+      }
+    }
+  };
+
+  readonly barChartOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index'
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        padding: 12
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false
+        },
+        border: {
+          color: 'rgba(255, 255, 255, 0.65)'
+        },
+        ticks: {
+          color: '#ffffff',
+          font: {
+            size: 13,
+            weight: 600
+          }
+        }
+      },
+      y: {
+        beginAtZero: true,
+        border: {
+          color: 'rgba(255, 255, 255, 0.65)'
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.18)'
+        },
+        ticks: {
+          color: '#ffffff',
+          precision: 0,
+          font: {
+            size: 13,
+            weight: 600
+          }
+        }
+      }
+    }
+  };
 
   // Configuration Power BI depuis environment
   powerBIEnabled = environment.powerBI?.enabled || false;
@@ -32,7 +159,7 @@ export class DashboardComponent implements OnInit {
       next: (data) => {
         this.stats = data;
         this.loading = false;
-        this.initCharts();
+        this.updateChartData();
       },
       error: (err) => {
         console.error('Erreur lors du chargement des statistiques:', err);
@@ -42,63 +169,40 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  initCharts(): void {
+  private updateChartData(): void {
     if (!this.stats) return;
 
-    // Vérifier que les éléments existent avant d'initialiser les graphiques
-    setTimeout(() => {
-      // Graphique de répartition par statut TPE
-      const tpeStatutElement = document.querySelector('#tpeStatutChart');
-      if (tpeStatutElement) {
-        const statutsData = {
-          labels: ['Disponibles', 'Affectés', 'En Panne', 'Maintenance', 'Hors Service'],
-          series: [
-            this.stats!.tpeDisponibles,
-            this.stats!.tpeAffectes,
-            this.stats!.tpeEnPanne,
-            this.stats!.tpeEnMaintenance,
-            this.stats!.tpeHorsService
-          ]
-        };
+    this.tpeStatutChartData = {
+      ...this.tpeStatutChartData,
+      datasets: [{
+        ...this.tpeStatutChartData.datasets[0],
+        data: [
+          this.stats.tpeDisponibles,
+          this.stats.tpeAffectes,
+          this.stats.tpeEnPanne,
+          this.stats.tpeEnMaintenance,
+          this.stats.tpeHorsService
+        ]
+      }]
+    };
 
-        new Chartist.Pie('#tpeStatutChart', statutsData, {
-          labelInterpolationFnc: function(value) {
-            return value;
-          }
-        });
-      }
+    const repartitionParMarque = this.stats.repartitionParMarque || {};
+    this.marqueChartData = {
+      ...this.marqueChartData,
+      labels: Object.keys(repartitionParMarque),
+      datasets: [{
+        ...this.marqueChartData.datasets[0],
+        data: Object.values(repartitionParMarque)
+      }]
+    };
 
-      // Graphique de répartition par marque
-      const marqueElement = document.querySelector('#marqueChart');
-      if (marqueElement && this.stats?.repartitionParMarque) {
-        const marques = Object.keys(this.stats.repartitionParMarque);
-        const values = Object.values(this.stats.repartitionParMarque);
-        
-        new Chartist.Bar('#marqueChart', {
-          labels: marques,
-          series: [values]
-        }, {
-          seriesBarDistance: 10,
-          axisX: {
-            showGrid: false
-          },
-          height: '250px'
-        });
-      }
-
-      // Graphique des pannes (si l'élément existe)
-      const pannesElement = document.querySelector('#pannesChart');
-      if (pannesElement && this.stats) {
-        new Chartist.Pie('#pannesChart', {
-          labels: ['En cours', 'Résolues'],
-          series: [this.stats.pannesEnCours || this.stats.tpeEnPanne, this.stats.pannesResoluesCeMois]
-        }, {
-          labelInterpolationFnc: function(value) {
-            return value;
-          }
-        });
-      }
-    }, 200);
+    this.pannesChartData = {
+      ...this.pannesChartData,
+      datasets: [{
+        ...this.pannesChartData.datasets[0],
+        data: [this.stats.pannesEnCours || this.stats.tpeEnPanne, this.stats.pannesResoluesCeMois]
+      }]
+    };
   }
 
   getTauxDisponibilite(): number {

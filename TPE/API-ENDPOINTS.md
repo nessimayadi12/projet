@@ -36,6 +36,47 @@ Enregistrement d'un nouvel utilisateur
 
 ---
 
+## Assistant IA Metier
+
+Endpoints disponibles aussi via `/assistant-ia`.
+
+### POST /assistant/interroger
+Poser une question metier libre en langage naturel. L'assistant appelle Groq en deux etapes :
+- lecture dynamique du schema SQL reel via `information_schema`
+- generation d'un SELECT MySQL securise a partir de ce schema
+- execution via JdbcTemplate apres validation SELECT uniquement
+- correction automatique par Groq si la premiere requete echoue
+- reformulation en francais professionnel a partir des donnees retournees
+
+**Permissions:** MONETIQUE, AGENCE, ADMIN
+
+**Request Body:**
+```json
+{
+    "question": "Quels sont les TPE en panne depuis plus de 7 jours ?"
+}
+```
+
+**Response:**
+```json
+{
+    "question": "Quels sont les TPE en panne depuis plus de 7 jours ?",
+    "reponseIA": "Voici les TPE actuellement en panne depuis plus de 7 jours...",
+    "sqlGenere": "SELECT ...",
+    "explication": "Recherche des TPE en panne depuis plus de 7 jours",
+    "donnees": [],
+    "nombreResultats": 0,
+    "erreur": false,
+    "messageErreur": null
+}
+```
+
+Alias compatibles :
+- `POST /assistant-metier/questions`
+- `POST /assistant-ia/questions`
+
+---
+
 ## TPE Endpoints
 
 ### POST /tpes

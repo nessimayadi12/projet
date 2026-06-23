@@ -4,9 +4,13 @@ import com.banque.abc.tpe.dto.ScreenDTO;
 import com.banque.abc.tpe.dto.ScreenPermissionsDTO;
 import com.banque.abc.tpe.dto.ScreenRoleDTO;
 import com.banque.abc.tpe.dto.UserScreensDTO;
+import com.banque.abc.tpe.dto.audit.AuditLogResponse;
+import com.banque.abc.tpe.service.AuditService;
 import com.banque.abc.tpe.service.ScreenService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +27,7 @@ import java.util.Map;
 public class ScreenController {
 
     private final ScreenService screenService;
+    private final AuditService auditService;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
@@ -73,6 +78,29 @@ public class ScreenController {
         return ResponseEntity.ok(permissions);
     }
 
+    @GetMapping("/matrix")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ScreenRoleDTO>> getPermissionMatrix() {
+        return ResponseEntity.ok(screenService.getPermissionMatrix());
+    }
+
+    @PostMapping("/roles/copy")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ScreenRoleDTO>> copyRoleProfile(@RequestBody Map<String, Long> request) {
+        Long sourceRoleId = request.get("sourceRoleId");
+        Long targetRoleId = request.get("targetRoleId");
+        if (sourceRoleId == null || targetRoleId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(screenService.copyRoleProfile(sourceRoleId, targetRoleId));
+    }
+
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<AuditLogResponse>> getPermissionHistory(Pageable pageable) {
+        return ResponseEntity.ok(auditService.searchLogs(
+                null, null, "ScreenRole", null, null, null, null, null, pageable));
+    }
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ScreenDTO> createScreen(@Valid @RequestBody ScreenDTO screenDTO) {

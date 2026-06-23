@@ -87,6 +87,10 @@ export class DemandeService {
   }
 
   // Clôturer une demande
+  mettreEnAttenteComplement(id: number, commentaire: string): Observable<DemandeTPE> {
+    return this.http.post<DemandeTPE>(`${this.apiUrl}/${id}/attente-complement`, { commentaire });
+  }
+
   cloturerDemande(id: number): Observable<string> {
     return this.http.patch(`${this.apiUrl}/${id}/cloturer`, null, { responseType: 'text' });
   }

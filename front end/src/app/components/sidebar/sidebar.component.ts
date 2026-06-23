@@ -19,7 +19,9 @@ export const ROUTES: RouteInfo[] = [
     { path: '/commercants', title: 'Commercants', icon: 'store', class: '', screenCode: 'LISTE_COMMERCANTS' },
     { path: '/demandes', title: 'Demandes TPE', icon: 'assignment', class: '', screenCode: 'LISTE_DEMANDES' },
     { path: '/pannes', title: 'Maintenance', icon: 'build', class: '', screenCode: 'LISTE_PANNES' },
+    { path: '/assistant-ia', title: 'Assistant IA', icon: 'psychology', class: '', roles: [Role.ADMIN, Role.MONETIQUE, Role.AGENCE], screenCode: 'ASSISTANT_IA' },
     { path: '/file-upload', title: 'Upload Transactions', icon: 'cloud_upload', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'UPLOAD_FICHIER_BANCAIRE' },
+    { path: '/audit', title: 'Audit avance', icon: 'manage_search', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'AUDIT_AVANCE' },
     { path: '/admin/screens', title: 'Gestion Permissions', icon: 'admin_panel_settings', class: '', roles: [Role.ADMIN], screenCode: 'GESTION_PERMISSIONS' }
 ];
 
@@ -39,7 +41,7 @@ export class SidebarComponent implements OnInit {
   ngOnInit(): void {
     this.menuItems = this.filterByRoles(ROUTES);
 
-    this.screenService.getMyScreens().subscribe({
+    this.screenService.ensurePermissionsLoaded().subscribe({
       next: (userScreens) => {
         const allowedScreens = new Set(userScreens.screens.map(screen => screen.code));
         this.menuItems = this.filterByRoles(ROUTES)

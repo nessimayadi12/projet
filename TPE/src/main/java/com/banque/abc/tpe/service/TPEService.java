@@ -2,6 +2,7 @@ package com.banque.abc.tpe.service;
 
 import com.banque.abc.tpe.dto.tpe.TPERequest;
 import com.banque.abc.tpe.dto.tpe.TPEResponse;
+import com.banque.abc.tpe.dto.audit.AuditEvent;
 import com.banque.abc.tpe.entity.Affectation;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -70,8 +72,8 @@ public class TPEService {
         // Enregistrer l'historique du statut
         saveHistoriqueStatut(savedTPE, null, StatutTPE.DISPONIBLE, "TPE créé");
 
-        auditService.logAction("CREATE", "TPE", savedTPE.getId().toString(),
-                "TPE créé: " + savedTPE.getNumeroSerie(), "SUCCESS");
+        auditService.logCreation("TPE", savedTPE.getId().toString(), savedTPE.getNumeroSerie(),
+                snapshot(savedTPE), "TPE cree: " + savedTPE.getNumeroSerie());
 
         return mapToResponse(savedTPE);
     }
@@ -160,6 +162,7 @@ public class TPEService {
     public TPEResponse updateTPE(Long id, TPERequest request) {
         TPE tpe = tpeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TPE non trouvé avec l'ID: " + id));
+        Map<String, Object> oldValues = snapshot(tpe);
 
         if (!tpe.getNumeroSerie().equals(request.getNumeroSerie()) &&
                 tpeRepository.existsByNumeroSerie(request.getNumeroSerie())) {
@@ -171,8 +174,8 @@ public class TPEService {
         tpe.setTypeTPE(resolveTypeTPE(request.getTypeTPE()));
         TPE updatedTPE = tpeRepository.save(tpe);
 
-        auditService.logAction("UPDATE", "TPE", updatedTPE.getId().toString(),
-                "TPE mis à jour: " + updatedTPE.getNumeroSerie(), "SUCCESS");
+        auditService.logUpdate("TPE", updatedTPE.getId().toString(), updatedTPE.getNumeroSerie(),
+                oldValues, snapshot(updatedTPE), "TPE mis a jour: " + updatedTPE.getNumeroSerie());
 
         return mapToResponse(updatedTPE);
     }
@@ -189,8 +192,9 @@ public class TPEService {
 
         saveHistoriqueStatut(tpe, ancienStatut, nouveauStatut, commentaire);
 
-        auditService.logAction("UPDATE_STATUS", "TPE", tpe.getId().toString(),
-                String.format("Statut changé de %s à %s", ancienStatut, nouveauStatut), "SUCCESS");
+        auditService.logStatusChange("TPE", tpe.getId().toString(), tpe.getNumeroSerie(),
+                ancienStatut, nouveauStatut,
+                String.format("Statut change de %s a %s", ancienStatut, nouveauStatut));
     }
 
     @Transactional
@@ -204,8 +208,18 @@ public class TPEService {
 
         tpeRepository.delete(tpe);
 
-        auditService.logAction("DELETE", "TPE", id.toString(),
-                "TPE supprimé: " + tpe.getNumeroSerie(), "SUCCESS");
+        auditService.logBusinessEvent(AuditEvent.builder()
+                .action("DELETE")
+                .actionLabel("Suppression")
+                .moduleName("TPE")
+                .entityType("TPE")
+                .entityId(id.toString())
+                .entityReference(tpe.getNumeroSerie())
+                .details("TPE supprime: " + tpe.getNumeroSerie())
+                .oldValues(snapshot(tpe))
+                .statut("SUCCESS")
+                .riskLevel("CRITICAL")
+                .build());
     }
 
     @Transactional
@@ -228,11 +242,12 @@ public class TPEService {
             tid = tidGenerator.generateTID(rib, codeAgence, compteur);
         }
 
+        Map<String, Object> oldValues = snapshot(tpe);
         tpe.setNumeroTerminal(tid);
         tpeRepository.save(tpe);
 
-        auditService.logAction("GENERATE_TID", "TPE", tpe.getId().toString(),
-                "TID généré: " + tid, "SUCCESS");
+        auditService.logUpdate("TPE", tpe.getId().toString(), tpe.getNumeroSerie(),
+                oldValues, snapshot(tpe), "TID genere: " + tid);
 
         return tid;
     }
@@ -379,6 +394,7 @@ public class TPEService {
         }
 
         TPE ownerTpe = owner.get();
+        Map<String, Object> oldValues = snapshot(ownerTpe);
         boolean canTransferFromReplacedTpe = panneRepository.findByTpeRemplacementId(targetTpe.getId()).stream()
                 .anyMatch(panne -> panne.getTpe() != null
                         && panne.getTpe().getId().equals(ownerTpe.getId())
@@ -390,6 +406,9 @@ public class TPEService {
 
         ownerTpe.setNumeroTerminal(null);
         tpeRepository.saveAndFlush(ownerTpe);
+        auditService.logUpdate("TPE", ownerTpe.getId().toString(), ownerTpe.getNumeroSerie(),
+                oldValues, snapshot(ownerTpe),
+                "TID libere pour transfert vers le TPE " + targetTpe.getNumeroSerie());
     }
 
     private Optional<Commercant> findActiveCommercant(TPE tpe) {
@@ -488,5 +507,23 @@ public class TPEService {
         }
 
         return null;
+    }
+
+    private Map<String, Object> snapshot(TPE tpe) {
+        return auditService.values(
+                "numeroSerie", tpe.getNumeroSerie(),
+                "numeroTerminal", tpe.getNumeroTerminal(),
+                "typeTPE", tpe.getTypeTPE(),
+                "statut", tpe.getStatut(),
+                "marque", tpe.getMarque(),
+                "modele", tpe.getModele(),
+                "dateAcquisition", tpe.getDateAcquisition(),
+                "dateMiseEnService", tpe.getDateMiseEnService(),
+                "mcc", tpe.getMcc(),
+                "numeroAffiliation", tpe.getNumeroAffiliation(),
+                "cleApi", tpe.getCleApi(),
+                "commercantId", tpe.getCommercant() != null ? tpe.getCommercant().getId() : null,
+                "commentaire", tpe.getCommentaire()
+        );
     }
 }

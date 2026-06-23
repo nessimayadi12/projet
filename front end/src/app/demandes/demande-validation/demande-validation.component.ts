@@ -176,6 +176,28 @@ export class DemandeValidationComponent implements OnInit {
     });
   }
 
+  demanderComplement(): void {
+    const commentaire = (this.validationForm.get('commentaire')?.value || '').trim();
+    if (!commentaire) {
+      this.showNotification('Veuillez saisir le complement attendu dans le commentaire', 'warning');
+      return;
+    }
+
+    this.loading = true;
+    this.demandeService.mettreEnAttenteComplement(this.demande.id!, commentaire).subscribe({
+      next: () => {
+        this.showNotification('Demande mise en attente de complement', 'success');
+        this.dialogRef.close(true);
+      },
+      error: (err) => {
+        console.error('Erreur attente complement:', err);
+        const message = err?.error?.message || 'Erreur lors de la demande de complement';
+        this.showNotification(message, 'danger');
+        this.loading = false;
+      }
+    });
+  }
+
   onCancel(): void {
     this.dialogRef.close(false);
   }

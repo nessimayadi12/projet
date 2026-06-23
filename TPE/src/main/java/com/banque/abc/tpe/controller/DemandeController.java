@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @RestController
 @RequestMapping({"/api/demandes", "/api/demande"})
@@ -69,6 +70,15 @@ public class DemandeController {
     public ResponseEntity<DemandeResponse> rejeterDemande(@PathVariable Long id,
                                                            @RequestBody String commentaire) {
         DemandeResponse response = demandeService.rejeterDemande(id, commentaire);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/attente-complement")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
+    public ResponseEntity<DemandeResponse> mettreEnAttenteComplement(@PathVariable Long id,
+                                                                     @RequestBody Map<String, String> payload) {
+        String commentaire = payload != null ? payload.get("commentaire") : null;
+        DemandeResponse response = demandeService.mettreEnAttenteComplement(id, commentaire);
         return ResponseEntity.ok(response);
     }
 

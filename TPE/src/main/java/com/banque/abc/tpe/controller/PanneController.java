@@ -1,9 +1,15 @@
 package com.banque.abc.tpe.controller;
 
 import com.banque.abc.tpe.dto.panne.PanneRequest;
+import com.banque.abc.tpe.dto.panne.PanneDiagnosticIaRequest;
+import com.banque.abc.tpe.dto.panne.PanneDiagnosticIaResponse;
+import com.banque.abc.tpe.dto.panne.PanneDiagnosticKnowledgeRequest;
+import com.banque.abc.tpe.dto.panne.PanneDiagnosticKnowledgeResponse;
 import com.banque.abc.tpe.dto.panne.PanneResponse;
 import com.banque.abc.tpe.entity.Panne;
 import com.banque.abc.tpe.entity.enums.StatutPanne;
+import com.banque.abc.tpe.service.PanneDiagnosticKnowledgeService;
+import com.banque.abc.tpe.service.PanneDiagnosticIaService;
 import com.banque.abc.tpe.service.PanneService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -25,6 +31,8 @@ import java.util.Map;
 public class PanneController {
 
     private final PanneService panneService;
+    private final PanneDiagnosticIaService panneDiagnosticIaService;
+    private final PanneDiagnosticKnowledgeService panneDiagnosticKnowledgeService;
 
     /**
      * Obtenir toutes les pannes
@@ -33,6 +41,64 @@ public class PanneController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
     public ResponseEntity<List<PanneResponse>> getAllPannes() {
         return ResponseEntity.ok(panneService.getAllPannesDTO());
+    }
+
+    /**
+     * Assistant IA local: analyser une description libre et proposer un diagnostic
+     */
+    @PostMapping("/diagnostic-ia")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE', 'AGENCE')")
+    public ResponseEntity<PanneDiagnosticIaResponse> analyserDescriptionPanne(
+            @RequestBody @jakarta.validation.Valid PanneDiagnosticIaRequest request) {
+        return ResponseEntity.ok(panneDiagnosticIaService.analyser(request));
+    }
+
+    /**
+     * Lister les documents RAG utilises par l'assistant diagnostic
+     */
+    @GetMapping("/diagnostic-ia/connaissances")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<List<PanneDiagnosticKnowledgeResponse>> getDiagnosticKnowledge() {
+        return ResponseEntity.ok(panneDiagnosticKnowledgeService.getAll());
+    }
+
+    /**
+     * Ajouter un document RAG de diagnostic
+     */
+    @PostMapping("/diagnostic-ia/connaissances")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<PanneDiagnosticKnowledgeResponse> createDiagnosticKnowledge(
+            @RequestBody @jakarta.validation.Valid PanneDiagnosticKnowledgeRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(panneDiagnosticKnowledgeService.create(request));
+    }
+
+    /**
+     * Generer ou mettre a jour les documents RAG depuis l'historique des pannes
+     */
+    @PostMapping("/diagnostic-ia/connaissances/generer-depuis-historique")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<List<PanneDiagnosticKnowledgeResponse>> generateDiagnosticKnowledgeFromHistory() {
+        return ResponseEntity.ok(panneDiagnosticKnowledgeService.generateFromHistoriquePannes());
+    }
+
+    /**
+     * Modifier un document RAG de diagnostic
+     */
+    @PutMapping("/diagnostic-ia/connaissances/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<PanneDiagnosticKnowledgeResponse> updateDiagnosticKnowledge(
+            @PathVariable Long id,
+            @RequestBody @jakarta.validation.Valid PanneDiagnosticKnowledgeRequest request) {
+        return ResponseEntity.ok(panneDiagnosticKnowledgeService.update(id, request));
+    }
+
+    /**
+     * Desactiver un document RAG sans le supprimer
+     */
+    @DeleteMapping("/diagnostic-ia/connaissances/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MONETIQUE')")
+    public ResponseEntity<PanneDiagnosticKnowledgeResponse> desactivateDiagnosticKnowledge(@PathVariable Long id) {
+        return ResponseEntity.ok(panneDiagnosticKnowledgeService.desactivate(id));
     }
 
     /**

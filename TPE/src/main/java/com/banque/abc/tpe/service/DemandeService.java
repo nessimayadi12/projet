@@ -4,6 +4,7 @@ import com.banque.abc.tpe.dto.affectation.AffectationRequest;
 import com.banque.abc.tpe.dto.demande.DemandeRequest;
 import com.banque.abc.tpe.dto.demande.DemandeResponse;
 import com.banque.abc.tpe.dto.demande.ValiderDemandeRequest;
+import com.banque.abc.tpe.dto.notification.NotificationIaEventType;
 import com.banque.abc.tpe.entity.Affectation;
 import com.banque.abc.tpe.entity.Commercant;
 import com.banque.abc.tpe.entity.Demande;
@@ -41,6 +42,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -55,6 +57,7 @@ public class DemandeService {
     private final ReferenceGenerator referenceGenerator;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
+    private final BusinessNotificationService businessNotificationService;
     private final AffectationService affectationService;
     private final AffectationRepository affectationRepository;
     private final PanneRepository panneRepository;
@@ -103,9 +106,13 @@ public class DemandeService {
                 .build();
 
         Demande savedDemande = demandeRepository.save(demande);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.DEMANDE_TPE_CREEE,
+                demandeNotificationContext(savedDemande)
+        );
 
-        auditService.logAction("CREATE", "Demande", savedDemande.getId().toString(),
-                "Demande créée: " + savedDemande.getReference(), "SUCCESS");
+        auditService.logCreation("Demande", savedDemande.getId().toString(), savedDemande.getReference(),
+                snapshot(savedDemande), notification);
 
         return mapToResponse(savedDemande);
     }
@@ -126,12 +133,14 @@ public class DemandeService {
     public DemandeResponse updateDemande(Long id, DemandeRequest request) {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
+        Map<String, Object> oldValues = snapshot(demande);
 
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
 
         boolean isMonetique = hasAnyAuthority(userPrincipal,
                 RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN);
+        boolean wasWaitingComplement = demande.getStatut() == StatutDemande.EN_ATTENTE_COMPLEMENT;
 
         if (demande.getStatut() == StatutDemande.AFFECTEE) {
             if (!isMonetique) {
@@ -142,7 +151,8 @@ public class DemandeService {
                 resetWorkflowForModification(demande);
             }
         } else if (demande.getStatut() != StatutDemande.NOUVELLE
-                && demande.getStatut() != StatutDemande.EN_COURS) {
+                && demande.getStatut() != StatutDemande.EN_COURS
+                && demande.getStatut() != StatutDemande.EN_ATTENTE_COMPLEMENT) {
             throw new BusinessException("Cette demande ne peut pas être modifiée à ce statut");
         }
 
@@ -167,11 +177,15 @@ public class DemandeService {
         demande.setContactTechnique(request.getContactTechnique());
         demande.setUrlSiteMarchand(request.getUrlSiteMarchand());
         applyMonetiqueFieldsForUpdate(demande, request);
+        if (wasWaitingComplement) {
+            demande.setStatut(StatutDemande.EN_COURS);
+        }
 
         Demande updatedDemande = demandeRepository.save(demande);
 
-        auditService.logAction("UPDATE", "Demande", updatedDemande.getId().toString(),
-                "Demande modifiée", "SUCCESS");
+        auditService.logUpdate("Demande", updatedDemande.getId().toString(), updatedDemande.getReference(),
+                oldValues, snapshot(updatedDemande),
+                wasWaitingComplement ? "Complement d'information fourni, demande remise en cours" : "Demande modifiee");
 
         return mapToResponse(updatedDemande);
     }
@@ -180,6 +194,7 @@ public class DemandeService {
     public DemandeResponse validerDemande(Long id, ValiderDemandeRequest request) {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
+        Map<String, Object> oldValues = snapshot(demande);
 
         UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
@@ -235,8 +250,16 @@ public class DemandeService {
             }
         }
 
-        auditService.logAction("VALIDATE", "Demande", updatedDemande.getId().toString(),
-                "Demande " + (request.getApprouver() ? "validee" : "rejetee") + " par Monetique", "SUCCESS");
+        boolean approved = Boolean.TRUE.equals(request.getApprouver());
+        Map<String, Object> notificationContext = demandeNotificationContext(updatedDemande);
+        notificationContext.put("motif", request.getCommentaire());
+        String notification = businessNotificationService.publish(
+                approved ? NotificationIaEventType.DEMANDE_TPE_VALIDEE : NotificationIaEventType.DEMANDE_TPE_REFUSEE,
+                notificationContext
+        );
+        auditService.logValidationDecision("Demande", updatedDemande.getId().toString(), updatedDemande.getReference(),
+                approved, oldValues, snapshot(updatedDemande),
+                notification);
 
         return mapToResponse(updatedDemande);
     }
@@ -245,6 +268,7 @@ public class DemandeService {
     public DemandeResponse rejeterDemande(Long id, String commentaire) {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
+        Map<String, Object> oldValues = snapshot(demande);
 
         if (demande.getStatut() != StatutDemande.NOUVELLE
                 && demande.getStatut() != StatutDemande.EN_COURS) {
@@ -268,9 +292,56 @@ public class DemandeService {
 
         Demande updatedDemande = demandeRepository.save(demande);
 
+        Map<String, Object> notificationContext = demandeNotificationContext(updatedDemande);
+        notificationContext.put("motif", commentaire);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.DEMANDE_TPE_REFUSEE,
+                notificationContext
+        );
 
-        auditService.logAction("REJECT", "Demande", updatedDemande.getId().toString(),
-                "Demande rejetée: " + demande.getReference(), "SUCCESS");
+        auditService.logValidationDecision("Demande", updatedDemande.getId().toString(), updatedDemande.getReference(),
+                false, oldValues, snapshot(updatedDemande),
+                notification);
+
+        return mapToResponse(updatedDemande);
+    }
+
+    @Transactional
+    public DemandeResponse mettreEnAttenteComplement(Long id, String commentaire) {
+        Demande demande = demandeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
+        Map<String, Object> oldValues = snapshot(demande);
+
+        UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+
+        if (!hasAnyAuthority(userPrincipal, RoleType.ROLE_MONETIQUE, RoleType.ROLE_ADMIN)) {
+            throw new BusinessException("Seuls le service Monetique ou un administrateur peuvent demander un complement");
+        }
+
+        if (demande.getStatut() != StatutDemande.NOUVELLE
+                && demande.getStatut() != StatutDemande.EN_COURS) {
+            throw new BusinessException("Seules les demandes nouvelles ou en cours peuvent etre mises en attente de complement");
+        }
+
+        String motif = trimToNull(commentaire);
+        if (motif == null) {
+            throw new BusinessException("Le motif du complement d'information est obligatoire");
+        }
+
+        demande.setStatut(StatutDemande.EN_ATTENTE_COMPLEMENT);
+        demande.setCommentaireValidation(motif);
+
+        Demande updatedDemande = demandeRepository.save(demande);
+        Map<String, Object> notificationContext = demandeNotificationContext(updatedDemande);
+        notificationContext.put("motif", motif);
+        String notification = businessNotificationService.publish(
+                NotificationIaEventType.DEMANDE_ATTENTE_COMPLEMENT_INFORMATION,
+                notificationContext
+        );
+
+        auditService.logUpdate("Demande", updatedDemande.getId().toString(), updatedDemande.getReference(),
+                oldValues, snapshot(updatedDemande), notification);
 
         return mapToResponse(updatedDemande);
     }
@@ -280,12 +351,14 @@ public class DemandeService {
         Demande demande = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande non trouvée avec l'ID: " + id));
 
+        StatutDemande ancienStatut = demande.getStatut();
         demande.setStatut(StatutDemande.CLOTUREE);
         demande.setDateCloture(LocalDateTime.now());
         demandeRepository.save(demande);
 
-        auditService.logAction("CLOSE", "Demande", demande.getId().toString(),
-                "Demande clôturée: " + demande.getReference(), "SUCCESS");
+        auditService.logStatusChange("Demande", demande.getId().toString(), demande.getReference(),
+                ancienStatut, StatutDemande.CLOTUREE,
+                "Demande cloturee: " + demande.getReference());
     }
 
     private DemandeResponse mapToResponse(Demande demande) {
@@ -530,9 +603,18 @@ public class DemandeService {
         
         Commercant savedCommercant = commercantRepository.save(nouveauCommercant);
         
-        auditService.logAction("CREATE", "Commercant", savedCommercant.getId().toString(),
-                "Commerçant créé automatiquement depuis demande: " + savedCommercant.getRaisonSociale(), 
-                "SUCCESS");
+        auditService.logCreation("Commercant", savedCommercant.getId().toString(), savedCommercant.getRaisonSociale(),
+                auditService.values(
+                        "raisonSociale", savedCommercant.getRaisonSociale(),
+                        "activite", savedCommercant.getActivite(),
+                        "numeroCompte", savedCommercant.getNumeroCompte(),
+                        "codeAgence", savedCommercant.getCodeAgence(),
+                        "telephone", savedCommercant.getTelephone(),
+                        "statut", savedCommercant.getStatut(),
+                        "typeCommerce", savedCommercant.getTypeCommerce(),
+                        "urlSiteMarchand", savedCommercant.getUrlSiteMarchand()
+                ),
+                "Commercant cree automatiquement depuis demande: " + savedCommercant.getRaisonSociale());
         
         return savedCommercant;
     }
@@ -651,5 +733,46 @@ public class DemandeService {
         }
 
         return filePath;
+    }
+
+    private Map<String, Object> snapshot(Demande demande) {
+        return auditService.values(
+                "reference", demande.getReference(),
+                "typeDemande", demande.getTypeDemande(),
+                "statut", demande.getStatut(),
+                "commercantId", demande.getCommercant() != null ? demande.getCommercant().getId() : null,
+                "demandeurId", demande.getDemandeur() != null ? demande.getDemandeur().getId() : null,
+                "inputerId", demande.getInputer() != null ? demande.getInputer().getId() : null,
+                "valideurId", demande.getValideur() != null ? demande.getValideur().getId() : null,
+                "dateSaisieTaux", demande.getDateSaisieTaux(),
+                "dateValidation", demande.getDateValidation(),
+                "dateCloture", demande.getDateCloture(),
+                "urgence", demande.getUrgence(),
+                "raisonSociale", demande.getRaisonSociale(),
+                "activite", demande.getActivite(),
+                "numeroCompte", demande.getNumeroCompte(),
+                "codeAgence", demande.getCodeAgence(),
+                "telephone", demande.getTelephone(),
+                "localite", demande.getLocalite(),
+                "rib", demande.getRib(),
+                "urlSiteMarchand", demande.getUrlSiteMarchand(),
+                "mcc", demande.getMcc(),
+                "tauxCommission", demande.getTauxCommission(),
+                "tauxCommissionInter", demande.getTauxCommissionInter(),
+                "loyer", demande.getLoyer(),
+                "serieTpe", demande.getSerieTpe(),
+                "numeroTerminal", demande.getNumeroTerminal(),
+                "valueDate", demande.getValueDate(),
+                "commentaireValidation", demande.getCommentaireValidation()
+        );
+    }
+
+    private Map<String, Object> demandeNotificationContext(Demande demande) {
+        Map<String, Object> context = snapshot(demande);
+        context.put("commercantNom", demande.getCommercant() != null ? demande.getCommercant().getRaisonSociale() : demande.getRaisonSociale());
+        context.put("demandeurNom", demande.getDemandeur() != null
+                ? (demande.getDemandeur().getNom() + " " + demande.getDemandeur().getPrenom()).trim()
+                : null);
+        return context;
     }
 }
