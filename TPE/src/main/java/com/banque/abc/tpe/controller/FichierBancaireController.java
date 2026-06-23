@@ -29,7 +29,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/fichier-bancaire")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Slf4j
 public class FichierBancaireController {
 

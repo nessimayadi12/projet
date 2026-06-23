@@ -16,7 +16,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/taux")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class TauxController {
 
     private final TauxService tauxService;

@@ -13,7 +13,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class DashboardController {
 
     private final DashboardService dashboardService;

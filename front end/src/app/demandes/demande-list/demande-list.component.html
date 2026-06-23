@@ -8,13 +8,13 @@
             <p class="card-category">Suivi et validation des demandes</p>
           </div>
           <div class="card-body">
-            
+
             <!-- Filtres -->
             <div class="row filters-row">
               <div class="col-md-3">
                 <mat-form-field class="full-width">
                   <mat-label>Recherche</mat-label>
-                  <input matInput [(ngModel)]="rechercheText" (ngModelChange)="onFiltreChange()" 
+                  <input matInput [(ngModel)]="rechercheText" (ngModelChange)="onFiltreChange()"
                          placeholder="Référence ou commerçant">
                   <mat-icon matSuffix>search</mat-icon>
                 </mat-form-field>
@@ -69,7 +69,7 @@
                 </mat-form-field>
               </div>
               <div class="col-md-8 text-right filter-actions">
-                <button mat-raised-button color="accent" (click)="exportToExcel()" 
+                <button mat-raised-button color="accent" (click)="exportToExcel()"
                         class="mr-2" [disabled]="demandesFiltrees.length === 0"
                         *appHasPermission="{ screen: 'LISTE_DEMANDES', permission: 'canExport' }">
                   <mat-icon>get_app</mat-icon>
@@ -128,46 +128,50 @@
                       </button>
 
                       <!-- Bouton Imprimer -->
-                      <button type="button" mat-icon-button matTooltip="Imprimer" 
+                      <button type="button" mat-icon-button matTooltip="Imprimer"
                               (click)="imprimerDemande(demande)">
                         <mat-icon>print</mat-icon>
                       </button>
 
                       <!-- Bouton Modifier -->
-                      <button *ngIf="(canEditDemande$ | async) && (demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS' || demande.statut === 'EN_ATTENTE_COMPLEMENT' || (demande.statut === 'AFFECTEE' && canEditAfterAffectation(demande)))"
-                              type="button" mat-icon-button matTooltip="Modifier"
-                              color="primary" (click)="navigateToEdit(demande)">
-                        <mat-icon>edit</mat-icon>
-                      </button>
+                      <ng-container *appHasPermission="{ screen: 'MODIFIER_DEMANDE', permission: 'canEdit' }">
+                        <button *ngIf="demande.statut === 'NOUVELLE' || demande.statut === 'EN_COURS' || demande.statut === 'EN_ATTENTE_COMPLEMENT' || (demande.statut === 'AFFECTEE' && canEditAfterAffectation(demande))"
+                                type="button" mat-icon-button matTooltip="Modifier"
+                                color="primary" (click)="navigateToEdit(demande)">
+                          <mat-icon>edit</mat-icon>
+                        </button>
 
-                      <!-- Bouton Saisie Monétique (Inputer) -->
-                      <button *ngIf="(canEditDemande$ | async) && canSaisirDonneesMonetiques(demande)"
-                              type="button" mat-icon-button matTooltip="Saisir les donnees monetiques"
-                              color="accent" (click)="validerDemande(demande)">
-                        <mat-icon>edit_note</mat-icon>
-                      </button>
+                        <!-- Bouton Saisie Monetique (Inputer) -->
+                        <button *ngIf="canSaisirDonneesMonetiques(demande)"
+                                type="button" mat-icon-button matTooltip="Saisir les donnees monetiques"
+                                color="accent" (click)="validerDemande(demande)">
+                          <mat-icon>edit_note</mat-icon>
+                        </button>
 
-                      <!-- Bouton Validation finale (Authorizer) -->
-                      <button *ngIf="(canEditDemande$ | async) && canValiderDonneesMonetiques(demande)"
-                              type="button" mat-icon-button matTooltip="Valider final"
-                              color="accent" (click)="validerDemande(demande)">
-                        <mat-icon>check_circle</mat-icon>
-                      </button>
+                        <!-- Bouton Validation finale -->
+                        <button *ngIf="canValiderDonneesMonetiques(demande)"
+                                type="button" mat-icon-button matTooltip="Valider final"
+                                color="accent" (click)="validerDemande(demande)">
+                          <mat-icon>check_circle</mat-icon>
+                        </button>
 
-                      <!-- Bouton Rejeter (Authorizer) -->
-                      <button *ngIf="(canEditDemande$ | async) && canRejeterDonneesMonetiques(demande)"
-                              type="button" mat-icon-button matTooltip="Rejeter" 
-                              color="warn" (click)="rejeterDemande(demande)">
-                        <mat-icon>cancel</mat-icon>
-                      </button>
+                        <!-- Bouton Rejeter -->
+                        <button *ngIf="canRejeterDonneesMonetiques(demande)"
+                                type="button" mat-icon-button matTooltip="Rejeter"
+                                color="warn" (click)="rejeterDemande(demande)">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      </ng-container>
 
                       <!-- Bouton Affecter (avec permission sur AFFECTER_TPE) -->
-                      <button *ngIf="(canAffecterTPE$ | async) && (demande.statut === 'VALIDEE_MONETIQUE' || demande.statut === 'VALIDEE_AGENCE')" 
-                              type="button" mat-raised-button color="primary" 
-                              class="btn-sm" (click)="affecterTPE(demande)">
-                        <mat-icon>assignment</mat-icon>
-                        Affecter TPE
-                      </button>
+                      <ng-container *appHasPermission="{ screen: 'AFFECTER_TPE', permission: 'canEdit' }">
+                        <button *ngIf="demande.statut === 'VALIDEE_MONETIQUE' || demande.statut === 'VALIDEE_AGENCE'"
+                                type="button" mat-raised-button color="primary"
+                                class="btn-sm" (click)="affecterTPE(demande)">
+                          <mat-icon>assignment</mat-icon>
+                          Affecter TPE
+                        </button>
+                      </ng-container>
                     </td>
                   </tr>
                   <tr *ngIf="demandesFiltrees.length === 0">

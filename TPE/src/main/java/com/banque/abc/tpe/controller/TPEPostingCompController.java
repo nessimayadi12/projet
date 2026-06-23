@@ -23,7 +23,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/tpe-posting")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class TPEPostingCompController {
 
     private final TPEPostingCompRepository tpePostingCompRepository;

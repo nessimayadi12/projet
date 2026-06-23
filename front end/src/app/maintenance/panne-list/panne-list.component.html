@@ -38,29 +38,34 @@
 
             <div class="maintenance-toolbar">
               <div class="toolbar-left">
-                <button *ngIf="canDeclarerPanne()" mat-raised-button color="accent" (click)="toggleDeclarationForm()">
-                  <mat-icon>{{ showDeclarationForm ? 'close' : 'report_problem' }}</mat-icon>
-                  {{ showDeclarationForm ? 'Annuler' : 'Déclarer une panne' }}
-                </button>
-                <span *ngIf="canShowDeclarationHint()" class="toolbar-hint">
-                  Aucun TPE éligible. Le TPE doit être affecté, en panne ou en maintenance.
-                </span>
+                <ng-container *appHasPermission="{ screen: 'LISTE_PANNES', permission: 'canCreate' }">
+                  <button *ngIf="canDeclarerPanne()" mat-raised-button color="accent" (click)="toggleDeclarationForm()">
+                    <mat-icon>{{ showDeclarationForm ? 'close' : 'report_problem' }}</mat-icon>
+                    {{ showDeclarationForm ? 'Annuler' : 'Déclarer une panne' }}
+                  </button>
+                  <span *ngIf="canShowDeclarationHint()" class="toolbar-hint">
+                    Aucun TPE éligible. Le TPE doit être affecté, en panne ou en maintenance.
+                  </span>
+                </ng-container>
               </div>
 
               <div class="toolbar-right">
-                <button mat-raised-button color="primary" (click)="exportToExcel()"
-                        [disabled]="pannes.length === 0 || exportingExcel">
-                  <mat-icon>download</mat-icon>
-                  {{ exportingExcel ? 'Export...' : 'Exporter Excel' }}
-                </button>
-                <button mat-raised-button (click)="exportToPDF()"
-                        [disabled]="pannes.length === 0 || exportingPdf">
-                  <mat-icon>picture_as_pdf</mat-icon>
-                  {{ exportingPdf ? 'Export...' : 'Exporter PDF' }}
-                </button>
+                <ng-container *appHasPermission="{ screen: 'LISTE_PANNES', permission: 'canExport' }">
+                  <button mat-raised-button color="primary" (click)="exportToExcel()"
+                          [disabled]="pannes.length === 0 || exportingExcel">
+                    <mat-icon>download</mat-icon>
+                    {{ exportingExcel ? 'Export...' : 'Exporter Excel' }}
+                  </button>
+                  <button mat-raised-button (click)="exportToPDF()"
+                          [disabled]="pannes.length === 0 || exportingPdf">
+                    <mat-icon>picture_as_pdf</mat-icon>
+                    {{ exportingPdf ? 'Export...' : 'Exporter PDF' }}
+                  </button>
+                </ng-container>
               </div>
             </div>
 
+            <ng-container *appHasPermission="{ screen: 'LISTE_PANNES', permission: 'canCreate' }">
             <div *ngIf="showDeclarationForm" class="declaration-form">
               <div class="section-title">
                 <h4>Nouvelle déclaration de panne</h4>
@@ -219,6 +224,7 @@
                 </div>
               </form>
             </div>
+            </ng-container>
 
             <div *ngIf="selectedPanne" class="panne-panel">
               <div class="panel-header">
@@ -430,6 +436,7 @@
                         Détail
                       </button>
 
+                      <ng-container *appHasPermission="{ screen: 'LISTE_PANNES', permission: 'canEdit' }">
                       <button *ngIf="canTraiterPanne() && panne.statut === StatutPanne.DECLAREE"
                               type="button" mat-raised-button color="primary"
                               (click)="diagnostiquerPanne(panne)">
@@ -457,6 +464,7 @@
                         <mat-icon>block</mat-icon>
                         Irrécupérable
                       </button>
+                      </ng-container>
                     </td>
                   </tr>
 

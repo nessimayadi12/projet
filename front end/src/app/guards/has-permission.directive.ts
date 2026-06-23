@@ -8,6 +8,8 @@ import { ScreenService } from '../services/screen.service';
 export class HasPermissionDirective implements OnDestroy {
   private destroy$ = new Subject<void>();
   private rendered = false;
+  private currentScreen?: string;
+  private currentPermission?: keyof ScreenPermissions;
 
   constructor(
     private templateRef: TemplateRef<any>,
@@ -16,9 +18,28 @@ export class HasPermissionDirective implements OnDestroy {
   ) {}
 
   @Input()
-  set appHasPermission(value: { screen: string; permission: keyof ScreenPermissions }) {
+  set appHasPermission(value: { screen: string; permission: keyof ScreenPermissions } | null | undefined) {
+    const screen = value?.screen;
+    const permission = value?.permission;
+
+    if (!screen || !permission) {
+      this.destroy$.next();
+      this.currentScreen = undefined;
+      this.currentPermission = undefined;
+      this.clearView();
+      return;
+    }
+
+    if (screen === this.currentScreen && permission === this.currentPermission) {
+      return;
+    }
+
+    this.currentScreen = screen;
+    this.currentPermission = permission;
     this.destroy$.next();
-    this.screenService.hasPermission(value.screen, value.permission).pipe(
+    this.clearView();
+
+    this.screenService.hasPermission(screen, permission).pipe(
       takeUntil(this.destroy$)
     ).subscribe(hasPermission => this.render(hasPermission));
   }
@@ -33,8 +54,12 @@ export class HasPermissionDirective implements OnDestroy {
       this.viewContainer.createEmbeddedView(this.templateRef);
       this.rendered = true;
     } else if (!hasPermission && this.rendered) {
-      this.viewContainer.clear();
-      this.rendered = false;
+      this.clearView();
     }
+  }
+
+  private clearView(): void {
+    this.viewContainer.clear();
+    this.rendered = false;
   }
 }

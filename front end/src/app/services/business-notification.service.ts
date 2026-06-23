@@ -33,8 +33,7 @@ export class BusinessNotificationService implements OnDestroy {
   ) {}
 
   connect(): void {
-    const token = this.authService.token;
-    if (!token || this.client?.active) {
+    if (!this.authService.isLoggedIn() || this.client?.active) {
       return;
     }
 
@@ -42,9 +41,6 @@ export class BusinessNotificationService implements OnDestroy {
 
     this.client = new Client({
       brokerURL: this.webSocketUrl(),
-      connectHeaders: {
-        Authorization: 'Bearer ' + token
-      },
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
@@ -85,7 +81,7 @@ export class BusinessNotificationService implements OnDestroy {
   }
 
   refresh(): void {
-    if (!this.authService.token) {
+    if (!this.authService.isLoggedIn()) {
       return;
     }
 

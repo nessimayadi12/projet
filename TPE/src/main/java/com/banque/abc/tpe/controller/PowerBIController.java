@@ -17,7 +17,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/powerbi")
-@CrossOrigin(origins = "*")
 @Tag(name = "Power BI", description = "API pour l'intégration Power BI")
 @Slf4j
 public class PowerBIController {

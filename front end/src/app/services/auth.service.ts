@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
+import { catchError, finalize, map, shareReplay, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AuthResponse, LoginRequest, Utilisateur, Role } from '../models/utilisateur.model';
 import { ScreenService } from './screen.service';
@@ -11,15 +12,14 @@ import { ScreenService } from './screen.service';
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/auth`;
   private currentUserSubject: BehaviorSubject<Utilisateur | null>;
+  private sessionCheck$?: Observable<Utilisateur | null>;
   public currentUser: Observable<Utilisateur | null>;
 
   constructor(private http: HttpClient, private screenService: ScreenService) {
     sessionStorage.setItem('tabOpen', 'true');
-    
-    const storedUser = localStorage.getItem('currentUser');
-    this.currentUserSubject = new BehaviorSubject<Utilisateur | null>(
-      storedUser ? JSON.parse(storedUser) : null
-    );
+    this.clearLegacyLocalStorage();
+
+    this.currentUserSubject = new BehaviorSubject<Utilisateur | null>(null);
     this.currentUser = this.currentUserSubject.asObservable();
   }
 
@@ -27,44 +27,40 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  public get token(): string | null {
-    const token = localStorage.getItem('token');
-    return token && token !== 'undefined' && token !== 'null' ? token : null;
-  }
-
   public getCurrentUser(): Utilisateur | null {
     return this.currentUserValue;
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<any>(`${this.apiUrl}/login`, credentials)
+    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials)
       .pipe(
-        tap(response => {
-          this.screenService.clearCache();
-          localStorage.setItem('token', response.token);
-          
-          // Le backend renvoie "roles" (pluriel) comme tableau
-          const roles = this.normalizeRoles(response.roles || response.role);
-          const primaryRole = this.resolvePrimaryRole(roles);
-          
-          // Si c'est un tableau, prendre le premier élément
-          
-          // Convertir le rôle du backend (ROLE_AGENCE) vers l'enum (AGENCE)
-          
-          const user: Utilisateur = {
-            id: response.id,
-            username: response.username,
-            email: response.email,
-            role: primaryRole,
-            roles,
-            nom: '',
-            prenom: ''
-          };
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          sessionStorage.setItem('tabOpen', 'true');
-          this.currentUserSubject.next(user);
-        })
+        tap(response => this.setAuthenticatedUser(response))
       );
+  }
+
+  loadCurrentUser(force = false): Observable<Utilisateur | null> {
+    if (!force && this.currentUserValue) {
+      return of(this.currentUserValue);
+    }
+    if (!force && this.sessionCheck$) {
+      return this.sessionCheck$;
+    }
+
+    this.sessionCheck$ = this.http.get<AuthResponse>(`${this.apiUrl}/me`).pipe(
+      map(response => this.toUser(response)),
+      tap(user => {
+        this.currentUserSubject.next(user);
+        sessionStorage.setItem('tabOpen', 'true');
+      }),
+      catchError(() => {
+        this.clearClientState();
+        return of(null);
+      }),
+      finalize(() => this.sessionCheck$ = undefined),
+      shareReplay(1)
+    );
+
+    return this.sessionCheck$;
   }
 
   register(userData: any): Observable<any> {
@@ -72,14 +68,14 @@ export class AuthService {
   }
 
   logout(): void {
-    this.screenService.clearCache();
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
-    this.currentUserSubject.next(null);
+    this.clearClientState();
+    this.http.post<void>(`${this.apiUrl}/logout`, {}).subscribe({
+      error: () => undefined
+    });
   }
 
   isLoggedIn(): boolean {
-    return !!this.token;
+    return !!this.currentUserValue;
   }
 
   hasRole(roles: Role[]): boolean {
@@ -94,6 +90,39 @@ export class AuthService {
 
   hasAnyRole(roles: Role[]): boolean {
     return this.hasRole(roles);
+  }
+
+  private setAuthenticatedUser(response: AuthResponse): void {
+    this.screenService.clearCache();
+    const user = this.toUser(response);
+    sessionStorage.setItem('tabOpen', 'true');
+    this.currentUserSubject.next(user);
+  }
+
+  private toUser(response: AuthResponse): Utilisateur {
+    const roles = this.normalizeRoles(response.roles || response.role);
+    const primaryRole = this.resolvePrimaryRole(roles);
+
+    return {
+      id: response.id,
+      username: response.username,
+      email: response.email,
+      role: primaryRole,
+      roles,
+      nom: '',
+      prenom: ''
+    };
+  }
+
+  private clearClientState(): void {
+    this.screenService.clearCache();
+    this.currentUserSubject.next(null);
+    this.clearLegacyLocalStorage();
+  }
+
+  private clearLegacyLocalStorage(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
   }
 
   private normalizeRoles(roleValue: any): Role[] {

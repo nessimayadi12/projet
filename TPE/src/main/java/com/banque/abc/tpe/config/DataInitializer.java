@@ -322,7 +322,7 @@ public class DataInitializer {
                         "LISTE_DEMANDES", "CREER_DEMANDE", "MODIFIER_DEMANDE", "DETAIL_DEMANDE", "LISTE_PANNES" -> true;
                 default -> false;
             };
-            boolean agenceCanCreate = "CREER_DEMANDE".equals(screen.getCode());
+            boolean agenceCanCreate = "CREER_DEMANDE".equals(screen.getCode()) || "LISTE_PANNES".equals(screen.getCode());
             boolean agenceCanEdit = "MODIFIER_DEMANDE".equals(screen.getCode());
             boolean agenceCanDelete = false;
             boolean agenceCanExport = "LISTE_DEMANDES".equals(screen.getCode()) || "LISTE_TPE".equals(screen.getCode()) || "LISTE_COMMERCANTS".equals(screen.getCode());

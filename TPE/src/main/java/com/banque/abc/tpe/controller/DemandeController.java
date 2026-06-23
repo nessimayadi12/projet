@@ -23,7 +23,6 @@ import java.util.Map;
 @RestController
 @RequestMapping({"/api/demandes", "/api/demande"})
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class DemandeController {
 
     private final DemandeService demandeService;

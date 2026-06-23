@@ -1,7 +1,9 @@
 package com.banque.abc.tpe.security;
 
+import com.banque.abc.tpe.controller.AuthController;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -39,16 +41,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
-            logger.error("Impossible de définir l'authentification de l'utilisateur dans le contexte de sécurité", ex);
+            logger.error("Impossible de definir l'authentification de l'utilisateur dans le contexte de securite", ex);
         }
 
         filterChain.doFilter(request, response);
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {
+        String cookieToken = getJwtFromCookie(request);
+        if (StringUtils.hasText(cookieToken)) {
+            return cookieToken;
+        }
+
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
+        }
+        return null;
+    }
+
+    private String getJwtFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if (AuthController.ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
         }
         return null;
     }

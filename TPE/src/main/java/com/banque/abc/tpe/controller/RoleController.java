@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/roles")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class RoleController {
 
     @Autowired

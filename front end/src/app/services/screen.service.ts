@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
-import { distinctUntilChanged, finalize, map, shareReplay, tap } from 'rxjs/operators';
+import { catchError, distinctUntilChanged, finalize, map, shareReplay, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { Screen, ScreenPermissions, ScreenRole, UserScreens } from '../models/screen.model';
 
@@ -86,11 +86,13 @@ export class ScreenService {
     );
   }
 
-  /** Observable local: aucun appel HTTP par bouton. */
+  /** Observable local apres chargement partage du cache: aucun appel HTTP par bouton. */
   hasPermission(screenCode: string, permissionType: keyof ScreenPermissions): Observable<boolean> {
-    return this.permissionsVersionSubject.pipe(
+    return this.ensurePermissionsLoaded().pipe(
+      switchMap(() => this.permissionsVersionSubject),
       map(() => this.hasPermissionCached(screenCode, permissionType)),
-      distinctUntilChanged()
+      distinctUntilChanged(),
+      catchError(() => of(false))
     );
   }
 

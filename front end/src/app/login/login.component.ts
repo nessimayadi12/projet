@@ -26,7 +26,7 @@ export class LoginComponent implements OnInit {
       password: ['', Validators.required]
     });
 
-    // Rediriger si déjà connecté
+    // Rediriger si deja connecte en memoire.
     if (this.authService.isLoggedIn()) {
       this.router.navigate([this.getDefaultRoute()]);
     }
@@ -34,6 +34,14 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/tpe';
+
+    if (!this.authService.isLoggedIn()) {
+      this.authService.loadCurrentUser().subscribe(user => {
+        if (user) {
+          this.router.navigate([this.getDefaultRoute()]);
+        }
+      });
+    }
   }
 
   getDefaultRoute(): string {

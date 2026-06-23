@@ -12,6 +12,7 @@
               <strong>Information:</strong> Seuls MONETIQUE ou ADMIN peuvent creer/soumettre.
             </div>
 
+            <ng-container *appHasPermission="{ screen: 'GESTION_TAUX', permission: 'canCreate' }">
             <form *ngIf="canCreate()" (ngSubmit)="createTaux()" class="mb-3">
               <div class="row">
                 <div class="col-md-3">
@@ -63,10 +64,12 @@
                 </button>
               </div>
             </form>
+            </ng-container>
 
             <div *ngIf="createdTaux" class="alert alert-secondary">
               <strong>Dernier taux cree:</strong>
               ID {{ createdTaux.id }} - Statut {{ createdTaux.statut }}
+              <ng-container *appHasPermission="{ screen: 'GESTION_TAUX', permission: 'canCreate' }">
               <button
                 class="btn btn-primary btn-sm ml-2"
                 *ngIf="canCreate() && isBrouillon(createdTaux)"
@@ -75,6 +78,7 @@
                 <mat-icon>send</mat-icon>
                 Soumettre
               </button>
+              </ng-container>
             </div>
           </div>
         </div>
@@ -119,7 +123,7 @@
                     <th>Nouveau taux</th>
                     <th>Nouveau taux inter</th>
                     <th>Statut</th>
-                    <th class="text-right" *ngIf="canCreate()">Actions</th>
+                    <ng-container *appHasPermission="{ screen: 'GESTION_TAUX', permission: 'canCreate' }"><th class="text-right" *ngIf="canCreate()">Actions</th></ng-container>
                   </tr>
                 </thead>
                 <tbody>
@@ -134,6 +138,7 @@
                       <span class="badge badge-success" *ngIf="taux.statut === 'VALIDE'">VALIDE</span>
                       <span class="badge badge-danger" *ngIf="taux.statut === 'REJETE'">REJETE</span>
                     </td>
+                    <ng-container *appHasPermission="{ screen: 'GESTION_TAUX', permission: 'canCreate' }">
                     <td class="text-right" *ngIf="canCreate()">
                       <button
                         class="btn btn-primary btn-sm"
@@ -144,6 +149,7 @@
                         Soumettre
                       </button>
                     </td>
+                    </ng-container>
                   </tr>
                   <tr *ngIf="tauxByCommercant.length === 0">
                     <td colspan="6" class="text-center">
@@ -182,7 +188,7 @@
                     <th>Createur</th>
                     <th>Date Saisie</th>
                     <th>Statut</th>
-                    <th class="text-right" *ngIf="canValidate()">Actions</th>
+                    <ng-container *appHasPermission="{ screen: 'GESTION_TAUX', permission: 'canEdit' }"><th class="text-right" *ngIf="canValidate()">Actions</th></ng-container>
                   </tr>
                 </thead>
                 <tbody>
@@ -201,6 +207,7 @@
                     <td>
                       <span class="badge badge-warning">{{ taux.statut }}</span>
                     </td>
+                    <ng-container *appHasPermission="{ screen: 'GESTION_TAUX', permission: 'canEdit' }">
                     <td class="td-actions text-right" *ngIf="canValidate()">
                       <button 
                         type="button" 
@@ -225,6 +232,7 @@
                         Rejeter
                       </button>
                     </td>
+                    </ng-container>
                   </tr>
                   <tr *ngIf="tauxEnAttente.length === 0">
                     <td colspan="9" class="text-center">

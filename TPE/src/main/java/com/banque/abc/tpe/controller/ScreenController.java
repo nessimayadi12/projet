@@ -23,7 +23,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/screens")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class ScreenController {
 
     private final ScreenService screenService;

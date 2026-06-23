@@ -3,12 +3,10 @@ import { Router } from '@angular/router';
 import { DemandeTPE, StatutDemande, TypeDemande, Urgence } from '../../models/demande-tpe.model';
 import { DemandeService } from '../../services/demande.service';
 import { AuthService } from '../../services/auth.service';
-import { ScreenService } from '../../services/screen.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DemandeValidationComponent } from '../demande-validation/demande-validation.component';
 import { ExcelExportService } from '../../services/excel-export.service';
-import { Observable } from 'rxjs';
 import { Role } from '../../models/utilisateur.model';
 
 @Component({
@@ -26,11 +24,6 @@ export class DemandeListComponent implements OnInit {
   currentUserRole: string = '';
   currentUserId: number | null = null;
 
-  // Permissions observables
-  canCreateDemande$: Observable<boolean>;
-  canEditDemande$: Observable<boolean>;
-  canExportDemande$: Observable<boolean>;
-  canAffecterTPE$: Observable<boolean>;
 
   // Filtres
   filtreStatut: string = 'TOUS';
@@ -61,7 +54,6 @@ export class DemandeListComponent implements OnInit {
   constructor(
     private demandeService: DemandeService,
     private authService: AuthService,
-    private screenService: ScreenService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private router: Router,
@@ -70,12 +62,7 @@ export class DemandeListComponent implements OnInit {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
     this.currentUserId = currentUser?.id || null;
-    
-    // Initialiser les permissions
-    this.canCreateDemande$ = this.screenService.hasPermission('CREER_DEMANDE', 'canCreate');
-    this.canEditDemande$ = this.screenService.hasPermission('MODIFIER_DEMANDE', 'canEdit');
-    this.canExportDemande$ = this.screenService.hasPermission('LISTE_DEMANDES', 'canExport');
-    this.canAffecterTPE$ = this.screenService.hasPermission('AFFECTER_TPE', 'canView');
+
   }
 
   ngOnInit(): void {

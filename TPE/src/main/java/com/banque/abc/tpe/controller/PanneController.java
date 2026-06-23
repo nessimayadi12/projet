@@ -27,7 +27,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/pannes")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class PanneController {
 
     private final PanneService panneService;
