@@ -105,6 +105,27 @@ public class TPEService {
     }
 
     @Transactional(readOnly = true)
+    public List<TPEResponse> getTPEsByCommercant(Long commercantId) {
+        Map<Long, TPE> tpesById = tpeRepository.findByCommercantId(commercantId).stream()
+                .filter(tpe -> tpe.getId() != null)
+                .collect(Collectors.toMap(
+                        TPE::getId,
+                        tpe -> tpe,
+                        (first, second) -> first
+                ));
+
+        affectationRepository.findActiveByCommercantId(commercantId).stream()
+                .map(Affectation::getTpe)
+                .filter(tpe -> tpe != null && tpe.getId() != null)
+                .forEach(tpe -> tpesById.putIfAbsent(tpe.getId(), tpe));
+
+        return tpesById.values().stream()
+                .sorted(Comparator.comparing(TPE::getId).reversed())
+                .map(tpe -> mapToResponse(tpe, true))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<TPEResponse> searchTPEsForPanneDeclaration(String query, int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         List<String> terms = normalizeSearchTerms(query);

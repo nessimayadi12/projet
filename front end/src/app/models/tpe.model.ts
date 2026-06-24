@@ -59,6 +59,8 @@ export interface TPE {
   // Champs administratifs
   commentaire?: string;
   loyer?: number;
+  createdDate?: Date | string;
+  lastModifiedDate?: Date | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

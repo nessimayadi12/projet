@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,7 +44,8 @@ public class CommercantService {
             throw new DuplicateResourceException("Un commerçant avec ce numéro de compte existe déjà");
         }
 
-        Commercant commercant = modelMapper.map(request, Commercant.class);
+        Commercant commercant = new Commercant();
+        applyMerchantInformation(request, commercant);
         commercant.setStatut(StatutCommercant.ACTIF);
 
         Commercant savedCommercant = commercantRepository.save(commercant);
@@ -93,7 +95,7 @@ public class CommercantService {
                 .orElseThrow(() -> new ResourceNotFoundException("Commerçant non trouvé avec l'ID: " + id));
         Map<String, Object> oldValues = snapshot(commercant);
 
-        if (request.getEmail() != null && !commercant.getEmail().equals(request.getEmail()) &&
+        if (request.getEmail() != null && !Objects.equals(commercant.getEmail(), request.getEmail()) &&
                 commercantRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Un commerçant avec cet email existe déjà");
         }
@@ -103,7 +105,7 @@ public class CommercantService {
             throw new DuplicateResourceException("Un commerçant avec ce numéro de compte existe déjà");
         }
 
-        modelMapper.map(request, commercant);
+        applyMerchantInformation(request, commercant);
         Commercant updatedCommercant = commercantRepository.save(commercant);
 
         auditService.logUpdate("Commercant", updatedCommercant.getId().toString(), updatedCommercant.getRaisonSociale(),
@@ -165,6 +167,18 @@ public class CommercantService {
         count = Math.max(count, demandeTpeCount != null ? demandeTpeCount : 0L);
 
         return Math.toIntExact(count);
+    }
+
+    private void applyMerchantInformation(CommercantRequest request, Commercant commercant) {
+        commercant.setRaisonSociale(request.getRaisonSociale());
+        commercant.setActivite(request.getActivite());
+        commercant.setNumeroCompte(request.getNumeroCompte());
+        commercant.setAdresse(request.getAdresse());
+        commercant.setLocalite(request.getLocalite());
+        commercant.setCodePostal(request.getCodePostal());
+        commercant.setCodeAgence(request.getCodeAgence());
+        commercant.setTelephone(request.getTelephone());
+        commercant.setEmail(request.getEmail());
     }
 
     private Map<String, Object> snapshot(Commercant commercant) {

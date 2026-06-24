@@ -37,6 +37,7 @@ export class PanneListComponent implements OnInit {
   workflowAction: WorkflowAction = 'DETAIL';
 
   filtreStatut = 'TOUS';
+  recherchePanne = '';
   dateDebut: string = '';
   dateFin: string = '';
 
@@ -159,10 +160,52 @@ export class PanneListComponent implements OnInit {
 
   appliquerFiltres(): void {
     this.pannesFiltrees = this.sortPannes(this.pannes.filter(panne => {
+      const matchRecherche = this.matchesPanneSearch(panne);
       const matchStatut = this.filtreStatut === 'TOUS' || panne.statut === this.filtreStatut;
       const matchDate = this.matchesPanneDateRange(panne);
-      return matchStatut && matchDate;
+      return matchRecherche && matchStatut && matchDate;
     }));
+  }
+
+  clearRecherchePanne(): void {
+    this.recherchePanne = '';
+    this.appliquerFiltres();
+  }
+
+  private matchesPanneSearch(panne: Panne): boolean {
+    const query = this.normalizeSearchValue(this.recherchePanne);
+    if (!query) {
+      return true;
+    }
+
+    const searchableValues = [
+      panne.reference,
+      panne.tpeNumeroSerie,
+      panne.tpeId,
+      panne.commercantNom,
+      panne.typePanne,
+      this.getTypePanneLabel(panne.typePanne),
+      panne.description,
+      panne.statut,
+      this.getStatutLabel(panne.statut),
+      panne.diagnostic,
+      panne.solution,
+      panne.declarantNom,
+      panne.technicienNom
+    ];
+
+    return searchableValues.some(value =>
+      this.normalizeSearchValue(value).includes(query)
+    );
+  }
+
+  private normalizeSearchValue(value: unknown): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
   }
 
   private matchesPanneDateRange(panne: Panne): boolean {

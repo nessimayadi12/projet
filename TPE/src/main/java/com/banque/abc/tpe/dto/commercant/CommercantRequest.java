@@ -1,6 +1,5 @@
 package com.banque.abc.tpe.dto.commercant;
 
-import com.banque.abc.tpe.entity.enums.TypeTPE;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -34,16 +33,4 @@ public class CommercantRequest {
     
     @Email(message = "L'email doit être valide")
     private String email;
-    
-    // TPE
-    private Double loyer;
-    
-    // Mobile
-    private TypeTPE typeCommerce;
-    private String urlSiteMarchand;
-    private String webhookUrl;
-    private String webmaster;
-    private String contactTechnique;
-    private String typeCartesAcceptees;
-    private Boolean modeTest;
 }

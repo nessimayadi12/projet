@@ -1,0 +1,127 @@
+<div class="main-content merchant-form-page">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card merchant-form-card">
+          <div class="card-header card-header-success">
+            <h4 class="card-title">
+              {{ isEditMode ? 'Modifier un commer&ccedil;ant' : 'Nouveau commer&ccedil;ant' }}
+            </h4>
+            <p class="card-category">
+              {{ isEditMode ? 'Mettre &agrave; jour les informations du commer&ccedil;ant' : 'Enregistrer les informations du nouveau commer&ccedil;ant' }}
+            </p>
+          </div>
+
+          <div class="card-body">
+            <div *ngIf="loadingData" class="form-loading">Chargement des informations...</div>
+
+            <form *ngIf="!loadingData" [formGroup]="commercantForm" (ngSubmit)="onSubmit()">
+              <div class="section-heading">
+                <i class="material-icons">store</i>
+                <div>
+                  <h5>Informations du commer&ccedil;ant</h5>
+                  <p>Les terminaux et leurs param&egrave;tres sont g&eacute;r&eacute;s s&eacute;par&eacute;ment dans la gestion des TPE.</p>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Raison sociale *</label>
+                    <input type="text" class="form-control" formControlName="raisonSociale"
+                      [class.is-invalid]="commercantForm.get('raisonSociale')?.invalid && commercantForm.get('raisonSociale')?.touched">
+                    <div class="invalid-feedback">Raison sociale obligatoire</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Activit&eacute; *</label>
+                    <input type="text" class="form-control" formControlName="activite"
+                      [class.is-invalid]="commercantForm.get('activite')?.invalid && commercantForm.get('activite')?.touched">
+                    <div class="invalid-feedback">Activit&eacute; obligatoire</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-8">
+                  <div class="form-group">
+                    <label>Num&eacute;ro de compte / RIB *</label>
+                    <input type="text" class="form-control" formControlName="numeroCompte"
+                      [class.is-invalid]="commercantForm.get('numeroCompte')?.invalid && commercantForm.get('numeroCompte')?.touched">
+                    <div class="invalid-feedback">Num&eacute;ro de compte obligatoire</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Code agence *</label>
+                    <input type="text" class="form-control" formControlName="codeAgence" maxlength="3" inputmode="numeric"
+                      [class.is-invalid]="commercantForm.get('codeAgence')?.invalid && commercantForm.get('codeAgence')?.touched">
+                    <div class="invalid-feedback">Le code agence doit contenir 3 chiffres</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="form-group">
+                    <label>Adresse *</label>
+                    <input type="text" class="form-control" formControlName="adresse"
+                      [class.is-invalid]="commercantForm.get('adresse')?.invalid && commercantForm.get('adresse')?.touched">
+                    <div class="invalid-feedback">Adresse obligatoire</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Localit&eacute;</label>
+                    <input type="text" class="form-control" formControlName="localite">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Code postal *</label>
+                    <input type="text" class="form-control" formControlName="codePostal"
+                      [class.is-invalid]="commercantForm.get('codePostal')?.invalid && commercantForm.get('codePostal')?.touched">
+                    <div class="invalid-feedback">Code postal obligatoire</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>T&eacute;l&eacute;phone *</label>
+                    <input type="tel" class="form-control" formControlName="telephone"
+                      [class.is-invalid]="commercantForm.get('telephone')?.invalid && commercantForm.get('telephone')?.touched">
+                    <div class="invalid-feedback">T&eacute;l&eacute;phone obligatoire</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" class="form-control" formControlName="email"
+                      [class.is-invalid]="commercantForm.get('email')?.invalid && commercantForm.get('email')?.touched">
+                    <div class="invalid-feedback">Veuillez saisir un email valide</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="loading">
+                  <i class="material-icons">arrow_back</i> Annuler
+                </button>
+                <button type="submit" class="btn btn-success" [disabled]="loading">
+                  <i class="material-icons">save</i>
+                  {{ loading ? 'Enregistrement...' : (isEditMode ? 'Mettre &agrave; jour' : 'Cr&eacute;er le commer&ccedil;ant') }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

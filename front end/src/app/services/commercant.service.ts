@@ -53,7 +53,13 @@ export class CommercantService {
   }
 
   searchCommercants(keyword: string): Observable<Commercant[]> {
-    return this.http.get<Commercant[]>(`${this.apiUrl}/search?query=${keyword}`);
+    const params = new HttpParams().set('query', keyword);
+    return this.http.get<any>(`${this.apiUrl}/search`, { params }).pipe(
+      map(response => {
+        const commercants = Array.isArray(response) ? response : [];
+        return commercants.map(commercant => this.normalizeCommercant(commercant));
+      })
+    );
   }
 
   createCommercant(commercant: Commercant): Observable<Commercant> {
@@ -117,7 +123,9 @@ export class CommercantService {
 
     return {
       ...commercant,
-      nombreTpes: commercant.nombreTpes ?? commercant.nombreTPEs ?? 0
+      nombreTpes: commercant.nombreTpes ?? commercant.nombreTPEs ?? 0,
+      createdAt: commercant.createdAt ?? commercant.createdDate,
+      updatedAt: commercant.updatedAt ?? commercant.lastModifiedDate
     } as Commercant;
   }
 }

@@ -123,13 +123,18 @@ export class DemandeFormComponent implements OnInit {
   selectCommercant(commercant: Commercant): void {
     this.selectedCommercant = commercant;
     this.showCommercantSearch = false;
+    const numeroCompte = commercant.numeroCompte || commercant.rib || '';
     
     // Pré-remplir le formulaire avec les données du commerçant
     this.demandeForm.patchValue({
       raisonSociale: commercant.raisonSociale,
       activite: commercant.activite || '',
+      numeroCompte,
+      rib: numeroCompte,
       adresse: commercant.adresse,
+      localite: commercant.localite || commercant.ville || '',
       codePostal: commercant.codePostal,
+      codeAgence: commercant.codeAgence || '',
       telephone: commercant.telephone
     });
     
@@ -146,8 +151,12 @@ export class DemandeFormComponent implements OnInit {
     this.demandeForm.patchValue({
       raisonSociale: '',
       activite: '',
+      numeroCompte: '',
+      rib: '',
       adresse: '',
+      localite: '',
       codePostal: '',
+      codeAgence: '',
       telephone: ''
     });
   }

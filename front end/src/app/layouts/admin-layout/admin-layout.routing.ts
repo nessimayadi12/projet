@@ -10,7 +10,8 @@ import { TpeFormComponent } from '../../tpe/tpe-form/tpe-form.component';
 import { TpeImportRecordsComponent } from '../../tpe/tpe-import-records/tpe-import-records.component';
 import { GestionTauxComponent } from '../../tpe/gestion-taux/gestion-taux.component';
 import { CommercantListComponent } from '../../commercants/commercant-list/commercant-list.component';
-import { CommercantFormComponent } from '../../commercants/commercant-form/commercant-form.component';
+import { CommercantDetailComponent } from '../../commercants/commercant-detail/commercant-detail.component';
+import { CommercantBasicFormComponent } from '../../commercants/commercant-basic-form/commercant-basic-form.component';
 import { DemandeListComponent } from '../../demandes/demande-list/demande-list.component';
 import { DemandeFormComponent } from '../../demandes/demande-form/demande-form.component';
 import { AffectationTPEComponent } from '../../demandes/affectation-tpe/affectation-tpe.component';
@@ -41,9 +42,9 @@ export const AdminLayoutRoutes: Routes = [
     
     // Routes Commerçants
     { path: 'commercants', component: CommercantListComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'LISTE_COMMERCANTS' } },
-    { path: 'commercants/new', component: CommercantFormComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'CREER_COMMERCANT', permission: 'canCreate' } },
-    { path: 'commercants/:id/edit', component: CommercantFormComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'MODIFIER_COMMERCANT', permission: 'canEdit' } },
-    { path: 'commercants/:id', component: CommercantFormComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'DETAIL_COMMERCANT' } },
+    { path: 'commercants/new', component: CommercantBasicFormComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'CREER_COMMERCANT', permission: 'canCreate' } },
+    { path: 'commercants/:id/edit', component: CommercantBasicFormComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'MODIFIER_COMMERCANT', permission: 'canEdit' } },
+    { path: 'commercants/:id', component: CommercantDetailComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'DETAIL_COMMERCANT' } },
     
     // Routes Demandes
     { path: 'demandes', component: DemandeListComponent, canActivate: [AuthGuard, PermissionGuard], data: { screenCode: 'LISTE_DEMANDES' } },

@@ -245,7 +245,9 @@ export class TpeService {
       tauxCommissionInter: this.toNumberOrOriginal(tpe.tauxCommissionInter),
       loyer: this.toNumberOrOriginal(tpe.loyer),
       valueDate: this.normalizeValueDate(tpe.valueDate),
-      cartesAcceptees: tpe.cartesAcceptees || tpe.typeCartesAcceptees
+      cartesAcceptees: tpe.cartesAcceptees || tpe.typeCartesAcceptees,
+      createdAt: tpe.createdAt ?? tpe.createdDate,
+      updatedAt: tpe.updatedAt ?? tpe.lastModifiedDate
     } as TPE;
   }
 

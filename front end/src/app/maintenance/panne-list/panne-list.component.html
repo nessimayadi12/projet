@@ -380,6 +380,17 @@
             </div>
 
             <div class="filters-row">
+              <mat-form-field class="filter-field search-filter-field">
+                <mat-label>Rechercher</mat-label>
+                <mat-icon matPrefix>search</mat-icon>
+                <input matInput [(ngModel)]="recherchePanne" (ngModelChange)="onFiltreChange()"
+                       placeholder="R&eacute;f&eacute;rence, TPE, commer&ccedil;ant, type, description...">
+                <button *ngIf="recherchePanne" mat-icon-button matSuffix type="button"
+                        aria-label="Effacer la recherche" (click)="clearRecherchePanne()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </mat-form-field>
+
               <mat-form-field class="filter-field status-filter-field">
                 <mat-label>Filtrer par statut</mat-label>
                 <mat-select [(ngModel)]="filtreStatut" (selectionChange)="onFiltreChange()">

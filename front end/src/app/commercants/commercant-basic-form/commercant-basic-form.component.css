@@ -1,0 +1,80 @@
+.merchant-form-card {
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.section-heading {
+  align-items: flex-start;
+  border-bottom: 1px solid #e6ecef;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+}
+
+.section-heading .material-icons {
+  color: #0781a0;
+  font-size: 30px;
+}
+
+.section-heading h5 {
+  color: #245365;
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.section-heading p {
+  color: #7b8794;
+  margin: 0;
+}
+
+.form-group { margin-bottom: 22px; }
+
+.form-group label {
+  color: #52636c;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.invalid-feedback {
+  color: #f44336;
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.is-invalid { border-color: #f44336 !important; }
+
+.form-actions {
+  align-items: center;
+  border-top: 1px solid #e6ecef;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 20px;
+}
+
+.form-actions .btn {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  margin: 0;
+}
+
+.form-loading {
+  color: #687982;
+  padding: 50px 0;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .form-actions .btn { justify-content: center; }
+}

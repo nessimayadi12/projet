@@ -35,6 +35,8 @@ export interface Commercant {
   cheminFichierRNE?: string;
   nombreTpes?: number;
   nombreTPEs?: number;
+  createdDate?: Date | string;
+  lastModifiedDate?: Date | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

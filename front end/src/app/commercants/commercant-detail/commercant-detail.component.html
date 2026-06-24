@@ -1,0 +1,136 @@
+<div class="main-content merchant-detail-page">
+  <div class="container-fluid">
+    <div class="detail-toolbar">
+      <button type="button" class="btn btn-link back-button" (click)="goBack()">
+        <i class="material-icons">arrow_back</i>
+        Retour aux commer&ccedil;ants
+      </button>
+    </div>
+
+    <div *ngIf="loadingCommercant" class="card loading-card">
+      <div class="card-body text-center">Chargement du commer&ccedil;ant...</div>
+    </div>
+
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+    <ng-container *ngIf="!loadingCommercant && commercant">
+      <div class="card merchant-card">
+        <div class="merchant-header">
+          <div>
+            <div class="header-kicker">Fiche commer&ccedil;ant</div>
+            <h3>{{ commercant.raisonSociale }}</h3>
+            <p>{{ display(commercant.activite) }} &middot; {{ display(commercant.localite || commercant.adresse) }}</p>
+          </div>
+          <div class="header-actions">
+            <span class="merchant-status" [ngClass]="'merchant-status-' + (commercant.statut || '').toLowerCase()">
+              {{ commercant.statut }}
+            </span>
+            <button
+              type="button"
+              class="btn btn-light edit-button"
+              (click)="editCommercant()"
+              *appHasPermission="{ screen: 'MODIFIER_COMMERCANT', permission: 'canEdit' }">
+              <i class="material-icons">edit</i>
+              Modifier
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <h5 class="section-title">
+            <i class="material-icons">store</i>
+            Informations du commer&ccedil;ant
+          </h5>
+
+          <div class="info-grid">
+            <div class="info-item"><span>Raison sociale</span><strong>{{ display(commercant.raisonSociale) }}</strong></div>
+            <div class="info-item"><span>Activit&eacute;</span><strong>{{ display(commercant.activite) }}</strong></div>
+            <div class="info-item"><span>N&deg; compte / RIB</span><strong>{{ display(commercant.numeroCompte || commercant.rib) }}</strong></div>
+            <div class="info-item"><span>Code agence</span><strong>{{ display(commercant.codeAgence) }}</strong></div>
+            <div class="info-item info-item-wide"><span>Adresse</span><strong>{{ display(commercant.adresse) }}</strong></div>
+            <div class="info-item"><span>Localit&eacute;</span><strong>{{ display(commercant.localite || commercant.ville) }}</strong></div>
+            <div class="info-item"><span>Code postal</span><strong>{{ display(commercant.codePostal) }}</strong></div>
+            <div class="info-item"><span>T&eacute;l&eacute;phone</span><strong>{{ display(commercant.telephone) }}</strong></div>
+            <div class="info-item"><span>Email</span><strong>{{ display(commercant.email) }}</strong></div>
+            <div class="info-item"><span>Date de cr&eacute;ation</span><strong>{{ commercant.createdAt ? (commercant.createdAt | date:'dd/MM/yyyy HH:mm') : '-' }}</strong></div>
+            <div class="info-item"><span>Derni&egrave;re modification</span><strong>{{ commercant.updatedAt ? (commercant.updatedAt | date:'dd/MM/yyyy HH:mm') : '-' }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card tpe-card">
+        <div class="card-body">
+          <div class="tpe-section-header">
+            <div>
+              <h5 class="section-title">
+                <i class="material-icons">point_of_sale</i>
+                TPE affect&eacute;s
+                <span class="count-badge">{{ tpes.length }}</span>
+              </h5>
+              <p>Consultez les terminaux rattach&eacute;s &agrave; ce commer&ccedil;ant et ouvrez leur d&eacute;tail au besoin.</p>
+            </div>
+          </div>
+
+          <div *ngIf="loadingTpes" class="empty-state">
+            <i class="material-icons spinning">sync</i>
+            Chargement des TPE...
+          </div>
+
+          <div *ngIf="tpeError" class="alert alert-warning">{{ tpeError }}</div>
+
+          <div *ngIf="!loadingTpes && !tpeError && tpes.length === 0" class="empty-state">
+            <i class="material-icons">devices_other</i>
+            <strong>Aucun TPE affect&eacute;</strong>
+            <span>Ce commer&ccedil;ant ne poss&egrave;de actuellement aucun terminal.</span>
+          </div>
+
+          <div *ngIf="!loadingTpes && tpes.length > 0" class="tpe-list">
+            <article class="tpe-item" *ngFor="let tpe of tpes" [class.expanded]="isExpanded(tpe)">
+              <button type="button" class="tpe-summary" (click)="toggleTpeDetails(tpe)">
+                <div class="terminal-icon"><i class="material-icons">point_of_sale</i></div>
+                <div class="terminal-main">
+                  <span class="terminal-label">TID</span>
+                  <strong>{{ display(tpe.numeroTerminal) }}</strong>
+                  <small>S&eacute;rie : {{ display(tpe.numeroSerie) }}</small>
+                </div>
+                <div class="terminal-meta">
+                  <span>{{ getTpeType(tpe) }}</span>
+                  <small>{{ display(tpe.marque) }} {{ display(tpe.modele) !== '-' ? tpe.modele : '' }}</small>
+                </div>
+                <span class="tpe-status" [ngClass]="getStatutClass(tpe.statut)">{{ getStatutLabel(tpe.statut) }}</span>
+                <i class="material-icons expand-icon">{{ isExpanded(tpe) ? 'expand_less' : 'expand_more' }}</i>
+              </button>
+
+              <div class="tpe-details" *ngIf="isExpanded(tpe)">
+                <div class="tpe-detail-grid">
+                  <div><span>Num&eacute;ro de s&eacute;rie</span><strong>{{ display(tpe.numeroSerie) }}</strong></div>
+                  <div><span>Num&eacute;ro terminal (TID)</span><strong>{{ display(tpe.numeroTerminal) }}</strong></div>
+                  <div><span>Num&eacute;ro d&rsquo;affiliation</span><strong>{{ display(tpe.numeroAffiliation) }}</strong></div>
+                  <div><span>Type</span><strong>{{ getTpeType(tpe) }}</strong></div>
+                  <div><span>Marque</span><strong>{{ display(tpe.marque) }}</strong></div>
+                  <div><span>Mod&egrave;le</span><strong>{{ display(tpe.modele) }}</strong></div>
+                  <div><span>Date d&rsquo;acquisition</span><strong>{{ tpe.dateAcquisition ? (tpe.dateAcquisition | date:'dd/MM/yyyy') : '-' }}</strong></div>
+                  <div><span>Mise en service</span><strong>{{ tpe.dateMiseEnService ? (tpe.dateMiseEnService | date:'dd/MM/yyyy') : '-' }}</strong></div>
+                  <div><span>MCC</span><strong>{{ display(tpe.mcc) }}</strong></div>
+                  <div><span>Taux commission</span><strong>{{ tpe.tauxCommission != null ? (tpe.tauxCommission + ' %') : '-' }}</strong></div>
+                  <div><span>Taux inter</span><strong>{{ tpe.tauxCommissionInter != null ? (tpe.tauxCommissionInter + ' %') : '-' }}</strong></div>
+                  <div><span>Loyer</span><strong>{{ tpe.loyer != null ? (tpe.loyer + ' TND') : '-' }}</strong></div>
+                  <div><span>Value date</span><strong>{{ display(tpe.valueDate) }}</strong></div>
+                  <div><span>Code agence</span><strong>{{ display(tpe.codeAgence) }}</strong></div>
+                  <div class="detail-wide"><span>Commentaire</span><strong>{{ display(tpe.commentaire) }}</strong></div>
+                </div>
+
+                <div class="tpe-detail-actions">
+                  <button type="button" class="btn btn-info btn-sm" (click)="viewTpe(tpe)">
+                    <i class="material-icons">open_in_new</i>
+                    Ouvrir la fiche compl&egrave;te du TPE
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>

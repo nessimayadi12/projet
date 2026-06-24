@@ -71,6 +71,12 @@ public class TPEController {
         return ResponseEntity.ok(tpes);
     }
 
+    @GetMapping("/commercant/{commercantId}")
+    @PreAuthorize("hasAnyRole('MONETIQUE', 'AGENCE', 'ADMIN')")
+    public ResponseEntity<List<TPEResponse>> getTPEsByCommercant(@PathVariable Long commercantId) {
+        return ResponseEntity.ok(tpeService.getTPEsByCommercant(commercantId));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('MONETIQUE', 'ADMIN')")
     public ResponseEntity<TPEResponse> updateTPE(@PathVariable Long id, 

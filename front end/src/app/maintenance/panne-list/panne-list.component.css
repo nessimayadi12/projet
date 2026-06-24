@@ -265,6 +265,19 @@
   width: min(320px, 100%);
 }
 
+.search-filter-field {
+  width: min(390px, 100%);
+}
+
+.search-filter-field mat-icon[matPrefix] {
+  margin-right: 8px;
+  color: #607d8b;
+}
+
+.search-filter-field button[matSuffix] {
+  color: #607d8b;
+}
+
 .date-filter-field {
   width: min(230px, 100%);
 }
