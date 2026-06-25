@@ -15,7 +15,6 @@ declare interface RouteInfo {
 export const ROUTES: RouteInfo[] = [
     { path: '/dashboard', title: 'Tableau de Bord', icon: 'dashboard', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'DASHBOARD' },
     { path: '/tpe', title: 'Gestion TPE', icon: 'devices', class: '', screenCode: 'LISTE_TPE' },
-    { path: '/tpe/imports', title: 'Lignes importees', icon: 'table_view', class: '', roles: [Role.ADMIN, Role.MONETIQUE], screenCode: 'LISTE_TPE' },
     { path: '/commercants', title: 'Commercants', icon: 'store', class: '', screenCode: 'LISTE_COMMERCANTS' },
     { path: '/demandes', title: 'Demandes TPE', icon: 'assignment', class: '', screenCode: 'LISTE_DEMANDES' },
     { path: '/pannes', title: 'Maintenance', icon: 'build', class: '', screenCode: 'LISTE_PANNES' },
